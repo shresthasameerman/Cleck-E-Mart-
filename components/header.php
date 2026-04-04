@@ -15,7 +15,7 @@
     <!-- Site header / navigation -->
     <header class="site-header">
         <div class="container site-header__bar">
-            <a class="brand" href="#top" aria-label="Cleck E-Mart home">
+            <a class="brand" href="index.php" aria-label="Cleck E-Mart home">
                 <img class="brand__logo" src="assets/images/Primary_Logo.png" alt="Cleck E-Mart" />
             </a>
 

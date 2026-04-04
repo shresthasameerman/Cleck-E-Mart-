@@ -3,7 +3,7 @@
     <div class="container site-footer__inner">
         <div>
             <!-- Brand text in footer (kept as text for lightweight rendering). -->
-            <a class="brand brand--footer" href="#top">Cleck E-Mart</a>
+            <a class="brand brand--footer" href="index.php">Cleck E-Mart</a>
             <p>Designed for a fast, focused shopping experience with a clean hierarchy and responsive layout.</p>
         </div>
 
