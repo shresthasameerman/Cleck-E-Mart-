@@ -1,12 +1,25 @@
 <?php
+// Shared header includes <head>, navigation, and opening <body> tag.
+// Keeping this in one component ensures all pages stay visually consistent.
 require __DIR__ . '/components/header.php';
 ?>
+<!--
+    Homepage layout summary:
+    1) Hero with search UI (currently static; backend search can be wired via form action)
+    2) Featured products (currently hard-coded sample cards)
+    3) CTA block for navigation focus
+-->
 <main id="main-content">
     <!-- Hero / search area -->
     <section class="hero" aria-labelledby="hero-title">
         <div class="container hero__inner">
             <div class="hero__search-panel">
                 <h1 id="hero-title" class="sr-only">Shop the latest essentials</h1>
+                <!--
+                    Search form backend note:
+                    - Replace action="#" with your search endpoint (example: search.php)
+                    - Read query from GET parameter "q"
+                -->
                 <form class="search" role="search" action="#" method="get">
                     <label class="sr-only" for="site-search">Search products</label>
                     <input id="site-search" class="search__input" type="search" name="q" placeholder="Search products, brands, or categories" />
@@ -30,6 +43,11 @@ require __DIR__ . '/components/header.php';
             </div>
 
             <div class="card-grid">
+                <!--
+                    Product card template note:
+                    This repeated HTML can be rendered from database rows in a loop.
+                    Typical fields: image_url, title, short_description, price, product_slug/id.
+                -->
                 <article class="product-card">
                     <div class="product-card__media">
                         <img src="assets/images/product-placeholder.svg" alt="Minimal lifestyle product illustration" />
@@ -87,5 +105,6 @@ require __DIR__ . '/components/header.php';
     </section>
 </main>
 <?php
+// Shared footer closes the page structure and contains quick links.
 require __DIR__ . '/components/footer.php';
 ?>
