@@ -128,7 +128,7 @@ require __DIR__ . '/components/header.php';
                     </div>
 
                     <p class="auth-switch-text">
-                        Don’t have an account?
+                        Don't have an account?
                         <button class="auth-inline-action" type="button" data-auth-switch="signup">Sign Up</button>
                     </p>
                 </section>
