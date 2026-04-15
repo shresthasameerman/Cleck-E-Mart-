@@ -100,7 +100,7 @@ require __DIR__ . '/components/header.php';
                 <p class="cta__eyebrow">Fast delivery</p>
                 <h2 id="cta-title">Shop with a smoother checkout and clearer product discovery.</h2>
             </div>
-            <a class="button button--secondary" href="#top">Browse categories</a>
+            <a class="button button--secondary" href="category.php">Browse Category</a>
         </div>
     </section>
 </main>

@@ -1,10 +1,14 @@
+<?php
+$pageTitle = $pageTitle ?? 'Cleck E-Mart';
+$metaDescription = $metaDescription ?? 'A responsive storefront homepage built from a wireframe.';
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="A responsive storefront homepage built from a wireframe." />
-    <title>Cleck E-Mart</title>
+    <meta name="description" content="<?php echo htmlspecialchars($metaDescription, ENT_QUOTES, 'UTF-8'); ?>" />
+    <title><?php echo htmlspecialchars($pageTitle, ENT_QUOTES, 'UTF-8'); ?></title>
     <link rel="stylesheet" href="assets/css/styles.css" />
     <script defer src="assets/js/script.js"></script>
 </head>
@@ -29,23 +33,23 @@
                 </button>
 
                 <div class="site-nav__panel" id="primary-navigation" data-nav-panel>
-                    <a href="#featured-title">Featured</a>
-                    <a href="#cta-title">Delivery</a>
-                    <a href="#main-content">Offers</a>
+                    <a href="index.php#featured-title">Featured</a>
+                    <a href="category.php">Browse Category</a>
+                    <a href="index.php#cta-title">Delivery</a>
+                    <a href="customer.php">My Profile</a>
                 </div>
             </nav>
 
             <div class="site-actions" aria-label="Account and cart actions">
-                <!-- Cart link placeholder; map to cart.php when checkout module is added. -->
-                <a class="icon-button" href="#" aria-label="Cart">
+                <a class="icon-button" href="cart.php" aria-label="Cart">
                     <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                         <path d="M6 6h15l-1.5 7.5H8.5L7.7 10H5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
                         <circle cx="9.5" cy="19" r="1.25" fill="currentColor"/>
                         <circle cx="17.5" cy="19" r="1.25" fill="currentColor"/>
                     </svg>
                 </a>
-                <!-- Account icon intentionally routes to auth page for login/sign-up access. -->
-                <a class="icon-button icon-button--account" href="auth.php" aria-label="Account">
+                <!-- Account icon routes directly to the customer profile page. -->
+                <a class="icon-button icon-button--account" href="customer.php" aria-label="Account profile">
                     <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                         <circle cx="12" cy="8.2" r="3.2" fill="none" stroke="currentColor" stroke-width="1.7"/>
                         <path d="M6.5 19.2c1.6-3 3.8-4.5 5.5-4.5s3.9 1.5 5.5 4.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>

@@ -5,6 +5,9 @@ Cleck E-Mart is a small PHP storefront prototype built around a clean, responsiv
 ## What this project contains
 
 - A homepage with a hero search area, featured product cards, and a call-to-action section
+- A category page for Fresh Produce with sidebar filters, search, and product cards
+- A basket page with quantity controls and an order summary panel
+- A collection slot page for choosing the pickup day and time before payment
 - A combined Sign Up / Login page based on the wireframe
 - A shared header and footer so the layout stays consistent across pages
 - A single CSS file that controls the site theme, spacing, and responsive layout
@@ -14,6 +17,9 @@ Cleck E-Mart is a small PHP storefront prototype built around a clean, responsiv
 
 ```text
 index.php
+category.php
+cart.php
+collection.php
 auth.php
 components/
   header.php
@@ -37,6 +43,46 @@ This is the main storefront landing page. It includes:
 - a search area at the top
 - featured product cards
 - a delivery / browsing call-to-action
+
+The `Browse Category` call-to-action opens `category.php`.
+
+### Category page
+
+File: [category.php](category.php)
+
+This page follows the category wireframe and includes:
+
+- a category title panel (`Category: Fresh Produce`)
+- a product search input
+- left-side filters for category and price tiers
+- a responsive product card grid with images and ratings
+
+The category page currently uses client-side filtering in `assets/js/script.js`.
+
+### Basket page
+
+File: [cart.php](cart.php)
+
+This page follows the basket wireframe and includes:
+
+- a boxed `Your Basket` title panel
+- basket item rows with product image, trader name, quantity controls, and line totals
+- an order summary panel with total and a collection-slot button
+
+The quantity buttons update the visible totals in `assets/js/script.js`.
+
+### Collection slot page
+
+File: [collection.php](collection.php)
+
+This page follows the collection-slot wireframe and includes:
+
+- a four-step checkout progress track
+- boxed sections for available days, collection dates, and time slots
+- selectable slot buttons that update a summary line
+- a confirm slot and pay button
+
+The collection slot page currently uses client-side selection feedback in `assets/js/script.js`.
 
 ### Authentication page
 
@@ -66,7 +112,7 @@ The header contains:
 
 - the site logo
 - mobile navigation
-- cart icon placeholder
+- cart icon that opens the basket page
 - account icon that opens the auth page
 
 ### Footer
@@ -107,6 +153,9 @@ This file currently handles:
 - closing the menu when clicking outside it
 - closing the menu with Escape
 - switching between Sign Up and Login tabs on the auth page
+- filtering product cards on the category page (search + filter buttons)
+- updating basket quantities and totals on the cart page
+- handling collection slot selections on the collection page
 
 ## How to run
 

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="320" viewBox="0 0 640 320" role="img" aria-labelledby="title desc">
+  <title id="title">Fresh cheese illustration</title>
+  <desc id="desc">Cheese wedge with holes on a wood-toned background.</desc>
+  <rect width="640" height="320" fill="#f0e3cd"/>
+  <polygon points="180,245 470,245 350,120" fill="#f4cd57" stroke="#785f23" stroke-width="6"/>
+  <circle cx="300" cy="200" r="12" fill="#dfb847"/>
+  <circle cx="340" cy="220" r="16" fill="#dfb847"/>
+  <circle cx="380" cy="188" r="11" fill="#dfb847"/>
+  <circle cx="420" cy="218" r="14" fill="#dfb847"/>
+</svg>

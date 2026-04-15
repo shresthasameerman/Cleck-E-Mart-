@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="320" viewBox="0 0 640 320" role="img" aria-labelledby="title desc">
+  <title id="title">Fishmongers showcase illustration</title>
+  <desc id="desc">Fish fillets and crushed ice in a fishmonger display.</desc>
+  <rect width="640" height="320" fill="#ddebf2"/>
+  <rect x="80" y="205" width="480" height="60" rx="8" fill="#7ea1b2"/>
+  <ellipse cx="210" cy="175" rx="95" ry="36" fill="#6f8fa1"/>
+  <ellipse cx="340" cy="170" rx="100" ry="34" fill="#5f8195"/>
+  <ellipse cx="450" cy="176" rx="82" ry="30" fill="#7b9eb1"/>
+  <circle cx="155" cy="220" r="11" fill="#f5fbff"/>
+  <circle cx="195" cy="232" r="9" fill="#f5fbff"/>
+  <circle cx="305" cy="228" r="10" fill="#f5fbff"/>
+  <circle cx="420" cy="226" r="9" fill="#f5fbff"/>
+  <circle cx="475" cy="236" r="10" fill="#f5fbff"/>
+</svg>

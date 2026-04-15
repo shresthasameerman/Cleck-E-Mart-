@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="320" viewBox="0 0 640 320" role="img" aria-labelledby="title desc">
+  <title id="title">Fresh milk illustration</title>
+  <desc id="desc">Milk bottle and glass icon on a neutral background.</desc>
+  <rect width="640" height="320" fill="#e7ecef"/>
+  <rect x="235" y="82" width="170" height="180" rx="28" fill="#ffffff" stroke="#4b4b4b" stroke-width="6"/>
+  <rect x="280" y="55" width="80" height="35" rx="10" fill="#cfd8dc" stroke="#4b4b4b" stroke-width="6"/>
+  <rect x="440" y="130" width="90" height="132" rx="12" fill="#fdfdfd" stroke="#4b4b4b" stroke-width="6"/>
+  <rect x="252" y="150" width="136" height="95" rx="14" fill="#dce8ef"/>
+</svg>

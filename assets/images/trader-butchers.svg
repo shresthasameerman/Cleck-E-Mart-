@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="320" viewBox="0 0 640 320" role="img" aria-labelledby="title desc">
+  <title id="title">Butchers showcase illustration</title>
+  <desc id="desc">Butcher tray with fresh meat cuts on a wooden board.</desc>
+  <rect width="640" height="320" fill="#efe2d8"/>
+  <rect x="90" y="210" width="460" height="55" rx="8" fill="#9c6d46"/>
+  <rect x="120" y="138" width="130" height="72" rx="22" fill="#c14747"/>
+  <rect x="270" y="130" width="145" height="82" rx="24" fill="#b53a3a"/>
+  <rect x="430" y="145" width="95" height="66" rx="20" fill="#cc5a5a"/>
+  <circle cx="228" cy="170" r="8" fill="#f6d0d0"/>
+  <circle cx="338" cy="168" r="10" fill="#f1c4c4"/>
+</svg>
