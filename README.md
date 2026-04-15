@@ -1,26 +1,31 @@
 # Cleck E-Mart
 
-Cleck E-Mart is a small PHP storefront prototype built around a clean, responsive shopping and authentication experience.
+Cleck E-Mart is a PHP storefront prototype focused on clean UI, responsive layouts, and frontend checkout/profile interactions.
 
-## What this project contains
+## Overview
 
-- A homepage with a hero search area, featured product cards, and a call-to-action section
-- A category page for Fresh Produce with sidebar filters, search, and product cards
-- A basket page with quantity controls and an order summary panel
-- A collection slot page for choosing the pickup day and time before payment
-- A combined Sign Up / Login page based on the wireframe
-- A shared header and footer so the layout stays consistent across pages
-- A single CSS file that controls the site theme, spacing, and responsive layout
-- A small JavaScript file for navigation and auth tab switching
+The project currently includes:
 
-## Project structure
+- Storefront browsing pages (home, category, product)
+- Checkout flow pages (cart, collection slot)
+- Account pages (auth, customer dashboard, profile dashboard)
+- A contact page with business details and message form
+- Shared layout components (header and footer)
+- Global styling in a single CSS file
+- Interactive behavior handled in a single JavaScript file
+
+## Project Structure
 
 ```text
 index.php
 category.php
+product.php
 cart.php
 collection.php
 auth.php
+customer.php
+profile.php
+contact.php
 components/
   header.php
   footer.php
@@ -30,177 +35,153 @@ assets/
   js/
     script.js
   images/
+README.md
 ```
 
-## Page flow
+## Pages
 
-### Homepage
+### Home
 
 File: [index.php](index.php)
 
-This is the main storefront landing page. It includes:
+- Hero/search section
+- Featured product cards
+- Delivery and browse call-to-action area
 
-- a search area at the top
-- featured product cards
-- a delivery / browsing call-to-action
-
-The `Browse Category` call-to-action opens `category.php`.
-
-### Category page
+### Category
 
 File: [category.php](category.php)
 
-This page follows the category wireframe and includes:
+- Search input for products
+- Trader and price filter controls
+- Product card grid
+- Links to product details
 
-- a category title panel (`Category: Fresh Produce`)
-- a product search input
-- left-side filters for category and price tiers
-- a responsive product card grid with images and ratings
+### Product Detail
 
-The category page currently uses client-side filtering in `assets/js/script.js`.
+File: [product.php](product.php)
 
-### Basket page
+- Product image and trader details
+- Product name, rating, and description
+- Quantity selector
+- Add-to-basket button (routes to cart)
+
+### Basket
 
 File: [cart.php](cart.php)
 
-This page follows the basket wireframe and includes:
+- Basket item rows with quantity controls
+- Line totals and order summary
+- Continue-to-collection action
 
-- a boxed `Your Basket` title panel
-- basket item rows with product image, trader name, quantity controls, and line totals
-- an order summary panel with total and a collection-slot button
-
-The quantity buttons update the visible totals in `assets/js/script.js`.
-
-### Collection slot page
+### Collection Slot
 
 File: [collection.php](collection.php)
 
-This page follows the collection-slot wireframe and includes:
+- Calendar-based day selection
+- Time slot availability and selection
+- Capacity-aware reservation feedback
+- Confirmation step before payment
 
-- a four-step checkout progress track
-- boxed sections for available days, collection dates, and time slots
-- selectable slot buttons that update a summary line
-- a confirm slot and pay button
-
-The collection slot page currently uses client-side selection feedback in `assets/js/script.js`.
-
-### Authentication page
+### Authentication
 
 File: [auth.php](auth.php)
 
-This page contains both account flows:
+- Sign Up and Login modes
+- Frontend tab switch and optional URL mode query
+- Role selection in sign-up form (Customer/Trader)
 
-- Sign Up
-- Login
+### Customer Dashboard
 
-The account icon in the header opens this page.
+File: [customer.php](customer.php)
 
-The Sign Up form includes a role selector for:
+- Profile summary/sidebar
+- Recent orders panel
+- Account information form
+- Pricing summary area
 
-- Customer
-- Trader
+### Profile Dashboard
 
-That value is intended to be stored in the database during registration as `account_type`.
+File: [profile.php](profile.php)
 
-## Shared components
+- Multi-panel account UI (orders, account, history, reviews, password)
+- Client-side tab navigation
+- Account update and password forms
+
+### Contact
+
+File: [contact.php](contact.php)
+
+- Contact information cards
+- Collection-hour details
+- Message form
+
+## Shared Components
 
 ### Header
 
 File: [components/header.php](components/header.php)
 
-The header contains:
-
-- the site logo
-- mobile navigation
-- cart icon that opens the basket page
-- account icon that opens the auth page
+- Global meta/title setup
+- Site logo and primary navigation
+- Cart and account action icons
 
 ### Footer
 
 File: [components/footer.php](components/footer.php)
 
-The footer contains:
-
-- the brand text
-- quick links back to important sections
+- Brand summary
+- Quick links for key sections/pages
 
 ## Styling
 
 File: [assets/css/styles.css](assets/css/styles.css)
 
-This file controls:
+The stylesheet controls:
 
-- the main color palette
-- layout spacing
-- card styling
-- auth page styling
-- responsive behavior for mobile, tablet, and desktop
+- Theme variables and visual palette
+- Responsive layouts across pages
+- Forms, cards, tables, and dashboard sections
+- Page-specific components (category/cart/collection/profile/contact)
 
-Theme notes:
-
-- Light background
-- Beige surfaces
-- Dark neutral text
-- Soft green accent
-
-## JavaScript behavior
+## JavaScript Behavior
 
 File: [assets/js/script.js](assets/js/script.js)
 
-This file currently handles:
+Current scripts include:
 
-- opening and closing the mobile navigation menu
-- closing the menu when clicking outside it
-- closing the menu with Escape
-- switching between Sign Up and Login tabs on the auth page
-- filtering product cards on the category page (search + filter buttons)
-- updating basket quantities and totals on the cart page
-- handling collection slot selections on the collection page
+- Mobile navigation toggle with outside-click and Escape handling
+- Auth mode switching (signup/login)
+- Profile panel switching (orders/account/history/reviews/password)
+- Category filters (search, trader, price, empty state)
+- Cart quantity updates and summary recalculation
+- Collection calendar and slot-capacity logic (uses localStorage)
+- Product page quantity +/- controls
 
-## How to run
+## Run Locally
 
-From the project root, start PHP's built-in server:
+From the project root:
 
 ```bash
 php -S localhost:8000
 ```
 
-Then open:
+Open:
 
 ```text
 http://localhost:8000/
 ```
 
-## Backend integration points
+## Notes
 
-This project is currently frontend-first, so the form actions are placeholders.
+- This is currently frontend-first. Most forms use placeholder `action="#"` targets.
+- Integration with database/session/auth endpoints is still pending.
+- Some links (for example logout flow) may require backend routes not yet implemented.
 
-When you connect a database, these are the main places to wire in backend logic:
+## Suggested Next Steps
 
-- Search form in [index.php](index.php)
-- Sign Up form in [auth.php](auth.php)
-- Login form in [auth.php](auth.php)
-
-Suggested database fields for users:
-
-- first_name
-- last_name
-- email
-- password_hash
-- account_type
-- created_at
-
-## Suggested next steps
-
-1. Replace `action="#"` with real PHP endpoints.
-2. Add server-side validation for signup and login.
-3. Store user accounts in a database.
-4. Add session handling after login.
-5. Connect the product cards to real database records.
-
-## Notes for contributors
-
-- Keep the shared header and footer in sync across pages.
-- Reuse the existing CSS variables for any new UI so the theme stays consistent.
-- Keep comments focused on intent, backend integration, and page structure.
-- Use the same naming pattern for classes when adding new sections.
+1. Connect forms to real PHP endpoints.
+2. Add server-side validation and error feedback.
+3. Persist users, products, cart, and orders in a database.
+4. Add authenticated session flow and role-based access control.
+5. Replace static product/order data with dynamic records.
