@@ -82,4 +82,40 @@ document.addEventListener('DOMContentLoaded', () => {
     if (requestedMode === 'login' || requestedMode === 'signup') {
         activateMode(requestedMode);
     }
+    // Profile tab controller:
+// Switches between profile sections (Orders, Account, History, Reviews, Password).
+document.addEventListener('DOMContentLoaded', () => {
+    const navItems = document.querySelectorAll('[data-profile-tab]');
+    const panels   = document.querySelectorAll('[data-profile-panel]');
+
+    if (navItems.length === 0 || panels.length === 0) {
+        // Safe no-op for pages without profile UI.
+        return;
+    }
+
+    const activateTab = (tab) => {
+        navItems.forEach((item) => {
+            item.classList.toggle('is-active', item.getAttribute('data-profile-tab') === tab);
+        });
+        panels.forEach((panel) => {
+            const isActive = panel.getAttribute('data-profile-panel') === tab;
+            panel.classList.toggle('is-active', isActive);
+            panel.hidden = !isActive;
+        });
+    };
+
+    navItems.forEach((item) => {
+        item.addEventListener('click', (e) => {
+            e.preventDefault();
+            activateTab(item.getAttribute('data-profile-tab'));
+        });
+    });
+
+    // Deep-link support: profile.php?tab=account
+    const requestedTab = new URLSearchParams(window.location.search).get('tab');
+    const validTabs = ['orders', 'account', 'history', 'reviews', 'password'];
+    if (requestedTab && validTabs.includes(requestedTab)) {
+        activateTab(requestedTab);
+    }
+    });
 });
