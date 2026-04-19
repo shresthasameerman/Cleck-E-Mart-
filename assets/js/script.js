@@ -40,6 +40,29 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
+// Scroll-to-top controller:
+// Shows a floating button once the page has been scrolled and hides it near the top.
+document.addEventListener('DOMContentLoaded', () => {
+    const scrollTopButton = document.querySelector('[data-scroll-top]');
+
+    if (!scrollTopButton) {
+        return;
+    }
+
+    const visibleThreshold = 240;
+
+    const updateVisibility = () => {
+        scrollTopButton.classList.toggle('is-visible', window.scrollY > visibleThreshold);
+    };
+
+    scrollTopButton.addEventListener('click', () => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+
+    window.addEventListener('scroll', updateVisibility, { passive: true });
+    updateVisibility();
+});
+
 // Auth tabs controller:
 // Switches between Sign Up and Login panels in auth.php.
 document.addEventListener('DOMContentLoaded', () => {

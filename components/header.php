@@ -36,7 +36,6 @@ $metaDescription = $metaDescription ?? 'A responsive storefront homepage built f
                     <a href="index.php#featured-title">Featured</a>
                     <a href="category.php">Browse Category</a>
                     <a href="index.php#cta-title">Delivery</a>
-                    <a href="customer.php">My Profile</a>
                 </div>
             </nav>
 

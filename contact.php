@@ -76,8 +76,8 @@ require __DIR__ . '/components/header.php';
                         </div>
                         <div>
                             <strong class="contact-card__label">Collection Hours</strong>
-                            <p class="contact-card__detail">Mon – Fri: 9:00 AM – 6:00 PM</p>
-                            <p class="contact-card__detail contact-card__detail--muted">Sat: 10:00 AM – 4:00 PM</p>
+                            <p class="contact-card__detail">Wed – Fri: 10:00 AM – 7:00 PM</p>
+                            <p class="contact-card__detail contact-card__detail--muted">10:00 AM – 1:00 PM, 1:00 PM – 4:00 PM, or 4:00 PM – 7:00 PM</p>
                         </div>
                     </div>
 

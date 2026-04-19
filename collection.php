@@ -37,6 +37,17 @@ require __DIR__ . '/components/header.php';
 
     <section class="collection-content" aria-label="Collection slot selection">
         <div class="container collection-layout">
+            <aside class="collection-actions" aria-labelledby="collection-summary-title">
+                <div class="collection-actions__card">
+                    <p class="collection-actions__eyebrow">Checkout summary</p>
+                    <h2 class="collection-actions__title" id="collection-summary-title">Review your slot</h2>
+                    <p class="collection-actions__hint">Selected slot: <strong data-collection-summary>Choose a day and time</strong></p>
+                    <p class="collection-actions__status" data-collection-status>Select a valid slot to continue.</p>
+                    <button class="collection-confirm button" type="button" data-collection-confirm disabled>Confirm Slot &amp; Pay</button>
+                    <p class="collection-actions__note">You can change the day or time before confirming payment.</p>
+                </div>
+            </aside>
+
             <section class="collection-group collection-calendar" aria-labelledby="calendar-title">
                 <div class="collection-group__header">
                     <h2 class="collection-group__title" id="calendar-title">Pick a Collection Day</h2>
@@ -61,12 +72,6 @@ require __DIR__ . '/components/header.php';
                     <p class="collection-slot-panel__availability" data-collection-availability hidden></p>
                 </div>
             </section>
-
-            <div class="collection-actions">
-                <p class="collection-actions__hint">Selected slot: <strong data-collection-summary>Choose a day and time</strong></p>
-                <p class="collection-actions__status" data-collection-status>Select a valid slot to continue.</p>
-                <button class="collection-confirm button" type="button" data-collection-confirm disabled>Confirm Slot &amp; Pay</button>
-            </div>
         </div>
     </section>
 </main>
