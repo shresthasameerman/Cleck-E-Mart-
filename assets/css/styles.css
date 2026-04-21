@@ -318,6 +318,76 @@ a {
     font-weight: 600;
 }
 
+/*
+    Signed-in homepage (wireframe 1)
+    Includes larger visual banner, category pills, 4-card featured row, and promo strip.
+*/
+.signed-home {
+    padding-top: 2rem;
+}
+.welcome-hero {
+    padding: 0.5rem 0 1.4rem;
+}
+.welcome-hero__banner {
+    border-radius: var(--radius-md);
+    background: rgba(217, 197, 178, 0.45);
+    padding: 1.25rem;
+    box-shadow: var(--shadow-soft);
+}
+.welcome-hero__banner img {
+    width: 100%;
+    aspect-ratio: 16 / 4;
+    object-fit: cover;
+    border-radius: 1rem;
+    background: rgba(249, 248, 243, 0.6);
+}
+.category-strip {
+    padding: 0.25rem 0 1.6rem;
+}
+.section-heading__title-sm {
+    margin: 0 0 0.75rem;
+    font-size: clamp(1.15rem, 2vw, 1.45rem);
+}
+.category-strip__grid {
+    display: grid;
+    gap: 0.7rem;
+}
+.category-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 3.2rem;
+    padding: 0.65rem 0.95rem;
+    border: 1.5px solid rgba(26, 26, 26, 0.32);
+    border-radius: 0.75rem;
+    background: rgba(249, 248, 243, 0.82);
+    font-weight: 600;
+    text-align: center;
+}
+.category-pill:hover,
+.category-pill:focus-visible {
+    border-color: rgba(26, 26, 26, 0.7);
+    box-shadow: var(--shadow-soft);
+}
+.card-grid--four {
+    gap: 1rem;
+}
+.promo {
+    padding: 1.2rem 0 2.8rem;
+}
+.promo-banner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 4.2rem;
+    border-radius: 0.7rem;
+    border: 1.5px solid rgba(26, 26, 26, 0.28);
+    background: rgba(249, 248, 243, 0.88);
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+}
+
 .featured {
     padding: 1.25rem 0 3rem;
 }
@@ -1861,6 +1931,18 @@ a {
 
     .card-grid {
         grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .category-strip__grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .card-grid--four {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .category-strip__grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
     }
 
     .category-layout {
