@@ -174,14 +174,88 @@ http://localhost:8000/
 
 ## Notes
 
-- This is currently frontend-first. Most forms use placeholder `action="#"` targets.
-- Integration with database/session/auth endpoints is still pending.
-- Some links (for example logout flow) may require backend routes not yet implemented.
+- Core auth, product browsing, cart, and profile flows are now connected to Oracle.
+- Some pages (`collection.php`, `contact.php`, and parts of `customer.php`) are still mostly UI-first and can be connected to backend endpoints next.
+- `logout.php` is implemented and wired from the header/profile actions.
+
+## Oracle (OCI8) Integration
+
+The app now runs in **offline mode by default** for local development.
+
+- Default driver: `DB_DRIVER=offline`
+- Offline data file: `data/offline_db.json` (auto-created with seed data)
+- Offline seed now mirrors the provided Cleck E-Mart sample dataset (16 users, 20 products, carts, orders, payments, invoices, reviews).
+- No database extension is required for offline mode.
+
+Demo login in offline mode:
+
+- Customer: `aarav.sharma@gmail.com`
+- Trader: `robert.firth@firth-butchers.co.uk`
+- Admin: `admin@cleckemart.co.uk`
+- Password for all seeded users: `password123`
+
+To force Oracle mode, set:
+
+```bash
+export DB_DRIVER=oracle
+```
+
+This project now includes Oracle-backed flows for:
+
+- Sign up and login (`auth.php`)
+- Session logout (`logout.php`)
+- Category/product listing from database (`category.php`, `product.php`)
+- Add-to-cart and cart quantity updates (`product.php`, `cart.php`)
+- Profile updates and password change (`profile.php`)
+
+### New Backend Files
+
+- `lib/bootstrap.php` (session + shared helpers)
+- `lib/oci_db.php` (Oracle connection + query helpers)
+- `lib/auth_helpers.php` (login/session guards)
+- `lib/cart_helpers.php` (cart operations)
+
+### Prerequisites
+
+1. Oracle DB with your schema tables created.
+2. PHP OCI8 extension enabled (`php -m | grep oci8`).
+3. Oracle client/network connectivity from your PHP runtime.
+
+If `DB_DRIVER=offline`, these Oracle prerequisites are not needed.
+
+### Environment Variables
+
+Set these before running PHP:
+
+```bash
+export ORACLE_USERNAME=your_username
+export ORACLE_PASSWORD=your_password
+export ORACLE_CONNECTION_STRING=host/service_name
+```
+
+Defaults used if variables are not set:
+
+- `ORACLE_USERNAME=system`
+- `ORACLE_PASSWORD=oracle`
+- `ORACLE_CONNECTION_STRING=localhost/XEPDB1`
+
+### Run
+
+```bash
+php -S localhost:8000
+```
+
+Then open `http://localhost:8000/`.
+
+### Important Schema Notes
+
+- Your SQL uses a supertype/subtype model where `CUSTOMER.customer_id` and `TRADER.trader_id` match `USER.user_id`. This is fully respected by the integration.
+- IDs are currently generated with `MAX(id) + 1` in PHP helper code. For production, replace this with Oracle sequences + triggers (or identity strategy) to avoid race conditions under concurrent traffic.
 
 ## Suggested Next Steps
 
-1. Connect forms to real PHP endpoints.
-2. Add server-side validation and error feedback.
-3. Persist users, products, cart, and orders in a database.
-4. Add authenticated session flow and role-based access control.
-5. Replace static product/order data with dynamic records.
+1. Add seed data for `CATEGORY`, `SHOP`, and `PRODUCT` so browsing pages have initial records.
+2. Implement order placement (create rows in `ORDER`, `ORDER_ITEM`, `PAYMENT`, `INVOICE`).
+3. Move ID generation to Oracle sequences for production safety.
+4. Add CSRF tokens to forms and stricter authorization checks for trader/admin pages.
+5. Add integration tests for auth, cart, and profile update flows.

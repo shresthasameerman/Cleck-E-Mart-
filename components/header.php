@@ -1,6 +1,12 @@
 <?php
+require_once __DIR__ . '/../lib/bootstrap.php';
+
 $pageTitle = $pageTitle ?? 'Cleck E-Mart';
 $metaDescription = $metaDescription ?? 'A responsive storefront homepage built from a wireframe.';
+
+$headerIsLoggedIn = is_logged_in();
+$headerAccountHref = $headerIsLoggedIn ? 'profile.php' : 'auth.php?mode=login';
+$headerAccountLabel = $headerIsLoggedIn ? 'Account profile' : 'Login / signup';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -48,12 +54,15 @@ $metaDescription = $metaDescription ?? 'A responsive storefront homepage built f
                     </svg>
                 </a>
                 <!-- Account icon routes directly to the customer profile page. -->
-                <a class="icon-button icon-button--account" href="customer.php" aria-label="Account profile">
+                <a class="icon-button icon-button--account" href="<?php echo e($headerAccountHref); ?>" aria-label="<?php echo e($headerAccountLabel); ?>">
                     <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                         <circle cx="12" cy="8.2" r="3.2" fill="none" stroke="currentColor" stroke-width="1.7"/>
                         <path d="M6.5 19.2c1.6-3 3.8-4.5 5.5-4.5s3.9 1.5 5.5 4.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
                     </svg>
                 </a>
+                <?php if ($headerIsLoggedIn): ?>
+                    <a class="icon-button" href="logout.php" aria-label="Sign out">Sign out</a>
+                <?php endif; ?>
             </div>
         </div>
     </header>

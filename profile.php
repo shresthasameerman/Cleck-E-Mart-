@@ -1,8 +1,211 @@
 <?php
+require_once __DIR__ . '/lib/auth_helpers.php';
+
+require_login();
+
+$errors = [];
+$flashSuccess = get_flash('success');
+$userId = (int) current_user_id();
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $profileAction = (string) ($_POST['profile_action'] ?? '');
+
+    if ($profileAction === 'update_account') {
+        $firstName = trim((string) ($_POST['first_name'] ?? ''));
+        $lastName = trim((string) ($_POST['last_name'] ?? ''));
+        $email = strtolower(trim((string) ($_POST['email'] ?? '')));
+        $phone = trim((string) ($_POST['phone'] ?? ''));
+
+        if ($firstName === '' || $lastName === '' || $email === '') {
+            $errors[] = 'First name, last name, and email are required.';
+        }
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $errors[] = 'Please provide a valid email address.';
+        }
+
+        if ($errors === []) {
+            try {
+                $existing = db_is_offline()
+                    ? (offline_email_taken_by_other($userId, $email) ? ['USER_ID' => -1] : null)
+                    : db_fetch_one(
+                        'SELECT user_id FROM "USER" WHERE LOWER(email) = LOWER(:email) AND user_id <> :user_id',
+                        [
+                            'email' => $email,
+                            'user_id' => $userId,
+                        ]
+                    );
+
+                if ($existing !== null) {
+                    $errors[] = 'This email is already used by another account.';
+                } else {
+                    if (db_is_offline()) {
+                        offline_update_user($userId, $firstName, $lastName, $email, $phone === '' ? null : $phone);
+                    } else {
+                        db_execute(
+                            'UPDATE "USER"
+                             SET first_name = :first_name,
+                                 last_name = :last_name,
+                                 email = :email,
+                                 phone_number = :phone_number,
+                                 updated_at = CURRENT_TIMESTAMP
+                             WHERE user_id = :user_id',
+                            [
+                                'first_name' => $firstName,
+                                'last_name' => $lastName,
+                                'email' => $email,
+                                'phone_number' => $phone === '' ? null : $phone,
+                                'user_id' => $userId,
+                            ]
+                        );
+                    }
+
+                    $_SESSION['first_name'] = $firstName;
+                    $_SESSION['last_name'] = $lastName;
+                    $_SESSION['email'] = $email;
+
+                    set_flash('success', 'Account details updated successfully.');
+                    redirect('profile.php?tab=account');
+                }
+            } catch (Throwable $exception) {
+                $errors[] = 'Unable to update account: ' . $exception->getMessage();
+            }
+        }
+    }
+
+    if ($profileAction === 'change_password') {
+        $currentPassword = (string) ($_POST['current_password'] ?? '');
+        $newPassword = (string) ($_POST['new_password'] ?? '');
+        $confirmPassword = (string) ($_POST['confirm_password'] ?? '');
+
+        if ($currentPassword === '' || $newPassword === '' || $confirmPassword === '') {
+            $errors[] = 'All password fields are required.';
+        }
+        if ($newPassword !== $confirmPassword) {
+            $errors[] = 'New password and confirmation do not match.';
+        }
+        if (strlen($newPassword) < 8) {
+            $errors[] = 'New password must be at least 8 characters long.';
+        }
+
+        if ($errors === []) {
+            try {
+                $dbUser = db_is_offline()
+                    ? offline_user_by_id($userId)
+                    : db_fetch_one('SELECT password FROM "USER" WHERE user_id = :user_id', ['user_id' => $userId]);
+                if ($dbUser === null || !password_verify($currentPassword, (string) $dbUser['PASSWORD'])) {
+                    $errors[] = 'Current password is incorrect.';
+                } else {
+                    $hashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);
+                    if (db_is_offline()) {
+                        offline_update_password($userId, $hashedPassword);
+                    } else {
+                        db_execute(
+                            'UPDATE "USER" SET password = :password, updated_at = CURRENT_TIMESTAMP WHERE user_id = :user_id',
+                            [
+                                'password' => $hashedPassword,
+                                'user_id' => $userId,
+                            ]
+                        );
+                    }
+
+                    set_flash('success', 'Password updated successfully.');
+                    redirect('profile.php?tab=password');
+                }
+            } catch (Throwable $exception) {
+                $errors[] = 'Unable to update password: ' . $exception->getMessage();
+            }
+        }
+    }
+}
+
+$user = db_is_offline()
+    ? offline_user_by_id($userId)
+    : db_fetch_one(
+        'SELECT user_id, first_name, last_name, email, phone_number, "ROLE" AS role
+         FROM "USER"
+         WHERE user_id = :user_id',
+        ['user_id' => $userId]
+    );
+
+if ($user === null) {
+    set_flash('error', 'Unable to load profile details.');
+    redirect('index.php');
+}
+
+$orders = [];
+$reviews = [];
+$orderCount = 0;
+$reviewCount = 0;
+$savedCount = 0;
+
+if (current_role() === 'CUSTOMER' && current_customer_id() !== null) {
+    $customerId = (int) current_customer_id();
+
+    if (db_is_offline()) {
+        $orders = offline_get_orders_for_customer($customerId, 5);
+        $reviews = offline_get_reviews_for_customer($customerId, 5);
+        $orderCount = offline_count_orders($customerId);
+        $reviewCount = offline_count_reviews($customerId);
+        $savedCount = offline_count_saved($customerId);
+    } else {
+        $orders = db_fetch_all(
+            'SELECT o.order_id,
+                    o.order_date,
+                    o.order_status,
+                    NVL(SUM(oi.quantity * oi.unit_price), 0) AS order_total
+             FROM "ORDER" o
+             LEFT JOIN ORDER_ITEM oi ON oi.order_id = o.order_id
+             WHERE o.customer_id = :customer_id
+             GROUP BY o.order_id, o.order_date, o.order_status
+             ORDER BY o.order_date DESC
+             FETCH FIRST 5 ROWS ONLY',
+            ['customer_id' => $customerId]
+        );
+
+        $reviews = db_fetch_all(
+            'SELECT r.review_date, r.rating, r."COMMENT" AS review_comment, p.product_name
+             FROM REVIEW r
+             JOIN PRODUCT p ON p.product_id = r.product_id
+             WHERE r.customer_id = :customer_id
+             ORDER BY r.review_date DESC
+             FETCH FIRST 5 ROWS ONLY',
+            ['customer_id' => $customerId]
+        );
+
+        $orderCountRow = db_fetch_one('SELECT COUNT(*) AS total_count FROM "ORDER" WHERE customer_id = :customer_id', ['customer_id' => $customerId]);
+        $reviewCountRow = db_fetch_one('SELECT COUNT(*) AS total_count FROM REVIEW WHERE customer_id = :customer_id', ['customer_id' => $customerId]);
+        $savedCountRow = db_fetch_one(
+            'SELECT COUNT(*) AS total_count
+             FROM WISHLIST_ITEM wi
+             JOIN WISHLIST w ON w.wishlist_id = wi.wishlist_id
+             WHERE w.customer_id = :customer_id',
+            ['customer_id' => $customerId]
+        );
+
+        $orderCount = (int) ($orderCountRow['TOTAL_COUNT'] ?? 0);
+        $reviewCount = (int) ($reviewCountRow['TOTAL_COUNT'] ?? 0);
+        $savedCount = (int) ($savedCountRow['TOTAL_COUNT'] ?? 0);
+    }
+}
+
 // Reuses site-wide header/navigation to keep profile page in the same theme.
 require __DIR__ . '/components/header.php';
 ?>
 <main id="main-content" class="profile-page">
+
+    <div class="container">
+        <?php if ($flashSuccess !== null): ?>
+            <p class="page-message page-message--success"><?php echo e($flashSuccess); ?></p>
+        <?php endif; ?>
+
+        <?php if ($errors !== []): ?>
+            <div class="page-message page-message--error">
+                <?php foreach ($errors as $error): ?>
+                    <p><?php echo e($error); ?></p>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
+    </div>
 
     <!-- Page intro: mirrors auth-intro / contact-intro pattern -->
     <section class="profile-intro" aria-labelledby="profile-title">
@@ -27,21 +230,21 @@ require __DIR__ . '/components/header.php';
                         Backend note: replace these placeholders with session data.
                         Example: <?= htmlspecialchars($_SESSION['first_name'] . ' ' . $_SESSION['last_name']) ?>
                     -->
-                    <p class="profile-banner__name">Jane Doe</p>
-                    <p class="profile-banner__email">jane@example.com</p>
-                    <span class="profile-banner__badge">Customer</span>
+                    <p class="profile-banner__name"><?php echo e($user['FIRST_NAME'] . ' ' . $user['LAST_NAME']); ?></p>
+                    <p class="profile-banner__email"><?php echo e($user['EMAIL']); ?></p>
+                    <span class="profile-banner__badge"><?php echo e($user['ROLE']); ?></span>
                 </div>
                 <div class="profile-banner__stats">
                     <div class="profile-stat">
-                        <span class="profile-stat__value">12</span>
+                        <span class="profile-stat__value"><?php echo e($orderCount); ?></span>
                         <span class="profile-stat__label">Orders</span>
                     </div>
                     <div class="profile-stat">
-                        <span class="profile-stat__value">3</span>
+                        <span class="profile-stat__value"><?php echo e($reviewCount); ?></span>
                         <span class="profile-stat__label">Reviews</span>
                     </div>
                     <div class="profile-stat">
-                        <span class="profile-stat__value">2</span>
+                        <span class="profile-stat__value"><?php echo e($savedCount); ?></span>
                         <span class="profile-stat__label">Saved</span>
                     </div>
                 </div>
@@ -130,51 +333,30 @@ require __DIR__ . '/components/header.php';
                             Fields: order_id, date, status, total, items_summary.
                         -->
                         <div class="order-list">
+                            <?php if ($orders === []): ?>
+                                <div class="order-card">
+                                    <p class="order-card__summary">No orders found yet.</p>
+                                </div>
+                            <?php endif; ?>
 
-                            <div class="order-card">
-                                <div class="order-card__header">
-                                    <div>
-                                        <p class="order-card__id">Order #EM-00124</p>
-                                        <p class="order-card__date">12 April 2026</p>
+                            <?php foreach ($orders as $order): ?>
+                                <?php
+                                $statusClass = strtolower((string) $order['ORDER_STATUS']) === 'processing' ? 'order-card__status--processing' : 'order-card__status--delivered';
+                                ?>
+                                <div class="order-card">
+                                    <div class="order-card__header">
+                                        <div>
+                                            <p class="order-card__id">Order #EM-<?php echo e($order['ORDER_ID']); ?></p>
+                                            <p class="order-card__date"><?php echo e(date('j F Y', strtotime((string) $order['ORDER_DATE']))); ?></p>
+                                        </div>
+                                        <span class="order-card__status <?php echo e($statusClass); ?>"><?php echo e($order['ORDER_STATUS']); ?></span>
                                     </div>
-                                    <span class="order-card__status order-card__status--delivered">Delivered</span>
-                                </div>
-                                <p class="order-card__summary">Everyday Essentials Pack &times; 1, Home Utility Set &times; 2</p>
-                                <div class="order-card__footer">
-                                    <span class="order-card__total">Total: $100.00</span>
-                                    <a class="order-card__link" href="#">View details</a>
-                                </div>
-                            </div>
-
-                            <div class="order-card">
-                                <div class="order-card__header">
-                                    <div>
-                                        <p class="order-card__id">Order #EM-00118</p>
-                                        <p class="order-card__date">3 April 2026</p>
+                                    <p class="order-card__summary">Order placed successfully.</p>
+                                    <div class="order-card__footer">
+                                        <span class="order-card__total">Total: $<?php echo e(number_format((float) $order['ORDER_TOTAL'], 2)); ?></span>
                                     </div>
-                                    <span class="order-card__status order-card__status--processing">Processing</span>
                                 </div>
-                                <p class="order-card__summary">Weekend Carry Bag &times; 1</p>
-                                <div class="order-card__footer">
-                                    <span class="order-card__total">Total: $52.00</span>
-                                    <a class="order-card__link" href="#">View details</a>
-                                </div>
-                            </div>
-
-                            <div class="order-card">
-                                <div class="order-card__header">
-                                    <div>
-                                        <p class="order-card__id">Order #EM-00103</p>
-                                        <p class="order-card__date">18 March 2026</p>
-                                    </div>
-                                    <span class="order-card__status order-card__status--delivered">Delivered</span>
-                                </div>
-                                <p class="order-card__summary">Everyday Essentials Pack &times; 3</p>
-                                <div class="order-card__footer">
-                                    <span class="order-card__total">Total: $72.00</span>
-                                    <a class="order-card__link" href="#">View details</a>
-                                </div>
-                            </div>
+                            <?php endforeach; ?>
 
                         </div>
                     </section>
@@ -186,24 +368,25 @@ require __DIR__ . '/components/header.php';
                             Backend note: set action to your update endpoint (example: update-profile.php).
                             Pre-fill values from session or DB query.
                         -->
-                        <form class="profile-form" action="#" method="post" novalidate>
+                        <form class="profile-form" action="profile.php?tab=account" method="post" novalidate>
+                            <input type="hidden" name="profile_action" value="update_account" />
                             <div class="profile-form__grid">
                                 <label>
                                     <span>First Name*</span>
-                                    <input type="text" name="first_name" required autocomplete="given-name" placeholder="Enter first name" value="Jane" />
+                                    <input type="text" name="first_name" required autocomplete="given-name" placeholder="Enter first name" value="<?php echo e($user['FIRST_NAME']); ?>" />
                                 </label>
                                 <label>
                                     <span>Last Name*</span>
-                                    <input type="text" name="last_name" required autocomplete="family-name" placeholder="Enter last name" value="Doe" />
+                                    <input type="text" name="last_name" required autocomplete="family-name" placeholder="Enter last name" value="<?php echo e($user['LAST_NAME']); ?>" />
                                 </label>
                             </div>
                             <label>
                                 <span>Email*</span>
-                                <input type="email" name="email" required autocomplete="email" placeholder="name@example.com" value="jane@example.com" />
+                                <input type="email" name="email" required autocomplete="email" placeholder="name@example.com" value="<?php echo e($user['EMAIL']); ?>" />
                             </label>
                             <label>
                                 <span>Phone</span>
-                                <input type="tel" name="phone" autocomplete="tel" placeholder="+977 98XXXXXXXX" />
+                                <input type="tel" name="phone" autocomplete="tel" placeholder="+977 98XXXXXXXX" value="<?php echo e((string) ($user['PHONE_NUMBER'] ?? '')); ?>" />
                             </label>
                             <button class="profile-submit" type="submit">
                                 Save Changes
@@ -245,26 +428,28 @@ require __DIR__ . '/components/header.php';
                     <section class="profile-panel" id="reviews" data-profile-panel="reviews" aria-labelledby="reviews-title" hidden>
                         <h2 id="reviews-title" class="profile-panel__title">My Reviews</h2>
                         <div class="order-list">
-                            <div class="order-card">
-                                <div class="order-card__header">
-                                    <div>
-                                        <p class="order-card__id">Everyday Essentials Pack</p>
-                                        <p class="order-card__date">10 April 2026</p>
-                                    </div>
-                                    <span class="profile-stars" aria-label="4 out of 5 stars">★★★★☆</span>
+                            <?php if ($reviews === []): ?>
+                                <div class="order-card">
+                                    <p class="order-card__summary">No reviews submitted yet.</p>
                                 </div>
-                                <p class="order-card__summary">"Great quality basics, arrived well packaged. Would order again."</p>
-                            </div>
-                            <div class="order-card">
-                                <div class="order-card__header">
-                                    <div>
-                                        <p class="order-card__id">Home Utility Set</p>
-                                        <p class="order-card__date">2 April 2026</p>
+                            <?php endif; ?>
+
+                            <?php foreach ($reviews as $review): ?>
+                                <?php
+                                $rating = (float) $review['RATING'];
+                                $stars = str_repeat('★', (int) round($rating)) . str_repeat('☆', max(0, 5 - (int) round($rating)));
+                                ?>
+                                <div class="order-card">
+                                    <div class="order-card__header">
+                                        <div>
+                                            <p class="order-card__id"><?php echo e($review['PRODUCT_NAME']); ?></p>
+                                            <p class="order-card__date"><?php echo e(date('j F Y', strtotime((string) $review['REVIEW_DATE']))); ?></p>
+                                        </div>
+                                        <span class="profile-stars" aria-label="<?php echo e(number_format($rating, 1)); ?> out of 5 stars"><?php echo e($stars); ?></span>
                                     </div>
-                                    <span class="profile-stars" aria-label="5 out of 5 stars">★★★★★</span>
+                                    <p class="order-card__summary"><?php echo e((string) ($review['REVIEW_COMMENT'] ?? '')); ?></p>
                                 </div>
-                                <p class="order-card__summary">"Exactly as described. Very compact and well made."</p>
-                            </div>
+                            <?php endforeach; ?>
                         </div>
                     </section>
 
@@ -274,7 +459,8 @@ require __DIR__ . '/components/header.php';
                         <!--
                             Backend note: verify current_password before hashing and saving new_password.
                         -->
-                        <form class="profile-form" action="#" method="post" novalidate>
+                        <form class="profile-form" action="profile.php?tab=password" method="post" novalidate>
+                            <input type="hidden" name="profile_action" value="change_password" />
                             <label>
                                 <span>Current Password*</span>
                                 <input type="password" name="current_password" required autocomplete="current-password" placeholder="Enter current password" />

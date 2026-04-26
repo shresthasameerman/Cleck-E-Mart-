@@ -64,6 +64,24 @@ a {
     margin-inline: auto;
 }
 
+.page-message {
+    margin: 1rem 0;
+    padding: 0.85rem 1rem;
+    border-radius: var(--radius-sm);
+    border: 1px solid rgba(26, 26, 26, 0.2);
+    background: #f2efe6;
+}
+
+.page-message--success {
+    border-color: rgba(76, 128, 64, 0.35);
+    background: #e6f3e1;
+}
+
+.page-message--error {
+    border-color: rgba(157, 49, 49, 0.35);
+    background: #f8e6e6;
+}
+
 .sr-only {
     position: absolute;
     width: 1px;
