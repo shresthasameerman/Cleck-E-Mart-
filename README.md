@@ -174,7 +174,7 @@ http://localhost:8000/
 
 ## Notes
 
-- Core auth, product browsing, cart, and profile flows are now connected to Oracle.
+- Core auth, product browsing, cart, and profile flows are connected to the shared data layer (offline JSON by default, Oracle when enabled).
 - Some pages (`collection.php`, `contact.php`, and parts of `customer.php`) are still mostly UI-first and can be connected to backend endpoints next.
 - `logout.php` is implemented and wired from the header/profile actions.
 
@@ -193,6 +193,13 @@ Demo login in offline mode:
 - Trader: `robert.firth@firth-butchers.co.uk`
 - Admin: `admin@cleckemart.co.uk`
 - Password for all seeded users: `password123`
+
+Quick login test:
+
+1. Run `php -S localhost:8000`
+2. Open `http://localhost:8000/auth.php?mode=login`
+3. Use the customer account `aarav.sharma@gmail.com` with password `password123`
+4. After sign-in, open `category.php` and `profile.php` to verify data-backed pages
 
 To force Oracle mode, set:
 
