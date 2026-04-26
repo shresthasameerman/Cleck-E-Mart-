@@ -127,14 +127,14 @@ require __DIR__ . '/components/header.php';
                         <span class="product-star">&#9733;</span>
                         <span class="product-star">&#9733;</span>
                     </span>
-                    <span>$<?php echo e(number_format((float) $product['PRICE'], 2)); ?></span>
+                        <span class="product-price">$<?php echo e(number_format((float) $product['PRICE'], 2)); ?></span>
                 </p>
 
                 <p class="product-box product-description">
                     Product Description: <?php echo e($product['PRODUCT_DESCRIPTION']); ?>
                 </p>
 
-                <form method="post" action="product.php?product_id=<?php echo e($product['PRODUCT_ID']); ?>">
+                <form class="product-form" method="post" action="product.php?product_id=<?php echo e($product['PRODUCT_ID']); ?>">
                     <input type="hidden" name="action" value="add_to_cart" />
                     <input type="hidden" name="product_id" value="<?php echo e($product['PRODUCT_ID']); ?>" />
                     <div class="product-box product-quantity" aria-label="Quantity selector">

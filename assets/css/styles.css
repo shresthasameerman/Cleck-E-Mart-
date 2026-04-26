@@ -701,6 +701,10 @@ a {
     gap: 1rem;
 }
 
+.cart-layout > .page-message {
+    grid-column: 1 / -1;
+}
+
 .cart-items {
     display: grid;
     gap: 1rem;
@@ -1202,6 +1206,7 @@ a {
 .product-details {
     display: grid;
     gap: 0.7rem;
+    align-content: start;
 }
 
 .product-box {
@@ -1219,10 +1224,16 @@ a {
 }
 
 .product-rating {
-    display: inline-flex;
+    display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 0.75rem;
     font-size: 0.95rem;
+    flex-wrap: wrap;
+}
+
+.product-price {
+    font-weight: 700;
 }
 
 .product-stars {
@@ -1257,38 +1268,36 @@ a {
 
 .product-qty-controls {
     display: inline-flex;
-    width: fit-content;
+    width: min(100%, 8.5rem);
     border: 2px solid rgba(26, 26, 26, 0.88);
 }
 
-.product-qty-button,
 .product-qty-value {
-    min-width: 2.9rem;
+    width: 100%;
     min-height: 2.5rem;
     border: 0;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
+    display: block;
+    text-align: center;
     font-weight: 700;
 }
 
-.product-qty-button {
-    background: #f5f1e8;
-    color: #111111;
-    cursor: pointer;
-    transition: background-color var(--transition), color var(--transition);
-}
-
-.product-qty-button:hover,
-.product-qty-button:focus-visible {
-    background: #111111;
-    color: #ffffff;
-}
-
 .product-qty-value {
-    border-inline: 2px solid rgba(26, 26, 26, 0.88);
     background: #ffffff;
     color: #111111;
+    appearance: textfield;
+    -moz-appearance: textfield;
+}
+
+.product-qty-value::-webkit-outer-spin-button,
+.product-qty-value::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.product-form {
+    display: grid;
+    gap: 0.7rem;
+    justify-items: start;
 }
 
 .product-add-button {
@@ -1297,7 +1306,7 @@ a {
     justify-content: center;
     min-height: 3.2rem;
     padding: 0.8rem 1rem;
-    font-size: 1.7rem;
+    font-size: clamp(1.4rem, 2.2vw, 1.85rem);
     font-weight: 700;
     color: #111111;
     transition: background-color var(--transition), color var(--transition), border-color var(--transition);

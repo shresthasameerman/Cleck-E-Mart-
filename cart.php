@@ -60,7 +60,7 @@ require __DIR__ . '/components/header.php';
     </section>
 
     <section class="cart-content" aria-label="Basket contents">
-        <div class="container cart-layout">
+        <div class="container">
             <?php if ($flashSuccess !== null): ?>
                 <p class="page-message page-message--success"><?php echo e($flashSuccess); ?></p>
             <?php endif; ?>
@@ -68,6 +68,8 @@ require __DIR__ . '/components/header.php';
             <?php if ($flashError !== null): ?>
                 <p class="page-message page-message--error"><?php echo e($flashError); ?></p>
             <?php endif; ?>
+
+            <div class="cart-layout">
 
             <div class="cart-items" aria-live="polite">
                 <?php if ($items === []): ?>
@@ -142,6 +144,7 @@ require __DIR__ . '/components/header.php';
                     <a class="cart-summary__button button" href="collection.php">Choose Your Collection Slot</a>
                 <?php endif; ?>
             </aside>
+            </div>
         </div>
     </section>
 </main>

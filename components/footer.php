@@ -18,7 +18,7 @@
             <div class="site-footer__group">
                 <p class="site-footer__label">Support</p>
                 <a href="contact.php">Contact Us</a>
-                <a href="customer.php">My Profile</a>
+                <a href="profile.php">My Profile</a>
             </div>
         </div>
 
