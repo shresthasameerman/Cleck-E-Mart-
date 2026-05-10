@@ -1,3 +1,4 @@
+<?php $footerAccountHref = current_role() === 'TRADER' ? 'trader-dashboard.php' : 'profile.php'; ?>
 <!-- Site footer -->
 <footer class="site-footer">
     <div class="container site-footer__inner">
@@ -18,7 +19,7 @@
             <div class="site-footer__group">
                 <p class="site-footer__label">Support</p>
                 <a href="contact.php">Contact Us</a>
-                <a href="profile.php">My Profile</a>
+                <a href="<?php echo e($footerAccountHref); ?>">My Profile</a>
             </div>
         </div>
 

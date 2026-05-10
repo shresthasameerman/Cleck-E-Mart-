@@ -1,0 +1,149 @@
+<?php
+require_once __DIR__ . '/lib/trader_helpers.php';
+
+trader_role_guard();
+
+$errors = [];
+$successMessage = get_flash('success');
+$userId = (int) current_user_id();
+$shop = trader_shop_for_user($userId);
+$categories = trader_categories();
+$metrics = trader_dashboard_metrics($userId);
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['product_action'] ?? '') === 'save_product') {
+    try {
+        trader_create_product($userId, [
+            'product_name' => (string) ($_POST['product_name'] ?? ''),
+            'product_description' => (string) ($_POST['product_description'] ?? ''),
+            'category_id' => (int) ($_POST['category_id'] ?? 0),
+            'price' => (float) ($_POST['price'] ?? 0),
+            'stock_quantity' => (int) ($_POST['stock_quantity'] ?? 0),
+            'max_order' => (string) ($_POST['max_order'] ?? ''),
+            'allergy_information' => (string) ($_POST['allergy_information'] ?? ''),
+            'product_image' => (string) ($_POST['product_image'] ?? ''),
+            'visibility' => (string) ($_POST['visibility'] ?? 'PUBLISH'),
+        ]);
+
+        set_flash('success', 'Product saved successfully.');
+        redirect('trader-add-product.php');
+    } catch (Throwable $exception) {
+        $errors[] = $exception->getMessage();
+    }
+}
+
+$pageTitle = 'Add Product | Cleck E-Mart';
+$metaDescription = 'Add a new product for your trader shop.';
+
+require __DIR__ . '/components/header.php';
+?>
+<main id="main-content" class="trader-page">
+    <div class="container">
+        <?php if ($successMessage !== null): ?>
+            <p class="page-message page-message--success"><?php echo e($successMessage); ?></p>
+        <?php endif; ?>
+
+        <?php if ($errors !== []): ?>
+            <div class="page-message page-message--error">
+                <?php foreach ($errors as $error): ?>
+                    <p><?php echo e($error); ?></p>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
+    </div>
+
+    <section class="trader-intro" aria-labelledby="add-product-title">
+        <div class="container trader-intro__inner">
+            <div>
+                <p class="trader-intro__eyebrow">Add product</p>
+                <h1 id="add-product-title"><?php echo e($shop['SHOP_NAME'] ?? 'Your shop'); ?></h1>
+                <p class="trader-intro__sub">Create a new listing, manage stock levels, and mark items for refill before they run out.</p>
+            </div>
+            <div class="trader-intro__meta">
+                <span><?php echo e($metrics['refill_count']); ?> refill alerts</span>
+            </div>
+        </div>
+    </section>
+
+    <section class="trader-content">
+        <div class="container trader-layout">
+            <aside class="trader-sidebar" aria-label="Trader navigation">
+                <a class="trader-sidebar__item" href="trader-dashboard.php">Dashboard</a>
+                <a class="trader-sidebar__item" href="trader-profile.php">Profile Settings</a>
+                <a class="trader-sidebar__item is-active" href="trader-add-product.php">Add Product</a>
+                <a class="trader-sidebar__item" href="logout.php">Sign Out</a>
+            </aside>
+
+            <div class="trader-main">
+                <section class="trader-card">
+                    <div class="trader-card__header">
+                        <div>
+                            <p class="trader-card__eyebrow">Product information</p>
+                            <h2>New product listing</h2>
+                        </div>
+                        <span class="trader-card__badge">Draft ready</span>
+                    </div>
+
+                    <form class="trader-form" method="post" action="trader-add-product.php">
+                        <input type="hidden" name="product_action" value="save_product" />
+                        <div class="trader-form__grid">
+                            <label class="trader-form__full">
+                                <span>Product name</span>
+                                <input type="text" name="product_name" required />
+                            </label>
+                            <label class="trader-form__full">
+                                <span>Description</span>
+                                <textarea name="product_description" rows="4" required></textarea>
+                            </label>
+                            <label>
+                                <span>Category</span>
+                                <select name="category_id" required>
+                                    <option value="">Select a category</option>
+                                    <?php foreach ($categories as $category): ?>
+                                        <option value="<?php echo e($category['CATEGORY_ID']); ?>"><?php echo e($category['CATEGORY_NAME']); ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </label>
+                            <label>
+                                <span>Price</span>
+                                <input type="number" name="price" min="0" step="0.01" required />
+                            </label>
+                            <label>
+                                <span>Stock available</span>
+                                <input type="number" name="stock_quantity" min="0" step="1" required />
+                            </label>
+                            <label>
+                                <span>Max per order</span>
+                                <input type="number" name="max_order" min="1" step="1" />
+                            </label>
+                            <label class="trader-form__full">
+                                <span>Dietary / allergen notes</span>
+                                <input type="text" name="allergy_information" placeholder="Example: Gluten, Dairy" />
+                            </label>
+                            <label class="trader-form__full">
+                                <span>Product image filename</span>
+                                <input type="text" name="product_image" placeholder="product.jpg" />
+                            </label>
+                            <label>
+                                <span>Visibility</span>
+                                <select name="visibility">
+                                    <option value="PUBLISH">Publish now</option>
+                                    <option value="DRAFT">Save as draft</option>
+                                </select>
+                            </label>
+                            <label>
+                                <span>Refill target</span>
+                                <input type="text" value="10 items or less" readonly />
+                            </label>
+                        </div>
+
+                        <div class="trader-form__actions">
+                            <button class="trader-submit trader-submit--secondary" type="submit" name="visibility" value="DRAFT">Save as Draft</button>
+                            <button class="trader-submit" type="submit" name="visibility" value="PUBLISH">Publish Product</button>
+                        </div>
+                    </form>
+                </section>
+            </div>
+        </div>
+    </section>
+</main>
+<?php require __DIR__ . '/components/footer.php'; ?>

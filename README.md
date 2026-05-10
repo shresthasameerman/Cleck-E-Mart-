@@ -108,6 +108,30 @@ File: [profile.php](profile.php)
 - Client-side tab navigation
 - Account update and password forms
 
+### Trader Dashboard
+
+File: [trader-dashboard.php](trader-dashboard.php)
+
+- Sales summary cards
+- Sold products table
+- Refill alerts and stock overview
+
+### Trader Profile Settings
+
+File: [trader-profile.php](trader-profile.php)
+
+- Trader account details
+- Shop branding and description updates
+- Public contact fields
+
+### Add Product
+
+File: [trader-add-product.php](trader-add-product.php)
+
+- New product form
+- Category, stock, and pricing fields
+- Publish or save as draft
+
 ### Contact
 
 File: [contact.php](contact.php)
@@ -221,6 +245,7 @@ This project now includes Oracle-backed flows for:
 - `lib/oci_db.php` (Oracle connection + query helpers)
 - `lib/auth_helpers.php` (login/session guards)
 - `lib/cart_helpers.php` (cart operations)
+- `lib/trader_helpers.php` (trader dashboard/profile/product helpers)
 
 ### Prerequisites
 

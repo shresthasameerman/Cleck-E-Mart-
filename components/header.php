@@ -5,8 +5,9 @@ $pageTitle = $pageTitle ?? 'Cleck E-Mart';
 $metaDescription = $metaDescription ?? 'A responsive storefront homepage built from a wireframe.';
 
 $headerIsLoggedIn = is_logged_in();
-$headerAccountHref = $headerIsLoggedIn ? 'profile.php' : 'auth.php?mode=login';
-$headerAccountLabel = $headerIsLoggedIn ? 'Account profile' : 'Login / signup';
+$headerIsTrader = $headerIsLoggedIn && current_role() === 'TRADER';
+$headerAccountHref = $headerIsTrader ? 'trader-dashboard.php' : ($headerIsLoggedIn ? 'profile.php' : 'auth.php?mode=login');
+$headerAccountLabel = $headerIsTrader ? 'Trader dashboard' : ($headerIsLoggedIn ? 'Account profile' : 'Login / signup');
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -39,9 +40,15 @@ $headerAccountLabel = $headerIsLoggedIn ? 'Account profile' : 'Login / signup';
                 </button>
 
                 <div class="site-nav__panel" id="primary-navigation" data-nav-panel>
-                    <a href="index.php#featured-title">Featured</a>
-                    <a href="category.php">Browse Category</a>
-                    <a href="index.php#cta-title">Delivery</a>
+                    <?php if ($headerIsTrader): ?>
+                        <a href="trader-dashboard.php">Dashboard</a>
+                        <a href="trader-profile.php">Profile Settings</a>
+                        <a href="trader-add-product.php">Add Product</a>
+                    <?php else: ?>
+                        <a href="index.php#featured-title">Featured</a>
+                        <a href="category.php">Browse Category</a>
+                        <a href="index.php#cta-title">Delivery</a>
+                    <?php endif; ?>
                 </div>
             </nav>
 

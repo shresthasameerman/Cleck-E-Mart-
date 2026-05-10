@@ -2930,3 +2930,369 @@ a {
         transform: none;
     }
 }
+
+/*
+    Trader pages
+    ============
+    Shared layout for trader dashboard, profile settings, and add-product pages.
+*/
+.trader-page {
+    padding: 1.4rem 0 3rem;
+}
+
+.trader-intro {
+    padding: 0.75rem 0 1rem;
+}
+
+.trader-intro__inner {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem 1.15rem;
+    border: 2px solid rgba(26, 26, 26, 0.88);
+    background: rgba(255, 255, 255, 0.94);
+    box-shadow: var(--shadow-soft);
+    flex-wrap: wrap;
+}
+
+.trader-intro__eyebrow {
+    margin: 0;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+}
+
+.trader-intro h1,
+.trader-intro__sub {
+    margin: 0;
+}
+
+.trader-intro h1 {
+    font-size: clamp(1.45rem, 3vw, 2.25rem);
+    line-height: 1.1;
+}
+
+.trader-intro__sub {
+    margin-top: 0.35rem;
+    max-width: 44rem;
+    color: #222222;
+}
+
+.trader-intro__meta {
+    align-self: center;
+    padding: 0.6rem 0.85rem;
+    border-radius: 999px;
+    background: rgba(106, 136, 97, 0.12);
+    color: var(--color-accent);
+    font-weight: 700;
+}
+
+.trader-content {
+    padding-top: 0.5rem;
+}
+
+.trader-layout {
+    display: grid;
+    gap: 1rem;
+}
+
+.trader-sidebar {
+    display: grid;
+    gap: 0.5rem;
+    align-content: start;
+}
+
+.trader-sidebar__item {
+    display: block;
+    padding: 0.8rem 1rem;
+    border: 2px solid rgba(26, 26, 26, 0.88);
+    background: rgba(255, 255, 255, 0.95);
+    color: #111111;
+    font-weight: 700;
+}
+
+.trader-sidebar__item:hover,
+.trader-sidebar__item:focus-visible,
+.trader-sidebar__item.is-active {
+    background: #111111;
+    color: #ffffff;
+    border-color: #111111;
+}
+
+.trader-main {
+    display: grid;
+    gap: 1rem;
+}
+
+.trader-stats {
+    display: grid;
+    gap: 0.8rem;
+}
+
+.trader-stat-card,
+.trader-card {
+    border: 2px solid rgba(26, 26, 26, 0.88);
+    background: rgba(255, 255, 255, 0.96);
+}
+
+.trader-stat-card {
+    padding: 0.85rem 0.95rem;
+}
+
+.trader-stat-card__label {
+    display: block;
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+}
+
+.trader-stat-card__value {
+    display: block;
+    margin-top: 0.35rem;
+    font-size: 1.7rem;
+    line-height: 1;
+}
+
+.trader-card {
+    padding: 0.95rem;
+}
+
+.trader-card__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.85rem;
+}
+
+.trader-card__eyebrow {
+    margin: 0;
+    font-size: 0.76rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+}
+
+.trader-card h2 {
+    margin: 0.2rem 0 0;
+    font-size: 1.15rem;
+}
+
+.trader-card__badge {
+    padding: 0.3rem 0.7rem;
+    border-radius: 999px;
+    background: rgba(106, 136, 97, 0.12);
+    color: var(--color-accent);
+    font-size: 0.75rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.trader-panel {
+    display: grid;
+    gap: 1rem;
+}
+
+.trader-card--chart {
+    min-height: 18rem;
+}
+
+.trader-chart {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(2rem, 1fr));
+    align-items: end;
+    gap: 0.85rem;
+    min-height: 10rem;
+    padding: 1.25rem 0.25rem 0.5rem;
+}
+
+.trader-chart__bar {
+    width: 100%;
+    border-radius: 0.65rem 0.65rem 0.2rem 0.2rem;
+    background: linear-gradient(180deg, rgba(106, 136, 97, 0.95), rgba(217, 197, 178, 0.95));
+    min-height: 1.25rem;
+}
+
+.trader-chart__labels {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(2rem, 1fr));
+    gap: 0.85rem;
+    margin-top: 0.65rem;
+    font-size: 0.78rem;
+    color: var(--color-muted);
+}
+
+.trader-card--alerts {
+    align-self: start;
+}
+
+.trader-alert-list {
+    display: grid;
+    gap: 0.65rem;
+}
+
+.trader-alert-item {
+    padding: 0.75rem 0.85rem;
+    border: 1px solid rgba(26, 26, 26, 0.14);
+    background: #f7f3ea;
+    display: grid;
+    gap: 0.2rem;
+}
+
+.trader-alert-item strong,
+.trader-alert-item span {
+    margin: 0;
+}
+
+.trader-empty {
+    margin: 0;
+    color: var(--color-muted);
+}
+
+.trader-link {
+    font-weight: 700;
+    color: var(--color-accent);
+}
+
+.trader-table-wrap {
+    overflow-x: auto;
+}
+
+.trader-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 42rem;
+}
+
+.trader-table th,
+.trader-table td {
+    padding: 0.55rem 0.6rem;
+    border: 2px solid rgba(26, 26, 26, 0.88);
+    text-align: left;
+    font-size: 0.93rem;
+}
+
+.trader-table th {
+    background: #f2ede1;
+}
+
+.trader-form {
+    display: grid;
+    gap: 1rem;
+}
+
+.trader-form__grid {
+    display: grid;
+    gap: 0.85rem;
+}
+
+.trader-form label {
+    display: grid;
+    gap: 0.35rem;
+}
+
+.trader-form label > span {
+    font-weight: 700;
+    font-size: 0.92rem;
+}
+
+.trader-form input,
+.trader-form select,
+.trader-form textarea {
+    width: 100%;
+    border: 2px solid rgba(26, 26, 26, 0.88);
+    border-radius: 0;
+    background: #ffffff;
+    color: #111111;
+    padding: 0.68rem 0.75rem;
+}
+
+.trader-form textarea {
+    resize: vertical;
+}
+
+.trader-form__full {
+    grid-column: 1 / -1;
+}
+
+.trader-form__actions {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.trader-submit {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 3rem;
+    border: 2px solid rgba(26, 26, 26, 0.88);
+    background: #111111;
+    color: #ffffff;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background-color var(--transition), color var(--transition), border-color var(--transition), transform var(--transition);
+}
+
+.trader-submit--secondary {
+    background: #ffffff;
+    color: #111111;
+}
+
+.trader-submit:hover,
+.trader-submit:focus-visible {
+    transform: translateY(-1px);
+    background: var(--color-accent);
+    color: #ffffff;
+    border-color: var(--color-accent);
+}
+
+.trader-submit--secondary:hover,
+.trader-submit--secondary:focus-visible {
+    background: #111111;
+    color: #ffffff;
+    border-color: #111111;
+}
+
+@media (min-width: 768px) {
+    .trader-layout {
+        grid-template-columns: minmax(13rem, 0.45fr) minmax(0, 1.55fr);
+        gap: 1.35rem;
+        align-items: start;
+    }
+
+    .trader-stats {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .trader-panel--split {
+        grid-template-columns: minmax(0, 1.6fr) minmax(17rem, 0.8fr);
+        align-items: start;
+    }
+
+    .trader-form__grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .trader-form__actions {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 1024px) {
+    .trader-page {
+        padding-top: 2rem;
+    }
+}
+
+@media (hover: none) {
+    .trader-sidebar__item:hover,
+    .trader-submit:hover {
+        transform: none;
+    }
+}

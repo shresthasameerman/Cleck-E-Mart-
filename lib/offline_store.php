@@ -680,6 +680,225 @@ function offline_count_saved(int $customerId): int
     return $count;
 }
 
+function offline_get_categories(): array
+{
+    $data = offline_load();
+
+    return array_map(static function (array $category): array {
+        return [
+            'CATEGORY_ID' => (int) $category['category_id'],
+            'CATEGORY_NAME' => (string) $category['category_name'],
+        ];
+    }, $data['categories']);
+}
+
+function offline_get_trader_shop(int $traderId): ?array
+{
+    $data = offline_load();
+
+    $user = null;
+    foreach ($data['users'] as $row) {
+        if ((int) $row['user_id'] === $traderId) {
+            $user = $row;
+            break;
+        }
+    }
+
+    if ($user === null) {
+        return null;
+    }
+
+    foreach ($data['shops'] as $shop) {
+        if ((int) $shop['trader_id'] === $traderId) {
+            return [
+                'SHOP_ID' => (int) $shop['shop_id'],
+                'TRADER_ID' => (int) $shop['trader_id'],
+                'SHOP_NAME' => (string) $shop['shop_name'],
+                'SHOP_DESCRIPTION' => (string) $shop['shop_description'],
+                'SHOP_LOGO' => (string) $shop['shop_logo'],
+                'SHOP_STATUS' => (string) $shop['shop_status'],
+                'FIRST_NAME' => (string) $user['first_name'],
+                'LAST_NAME' => (string) $user['last_name'],
+                'EMAIL' => (string) $user['email'],
+                'PHONE_NUMBER' => $user['phone_number'],
+                'BRAND_NAME' => null,
+                'PAN_NUMBER' => null,
+            ];
+        }
+    }
+
+    return [
+        'SHOP_ID' => 0,
+        'TRADER_ID' => $traderId,
+        'SHOP_NAME' => trim((string) $user['first_name'] . ' ' . (string) $user['last_name']),
+        'SHOP_DESCRIPTION' => '',
+        'SHOP_LOGO' => '',
+        'SHOP_STATUS' => 'ACTIVE',
+        'FIRST_NAME' => (string) $user['first_name'],
+        'LAST_NAME' => (string) $user['last_name'],
+        'EMAIL' => (string) $user['email'],
+        'PHONE_NUMBER' => $user['phone_number'],
+        'BRAND_NAME' => null,
+        'PAN_NUMBER' => null,
+    ];
+}
+
+function offline_update_shop(int $shopId, string $shopName, string $shopDescription, ?string $shopLogo): void
+{
+    $data = offline_load();
+
+    foreach ($data['shops'] as $index => $shop) {
+        if ((int) $shop['shop_id'] !== $shopId) {
+            continue;
+        }
+
+        $data['shops'][$index]['shop_name'] = $shopName;
+        $data['shops'][$index]['shop_description'] = $shopDescription;
+        $data['shops'][$index]['shop_logo'] = $shopLogo;
+        offline_save($data);
+        return;
+    }
+
+    throw new RuntimeException('Shop not found in offline store.');
+}
+
+function offline_get_trader_products(int $traderId): array
+{
+    $data = offline_load();
+    $shop = offline_get_trader_shop($traderId);
+    if ($shop === null) {
+        return [];
+    }
+
+    $productIds = [];
+    foreach ($data['products'] as $product) {
+        if ((int) $product['shop_id'] === (int) $shop['SHOP_ID']) {
+            $productIds[] = (int) $product['product_id'];
+        }
+    }
+
+    $soldMap = [];
+    $revenueMap = [];
+    foreach ($data['order_items'] as $item) {
+        $productId = (int) $item['product_id'];
+        if (!in_array($productId, $productIds, true)) {
+            continue;
+        }
+
+        $soldMap[$productId] = ($soldMap[$productId] ?? 0) + (int) $item['quantity'];
+        $revenueMap[$productId] = ($revenueMap[$productId] ?? 0.0) + ((float) $item['unit_price'] * (int) $item['quantity']);
+    }
+
+    $rows = [];
+    foreach ($data['products'] as $product) {
+        if ((int) $product['shop_id'] !== (int) $shop['SHOP_ID']) {
+            continue;
+        }
+
+        $categoryName = '';
+        foreach ($data['categories'] as $category) {
+            if ((int) $category['category_id'] === (int) $product['category_id']) {
+                $categoryName = (string) $category['category_name'];
+                break;
+            }
+        }
+
+        $soldQuantity = (int) ($soldMap[(int) $product['product_id']] ?? 0);
+        $revenue = (float) ($revenueMap[(int) $product['product_id']] ?? 0);
+        $stockQuantity = (int) $product['stock_quantity'];
+        $needsRefill = $stockQuantity <= 10 || strtoupper((string) $product['product_status']) === 'LOW_STOCK';
+
+        $rows[] = [
+            'PRODUCT_ID' => (int) $product['product_id'],
+            'PRODUCT_NAME' => (string) $product['product_name'],
+            'PRODUCT_DESCRIPTION' => (string) $product['product_description'],
+            'PRICE' => (float) $product['price'],
+            'STOCK_QUANTITY' => $stockQuantity,
+            'PRODUCT_STATUS' => (string) $product['product_status'],
+            'PRODUCT_IMAGE' => $product['product_image'],
+            'MAX_ORDER' => $product['max_order'],
+            'MIN_ORDER' => $product['min_order'],
+            'CATEGORY_NAME' => $categoryName,
+            'SOLD_QUANTITY' => $soldQuantity,
+            'REVENUE' => $revenue,
+            'NEEDS_REFILL' => $needsRefill,
+        ];
+    }
+
+    usort($rows, static fn(array $a, array $b): int => $b['SOLD_QUANTITY'] <=> $a['SOLD_QUANTITY']);
+
+    return $rows;
+}
+
+function offline_get_trader_dashboard(int $traderId): array
+{
+    $shop = offline_get_trader_shop($traderId);
+    $products = offline_get_trader_products($traderId);
+
+    $soldTotal = 0;
+    $revenueTotal = 0.0;
+    $stockTotal = 0;
+    $refillProducts = [];
+
+    foreach ($products as $product) {
+        $soldTotal += (int) $product['SOLD_QUANTITY'];
+        $revenueTotal += (float) $product['REVENUE'];
+        $stockTotal += (int) $product['STOCK_QUANTITY'];
+
+        if (!empty($product['NEEDS_REFILL'])) {
+            $refillProducts[] = $product;
+        }
+    }
+
+    return [
+        'shop' => $shop,
+        'products' => $products,
+        'sold_total' => $soldTotal,
+        'revenue_total' => $revenueTotal,
+        'stock_total' => $stockTotal,
+        'refill_count' => count($refillProducts),
+        'active_count' => count(array_filter($products, static fn(array $product): bool => (int) $product['STOCK_QUANTITY'] > 0)),
+        'low_stock_products' => array_slice($refillProducts, 0, 5),
+        'top_products' => array_slice($products, 0, 5),
+    ];
+}
+
+function offline_create_product(int $shopId, array $payload): array
+{
+    $data = offline_load();
+
+    $productId = offline_next_id($data['products'], 'product_id');
+    $product = [
+        'product_id' => $productId,
+        'shop_id' => $shopId,
+        'category_id' => (int) ($payload['category_id'] ?? 0),
+        'discount_id' => null,
+        'product_name' => (string) ($payload['product_name'] ?? ''),
+        'product_description' => (string) ($payload['product_description'] ?? ''),
+        'price' => (float) ($payload['price'] ?? 0),
+        'stock_quantity' => max(0, (int) ($payload['stock_quantity'] ?? 0)),
+        'product_status' => (string) ($payload['product_status'] ?? 'IN_STOCK'),
+        'allergy_information' => $payload['allergy_information'] ?? null,
+        'min_order' => (int) ($payload['min_order'] ?? 1),
+        'max_order' => $payload['max_order'] === null ? null : (int) $payload['max_order'],
+        'product_image' => $payload['product_image'] ?? null,
+    ];
+
+    $data['products'][] = $product;
+    offline_save($data);
+
+    return [
+        'PRODUCT_ID' => $productId,
+        'PRODUCT_NAME' => $product['product_name'],
+        'PRODUCT_DESCRIPTION' => $product['product_description'],
+        'PRICE' => $product['price'],
+        'STOCK_QUANTITY' => $product['stock_quantity'],
+        'PRODUCT_STATUS' => $product['product_status'],
+        'PRODUCT_IMAGE' => $product['product_image'],
+        'CATEGORY_NAME' => '',
+    ];
+}
+
 function offline_user_to_upper(array $user): array
 {
     return [
