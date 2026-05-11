@@ -947,14 +947,8 @@
         },
         {
             "cart_id": 11104,
-            "product_id": 7106,
-            "quantity": 4,
-            "unit_price": 2.75
-        },
-        {
-            "cart_id": 11104,
             "product_id": 7114,
-            "quantity": 7,
+            "quantity": 1,
             "unit_price": 3.99
         }
     ],

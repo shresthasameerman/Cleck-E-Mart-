@@ -18,6 +18,7 @@ $headerAccountLabel = $headerIsTrader ? 'Trader dashboard' : ($headerIsLoggedIn 
     <title><?php echo htmlspecialchars($pageTitle, ENT_QUOTES, 'UTF-8'); ?></title>
     <link rel="stylesheet" href="assets/css/styles.css" />
     <script defer src="assets/js/script.js"></script>
+    <script defer src="assets/js/cart.js"></script>
 </head>
 <body class="site-body" id="top">
     <!-- Accessibility: allows keyboard users to skip repeated navigation quickly. -->

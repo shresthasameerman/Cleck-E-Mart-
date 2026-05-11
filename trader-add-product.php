@@ -12,6 +12,12 @@ $metrics = trader_dashboard_metrics($userId);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['product_action'] ?? '') === 'save_product') {
     try {
+        // Handle image upload
+        $productImage = null;
+        if (isset($_FILES['product_image']) && $_FILES['product_image']['name'] !== '') {
+            $productImage = trader_handle_product_image_upload($_FILES['product_image']);
+        }
+
         trader_create_product($userId, [
             'product_name' => (string) ($_POST['product_name'] ?? ''),
             'product_description' => (string) ($_POST['product_description'] ?? ''),
@@ -20,7 +26,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['product_action'] ?? '') ==
             'stock_quantity' => (int) ($_POST['stock_quantity'] ?? 0),
             'max_order' => (string) ($_POST['max_order'] ?? ''),
             'allergy_information' => (string) ($_POST['allergy_information'] ?? ''),
-            'product_image' => (string) ($_POST['product_image'] ?? ''),
+            'product_image' => $productImage ?? '',
             'visibility' => (string) ($_POST['visibility'] ?? 'PUBLISH'),
         ]);
 
@@ -83,7 +89,7 @@ require __DIR__ . '/components/header.php';
                         <span class="trader-card__badge">Draft ready</span>
                     </div>
 
-                    <form class="trader-form" method="post" action="trader-add-product.php">
+                    <form class="trader-form" method="post" action="trader-add-product.php" enctype="multipart/form-data">
                         <input type="hidden" name="product_action" value="save_product" />
                         <div class="trader-form__grid">
                             <label class="trader-form__full">
@@ -120,8 +126,9 @@ require __DIR__ . '/components/header.php';
                                 <input type="text" name="allergy_information" placeholder="Example: Gluten, Dairy" />
                             </label>
                             <label class="trader-form__full">
-                                <span>Product image filename</span>
-                                <input type="text" name="product_image" placeholder="product.jpg" />
+                                <span>Product image</span>
+                                <input type="file" name="product_image" accept="image/jpeg,image/png,image/webp,image/gif" />
+                                <small style="display: block; margin-top: 0.5rem; color: #666;">Supported formats: JPG, PNG, WebP, GIF. Max size: 5MB</small>
                             </label>
                             <label>
                                 <span>Visibility</span>

@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/lib/auth_helpers.php';
+require_once __DIR__ . '/lib/apex_auth.php';
 
 $errors = [];
 $activeMode = 'signup';
@@ -123,22 +124,53 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($errors === []) {
             try {
-                $user = db_is_offline()
-                    ? offline_user_by_email($email)
-                    : db_fetch_one(
+                $user = null;
+                $apexError = null;
+
+                // Try APEX authentication first if enabled
+                if (apex_auth_enabled()) {
+                    try {
+                        $user = apex_login_user($email, $password);
+                    } catch (Throwable $exception) {
+                        $apexError = $exception->getMessage();
+                        error_log('APEX login exception: ' . $apexError);
+                        // Fall through to local auth
+                    }
+                }
+
+                // Fall back to local database authentication if APEX didn't work
+                if ($user === null && db_is_offline()) {
+                    $user = offline_user_by_email($email);
+                    if ($user !== null && !password_verify($password, (string) $user['PASSWORD'])) {
+                        $user = null;
+                    }
+                } elseif ($user === null && !db_is_offline()) {
+                    $user = db_fetch_one(
                         'SELECT user_id, first_name, last_name, email, password, "ROLE" AS role
                          FROM "USER"
                          WHERE LOWER(email) = LOWER(:email)',
                         ['email' => $email]
                     );
 
-                if ($user === null || !password_verify($password, (string) $user['PASSWORD'])) {
+                    if ($user !== null && !password_verify($password, (string) $user['PASSWORD'])) {
+                        $user = null;
+                    }
+                }
+
+                if ($user === null) {
                     $errors[] = 'Invalid email or password.';
                 } else {
                     session_regenerate_id(true);
                     login_session($user);
-                    set_flash('success', 'Welcome back, ' . $user['FIRST_NAME'] . '.');
-                    redirect('index.php');
+                    set_flash('success', 'Welcome back, ' . (string) $user['FIRST_NAME'] . '.');
+                    
+                    // Route based on role
+                    $role = strtoupper((string) $user['ROLE']);
+                    if ($role === 'TRADER') {
+                        redirect('trader-dashboard.php');
+                    } else {
+                        redirect('index.php');
+                    }
                 }
             } catch (Throwable $exception) {
                 $errors[] = 'Login failed: ' . $exception->getMessage();

@@ -1167,6 +1167,186 @@ a {
 }
 
 /*
+    Payment page
+    PayPal-only checkout step for the customer flow.
+*/
+.payment-page {
+    padding: 1.25rem 0 2.75rem;
+}
+
+.payment-hero {
+    padding-top: 0.25rem;
+}
+
+.payment-hero__panel {
+    border: 2px solid rgba(26, 26, 26, 0.88);
+    background: rgba(249, 248, 243, 0.95);
+    padding: 1.3rem 1rem;
+}
+
+.payment-hero__panel h1 {
+    margin: 0;
+    font-size: clamp(1.35rem, 2.8vw, 2rem);
+    line-height: 1.2;
+}
+
+.payment-hero__panel p {
+    margin: 0.55rem 0 0;
+    color: #222222;
+}
+
+.payment-slot {
+    font-size: 0.95rem;
+}
+
+.payment-content {
+    padding-top: 0.85rem;
+}
+
+.payment-layout {
+    display: grid;
+    gap: 1rem;
+}
+
+.payment-method__card,
+.payment-summary {
+    border: 2px solid rgba(26, 26, 26, 0.88);
+    background: rgba(255, 255, 255, 0.96);
+}
+
+.payment-method__card {
+    padding: 1rem;
+    display: grid;
+    gap: 0.85rem;
+}
+
+.payment-method__eyebrow {
+    margin: 0;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+}
+
+.payment-method__card h2,
+.payment-summary h2 {
+    margin: 0;
+    font-size: 1.25rem;
+}
+
+.paypal-lockup {
+    border: 2px solid rgba(26, 26, 26, 0.88);
+    background: linear-gradient(135deg, #005ea6, #003087);
+    color: #ffffff;
+    padding: 0.9rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.paypal-lockup__badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 6.1rem;
+    padding: 0.45rem 0.8rem;
+    border-radius: 999px;
+    background: #ffc439;
+    color: #111111;
+    font-weight: 700;
+}
+
+.paypal-lockup__text {
+    font-size: 0.92rem;
+}
+
+.payment-form {
+    display: grid;
+    gap: 0.85rem;
+}
+
+.payment-check {
+    margin: 0;
+}
+
+.payment-paypal-btn {
+    min-height: 3rem;
+    border: 2px solid rgba(26, 26, 26, 0.88);
+    border-radius: 0;
+    background: #ffc439;
+    color: #111111;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform var(--transition), box-shadow var(--transition), background-color var(--transition);
+}
+
+.payment-paypal-btn:hover,
+.payment-paypal-btn:focus-visible {
+    background: #ffcc59;
+    transform: translateY(-1px);
+    box-shadow: 0 10px 18px rgba(26, 26, 26, 0.16);
+}
+
+.payment-note {
+    margin: 0;
+    font-size: 0.88rem;
+    color: var(--color-muted);
+}
+
+.payment-success-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+}
+
+.payment-success-actions .button {
+    min-height: 2.7rem;
+    padding-inline: 1rem;
+}
+
+.payment-summary {
+    padding: 1rem;
+    display: grid;
+    gap: 0.75rem;
+}
+
+.payment-summary__lines {
+    display: grid;
+    gap: 0.45rem;
+}
+
+.payment-summary__line {
+    margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.8rem;
+}
+
+.payment-summary__line span,
+.payment-summary__line strong {
+    font-size: 0.92rem;
+}
+
+.payment-summary__divider {
+    height: 2px;
+    background: rgba(26, 26, 26, 0.9);
+}
+
+.payment-summary__total {
+    margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.payment-summary__total strong {
+    font-size: 1.14rem;
+}
+
+/*
     Product view page
     Mirrors the supplied wireframe with boxed content and simple quantity controls.
 */
@@ -1986,6 +2166,11 @@ a {
         gap: 1.1rem;
     }
 
+    .payment-layout {
+        grid-template-columns: minmax(0, 1fr) minmax(18rem, 24rem);
+        align-items: start;
+    }
+
     .collection-calendar__month-card,
     .collection-slot-panel,
     .collection-hero__panel {
@@ -2145,6 +2330,10 @@ a {
     }
 
     .collection-page {
+        padding-bottom: 4rem;
+    }
+
+    .payment-page {
         padding-bottom: 4rem;
     }
 

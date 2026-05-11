@@ -3,12 +3,25 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
     session_start();
 }
 
+// Load APEX API integration
+require_once __DIR__ . '/lib/apex_api.php';
+
 // Supports multiple common login flags so this works with your current or future auth flow.
 $isLoggedIn = !empty($_SESSION['user_id'])
     || !empty($_SESSION['customer_id'])
     || !empty($_SESSION['is_logged_in'])
     || !empty($_SESSION['logged_in'])
     || !empty($_SESSION['customer_logged_in']);
+
+// Fetch featured products from APEX API
+$featuredProducts = [];
+$apiError = null;
+try {
+    $featuredProducts = fetch_apex_products(5); // Cache for 5 minutes
+} catch (Throwable $e) {
+    $apiError = $e->getMessage();
+    error_log('Featured products API error: ' . $apiError);
+}
 
 // Shared header includes <head>, navigation, and opening <body> tag.
 // Keeping this in one component ensures all pages stay visually consistent.
@@ -44,47 +57,32 @@ require __DIR__ . '/components/header.php';
                 <h2 id="featured-title-logged">Featured Products</h2>
             </div>
 
-            <div class="card-grid card-grid--four">
-                <article class="product-card">
-                    <div class="product-card__media">
-                        <img src="assets/images/product-placeholder.svg" alt="Featured product" />
-                    </div>
-                    <div class="product-card__content">
-                        <h3>Everyday Essentials Pack</h3>
-                        <p>Curated basics with a soft, durable finish.</p>
-                    </div>
-                </article>
-
-                <article class="product-card">
-                    <div class="product-card__media">
-                        <img src="assets/images/product-placeholder.svg" alt="Featured product" />
-                    </div>
-                    <div class="product-card__content">
-                        <h3>Home Utility Set</h3>
-                        <p>Practical picks for everyday use at home.</p>
-                    </div>
-                </article>
-
-                <article class="product-card">
-                    <div class="product-card__media">
-                        <img src="assets/images/product-placeholder.svg" alt="Featured product" />
-                    </div>
-                    <div class="product-card__content">
-                        <h3>Weekend Carry Bag</h3>
-                        <p>Lightweight and sturdy for your daily errands.</p>
-                    </div>
-                </article>
-
-                <article class="product-card">
-                    <div class="product-card__media">
-                        <img src="assets/images/product-placeholder.svg" alt="Featured product" />
-                    </div>
-                    <div class="product-card__content">
-                        <h3>Family Pantry Bundle</h3>
-                        <p>Well-balanced grocery set for weekly restocks.</p>
-                    </div>
-                </article>
-            </div>
+            <?php if ($apiError): ?>
+                <div class="page-message page-message--error">
+                    <p>Unable to load featured products. Please try again later.</p>
+                </div>
+            <?php elseif (empty($featuredProducts)): ?>
+                <div class="page-message page-message--error">
+                    <p>No products available at the moment.</p>
+                </div>
+            <?php else: ?>
+                <div class="card-grid card-grid--four">
+                    <?php foreach (array_slice($featuredProducts, 0, 4) as $product): ?>
+                        <article class="product-card">
+                            <div class="product-card__media">
+                                <img src="<?php echo htmlspecialchars((string) $product['product_image'], ENT_QUOTES, 'UTF-8'); ?>" alt="<?php echo htmlspecialchars((string) $product['product_name'], ENT_QUOTES, 'UTF-8'); ?>" />
+                            </div>
+                            <div class="product-card__content">
+                                <h3><?php echo htmlspecialchars((string) $product['product_name'], ENT_QUOTES, 'UTF-8'); ?></h3>
+                                <p><?php echo htmlspecialchars((string) $product['product_description'], ENT_QUOTES, 'UTF-8'); ?></p>
+                                <p class="product-card__shop">Shop: <?php echo htmlspecialchars((string) $product['shop_name'], ENT_QUOTES, 'UTF-8'); ?></p>
+                                <p class="product-card__category">Category: <?php echo htmlspecialchars((string) $product['category_name'], ENT_QUOTES, 'UTF-8'); ?></p>
+                                <p class="product-card__price"><?php echo format_product_price($product); ?></p>
+                            </div>
+                        </article>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
         </div>
     </section>
 
@@ -128,49 +126,33 @@ require __DIR__ . '/components/header.php';
                 <h2 id="featured-title">Popular products for a clean, fast browse</h2>
             </div>
 
-            <div class="card-grid">
-                <article class="product-card">
-                    <div class="product-card__media">
-                        <img src="assets/images/product-placeholder.svg" alt="Minimal lifestyle product illustration" />
-                    </div>
-                    <div class="product-card__content">
-                        <h3>Everyday Essentials Pack</h3>
-                        <p>Curated basics with a soft, durable finish.</p>
-                        <div class="product-card__meta">
-                            <span class="product-card__price">$24.00</span>
-                            <a class="product-card__link" href="#">View details</a>
-                        </div>
-                    </div>
-                </article>
-
-                <article class="product-card">
-                    <div class="product-card__media">
-                        <img src="assets/images/product-placeholder.svg" alt="Minimal lifestyle product illustration" />
-                    </div>
-                    <div class="product-card__content">
-                        <h3>Home Utility Set</h3>
-                        <p>Compact, well-made pieces that keep daily life organized.</p>
-                        <div class="product-card__meta">
-                            <span class="product-card__price">$38.00</span>
-                            <a class="product-card__link" href="#">View details</a>
-                        </div>
-                    </div>
-                </article>
-
-                <article class="product-card">
-                    <div class="product-card__media">
-                        <img src="assets/images/product-placeholder.svg" alt="Minimal lifestyle product illustration" />
-                    </div>
-                    <div class="product-card__content">
-                        <h3>Weekend Carry Bag</h3>
-                        <p>A lightweight carryall with enough structure for everyday use.</p>
-                        <div class="product-card__meta">
-                            <span class="product-card__price">$52.00</span>
-                            <a class="product-card__link" href="#">View details</a>
-                        </div>
-                    </div>
-                </article>
-            </div>
+            <?php if ($apiError): ?>
+                <div class="page-message page-message--error">
+                    <p>Unable to load featured products. Please try again later.</p>
+                </div>
+            <?php elseif (empty($featuredProducts)): ?>
+                <div class="page-message page-message--error">
+                    <p>No products available at the moment.</p>
+                </div>
+            <?php else: ?>
+                <div class="card-grid">
+                    <?php foreach (array_slice($featuredProducts, 0, 3) as $product): ?>
+                        <article class="product-card">
+                            <div class="product-card__media">
+                                <img src="<?php echo htmlspecialchars((string) $product['product_image'], ENT_QUOTES, 'UTF-8'); ?>" alt="<?php echo htmlspecialchars((string) $product['product_name'], ENT_QUOTES, 'UTF-8'); ?>" />
+                            </div>
+                            <div class="product-card__content">
+                                <h3><?php echo htmlspecialchars((string) $product['product_name'], ENT_QUOTES, 'UTF-8'); ?></h3>
+                                <p><?php echo htmlspecialchars((string) $product['product_description'], ENT_QUOTES, 'UTF-8'); ?></p>
+                                <div class="product-card__meta">
+                                    <span class="product-card__price"><?php echo format_product_price($product); ?></span>
+                                    <a class="product-card__link" href="product.php?product_id=<?php echo (int) $product['product_id']; ?>">View details</a>
+                                </div>
+                            </div>
+                        </article>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
         </div>
     </section>
 

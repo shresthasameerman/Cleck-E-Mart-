@@ -1,4 +1,7 @@
 <?php
+require_once __DIR__ . '/lib/auth_helpers.php';
+require_login(['CUSTOMER']);
+
 $pageTitle = 'Collection Slot | Cleck E-Mart';
 $metaDescription = 'Choose a collection day and time slot before confirming your order.';
 require __DIR__ . '/components/header.php';

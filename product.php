@@ -1,6 +1,13 @@
 <?php
 require_once __DIR__ . '/lib/cart_helpers.php';
 require_once __DIR__ . '/lib/auth_helpers.php';
+require_once __DIR__ . '/lib/apex_cart.php';
+
+// Allow guest access to view product details, but require login for add-to-cart
+$isLoggedIn = is_logged_in();
+if ($isLoggedIn) {
+    require_login(['CUSTOMER']);
+}
 
 $productId = filter_input(INPUT_GET, 'product_id', FILTER_VALIDATE_INT);
 $errors = [];
@@ -23,7 +30,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'add_t
             $errors[] = 'Invalid product selected.';
         } else {
             try {
-                add_product_to_cart((int) current_customer_id(), (int) $postedProductId, $quantity);
+                $customerId = (int) current_customer_id();
+                $addSuccess = false;
+                
+                // Try APEX API first if enabled
+                if (apex_cart_enabled()) {
+                    try {
+                        $addSuccess = apex_add_to_cart($customerId, (int) $postedProductId, $quantity);
+                    } catch (Throwable $e) {
+                        error_log('APEX add to cart failed: ' . $e->getMessage());
+                        // Fall back to local
+                    }
+                }
+                
+                // Fall back to local if APEX didn't work
+                if (!$addSuccess) {
+                    add_product_to_cart($customerId, (int) $postedProductId, $quantity);
+                }
+                
                 set_flash('success', 'Product added to basket.');
                 redirect('cart.php');
             } catch (Throwable $exception) {

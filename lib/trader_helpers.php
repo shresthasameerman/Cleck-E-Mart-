@@ -8,6 +8,65 @@ function trader_role_guard(): void
     require_login(['TRADER']);
 }
 
+function trader_handle_product_image_upload(?array $fileInput): ?string
+{
+    if ($fileInput === null || !isset($fileInput['name']) || $fileInput['name'] === '') {
+        return null;
+    }
+
+    if ($fileInput['error'] !== UPLOAD_ERR_OK) {
+        $errorMessages = [
+            UPLOAD_ERR_INI_SIZE => 'File is too large (server limit).',
+            UPLOAD_ERR_FORM_SIZE => 'File is too large (form limit).',
+            UPLOAD_ERR_PARTIAL => 'File was only partially uploaded.',
+            UPLOAD_ERR_NO_FILE => 'No file was uploaded.',
+            UPLOAD_ERR_NO_TMP_DIR => 'Missing temporary folder.',
+            UPLOAD_ERR_CANT_WRITE => 'Failed to write file to disk.',
+            UPLOAD_ERR_EXTENSION => 'File upload stopped by extension.',
+        ];
+        $message = $errorMessages[$fileInput['error']] ?? 'Unknown upload error.';
+        throw new RuntimeException('Image upload failed: ' . $message);
+    }
+
+    $allowedMimes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    $mimeType = mime_content_type($fileInput['tmp_name']);
+    
+    if ($mimeType === false || !in_array($mimeType, $allowedMimes, true)) {
+        throw new RuntimeException('Invalid image type. Allowed types: JPG, PNG, WebP, GIF.');
+    }
+
+    $maxSize = 5 * 1024 * 1024; // 5MB
+    if ($fileInput['size'] > $maxSize) {
+        throw new RuntimeException('Image is too large. Maximum size is 5MB.');
+    }
+
+    $uploadDir = __DIR__ . '/../assets/images/products/';
+    if (!is_dir($uploadDir)) {
+        if (!mkdir($uploadDir, 0755, true)) {
+            throw new RuntimeException('Failed to create upload directory.');
+        }
+    }
+
+    $originalName = pathinfo($fileInput['name'], PATHINFO_FILENAME);
+    $extension = pathinfo($fileInput['name'], PATHINFO_EXTENSION);
+    $sanitizedName = preg_replace('/[^a-z0-9-]/', '-', strtolower($originalName));
+    $sanitizedName = preg_replace('/-+/', '-', $sanitizedName);
+    $sanitizedName = trim($sanitizedName, '-');
+    
+    if ($sanitizedName === '') {
+        $sanitizedName = 'product';
+    }
+
+    $filename = $sanitizedName . '-' . time() . '.' . $extension;
+    $targetPath = $uploadDir . $filename;
+
+    if (!move_uploaded_file($fileInput['tmp_name'], $targetPath)) {
+        throw new RuntimeException('Failed to save uploaded image.');
+    }
+
+    return $filename;
+}
+
 function trader_shop_for_user(int $userId): ?array
 {
     if (db_is_offline()) {

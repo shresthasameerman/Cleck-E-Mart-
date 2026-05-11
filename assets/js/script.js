@@ -635,6 +635,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 setSlotCapacity(selectedSlot.dateKey, selectedSlot.slotLabel, currentCount + 1);
                 updateStatus(`Reserved ${selectedSlot.dateLabel} • ${selectedSlot.slotLabel}. Proceed to payment.`);
                 confirmButton.disabled = true;
+
+                const paymentParams = new URLSearchParams({
+                    slot_date: selectedSlot.dateKey,
+                    slot_time: selectedSlot.slotLabel
+                });
+                window.location.href = `payment.php?${paymentParams.toString()}`;
             });
         }
     };
