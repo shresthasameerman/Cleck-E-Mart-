@@ -8,7 +8,11 @@ require_login(['CUSTOMER']);
 $pageTitle = 'Payment | Cleck E-Mart';
 $metaDescription = 'Complete your order securely using PayPal.';
 
-$customerId = (int) current_customer_id();
+$customerId = current_customer_id();
+if ($customerId === null) {
+    // In this schema CUSTOMER.customer_id mirrors USER.user_id.
+    $customerId = current_user_id();
+}
 $flashError = get_flash('error');
 $errors = [];
 $paymentSuccess = false;
@@ -18,6 +22,8 @@ $selectedSlotDate = trim((string) ($_GET['slot_date'] ?? ''));
 $selectedSlotTime = trim((string) ($_GET['slot_time'] ?? ''));
 
 $items = [];
+// This establishes $conn for the entire file. 
+require_once __DIR__ . '/db_connect.php'; 
 
 try {
     if (apex_cart_enabled()) {
@@ -74,29 +80,217 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'paypa
         $errors[] = 'Your basket is empty. Please add products before paying.';
     }
 
-    if ($errors === []) {
-        $transactionId = 'PAYPAL-' . strtoupper(substr(hash('sha256', uniqid((string) $customerId, true)), 0, 12));
-        $paymentSuccess = true;
+    if ($customerId === null || (int) $customerId <= 0) {
+        $errors[] = 'Your customer account is not linked correctly. Please sign out and sign in again.';
+    }
 
-        foreach ($normalizedItems as $line) {
-            $pid = (int) $line['product_id'];
-            if ($pid <= 0) {
-                continue;
+    if ($errors === []) {
+        // ====================================================================
+        // ORACLE OCI8 TRANSACTION BLOCK
+        // ====================================================================
+        
+        try {
+            global $conn; 
+            
+            if (!$conn) {
+                throw new Exception('Database connection failed. Please try again later.');
             }
 
-            try {
-                if (apex_cart_enabled()) {
-                    try {
-                        apex_update_cart_quantity($customerId, $pid, 0);
-                    } catch (Throwable $exception) {
+            // ====================================================================
+            // 🛠️ Verify user is in CUSTOMER table
+            // ====================================================================
+            $checkCustSql = 'SELECT customer_id FROM CUSTOMER WHERE customer_id = :customer_id';
+            $checkCustStmt = oci_parse($conn, $checkCustSql);
+            oci_bind_by_name($checkCustStmt, ':customer_id', $customerId, -1, SQLT_INT);
+            oci_execute($checkCustStmt, OCI_NO_AUTO_COMMIT);
+            
+            $customerExists = oci_fetch_assoc($checkCustStmt);
+            oci_free_statement($checkCustStmt);
+
+            if (!$customerExists) {
+                $insertCustSql = 'INSERT INTO CUSTOMER (customer_id) VALUES (:customer_id)';
+                $insertCustStmt = oci_parse($conn, $insertCustSql);
+                oci_bind_by_name($insertCustStmt, ':customer_id', $customerId, -1, SQLT_INT);
+                
+                if (!oci_execute($insertCustStmt, OCI_NO_AUTO_COMMIT)) {
+                    throw new Exception('Failed to auto-register customer profile: ' . oci_error($insertCustStmt)['message']);
+                }
+                oci_free_statement($insertCustStmt);
+            }
+
+            // ====================================================================
+            // 🛠️ DYNAMIC SLOT_ID LOOKUP (Fixes ORA-02291 Error)
+            // ====================================================================
+            $actualSlotId = null;
+            
+            if ($selectedSlotDate !== '' && $selectedSlotTime !== '') {
+                // Try to find the exact slot ID based on the time and date selected in the UI
+                $searchSql = "SELECT slot_id FROM COLLECTION_SLOT 
+                              WHERE slot_time = :s_time 
+                              AND TO_CHAR(slot_date, 'DD Mon YYYY') LIKE '%' || :s_date || '%' 
+                              FETCH FIRST 1 ROWS ONLY";
+                $searchStmt = oci_parse($conn, $searchSql);
+                
+                // Remove day names (e.g., 'Friday') to make matching database dates easier
+                $cleanDate = trim(preg_replace('/^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\s+/i', '', $selectedSlotDate));
+                
+                oci_bind_by_name($searchStmt, ':s_time', $selectedSlotTime);
+                oci_bind_by_name($searchStmt, ':s_date', $cleanDate);
+                oci_execute($searchStmt, OCI_NO_AUTO_COMMIT);
+                
+                $row = oci_fetch_assoc($searchStmt);
+                if ($row) {
+                    $actualSlotId = (int)$row['SLOT_ID'];
+                }
+                oci_free_statement($searchStmt);
+            }
+            
+            // Safety Fallback: If no exact match is found, grab ANY available slot to prevent crashes
+            if ($actualSlotId === null) {
+                $fallbackSql = "SELECT slot_id FROM COLLECTION_SLOT WHERE slot_status = 'AVAILABLE' FETCH FIRST 1 ROWS ONLY";
+                $fallbackStmt = oci_parse($conn, $fallbackSql);
+                oci_execute($fallbackStmt, OCI_NO_AUTO_COMMIT);
+                $fallbackRow = oci_fetch_assoc($fallbackStmt);
+                if ($fallbackRow) {
+                    $actualSlotId = (int)$fallbackRow['SLOT_ID'];
+                } else {
+                    throw new Exception('No available collection slots found in the database.');
+                }
+                oci_free_statement($fallbackStmt);
+            }
+            
+            // ====================================================================
+            // STEP 1: INSERT ORDER
+            // ====================================================================
+            
+            $orderSql = "INSERT INTO \"ORDER\" (customer_id, slot_id, order_status, order_date) 
+                         VALUES (:customer_id, :slot_id, 'PAID', SYSDATE)
+                         RETURNING order_id INTO :new_order_id";
+            
+            $orderStmt = oci_parse($conn, $orderSql);
+            if (!$orderStmt) {
+                throw new Exception('Failed to parse ORDER insert: ' . oci_error($conn)['message']);
+            }
+            
+            oci_bind_by_name($orderStmt, ':customer_id', $customerId, -1, SQLT_INT);
+            oci_bind_by_name($orderStmt, ':slot_id', $actualSlotId, -1, SQLT_INT); // Uses our dynamic slot!
+            
+            $newOrderId = null;
+            oci_bind_by_name($orderStmt, ':new_order_id', $newOrderId, 32);
+            
+            if (!oci_execute($orderStmt, OCI_NO_AUTO_COMMIT)) {
+                throw new Exception('Failed to insert ORDER: ' . oci_error($orderStmt)['message']);
+            }
+            
+            oci_fetch($orderStmt);
+            
+            if ($newOrderId === null) {
+                throw new Exception('ORDER inserted but order_id was not returned by the database.');
+            }
+            
+            oci_free_statement($orderStmt);
+            
+            $transactionId = 'PAYPAL-' . str_pad((string)$newOrderId, 12, '0', STR_PAD_LEFT);
+            
+           // ====================================================================
+            // STEP 2: INSERT ORDER ITEMS
+            // ====================================================================
+            
+            $itemSql = "INSERT INTO ORDER_ITEM (order_id, product_id, quantity, unit_price) 
+                        VALUES (:order_id, :product_id, :quantity, :unit_price)";
+            
+            $itemStmt = oci_parse($conn, $itemSql);
+            if (!$itemStmt) {
+                throw new Exception('Failed to parse ORDER_ITEM insert: ' . oci_error($conn)['message']);
+            }
+            
+            foreach ($normalizedItems as $line) {
+                // 1. Assign to fresh, strict variables inside the loop
+                $loopOrderId = (string) $newOrderId;
+                $loopProductId = (int) $line['product_id'];
+                $loopQuantity = (int) $line['quantity'];
+                $loopUnitPrice = (string) $line['unit_price']; // String bypasses float errors!
+                
+                // 2. Bind directly to these fresh variables
+                oci_bind_by_name($itemStmt, ':order_id', $loopOrderId);
+                oci_bind_by_name($itemStmt, ':product_id', $loopProductId);
+                oci_bind_by_name($itemStmt, ':quantity', $loopQuantity);
+                oci_bind_by_name($itemStmt, ':unit_price', $loopUnitPrice);
+                
+                if (!oci_execute($itemStmt, OCI_NO_AUTO_COMMIT)) {
+                    throw new Exception('Failed to insert ORDER_ITEM for product ' . $loopProductId . ': ' . oci_error($itemStmt)['message']);
+                }
+            }
+            
+            oci_free_statement($itemStmt);
+
+            // ====================================================================
+            // STEP 3: INSERT PAYMENT RECORD
+            // ====================================================================
+            
+            $paymentSql = "INSERT INTO PAYMENT (order_id, amount_paid, payment_method, payment_status, payment_date) 
+                           VALUES (:order_id, :amount, 'PAYPAL', 'COMPLETED', SYSDATE)";
+            
+            $paymentStmt = oci_parse($conn, $paymentSql);
+            if (!$paymentStmt) {
+                throw new Exception('Failed to parse PAYMENT insert: ' . oci_error($conn)['message']);
+            }
+            
+            $bindAmount = (string) $total; // Convert float to string
+            oci_bind_by_name($paymentStmt, ':order_id', $newOrderId);
+            oci_bind_by_name($paymentStmt, ':amount', $bindAmount);
+            
+            if (!oci_execute($paymentStmt, OCI_NO_AUTO_COMMIT)) {
+                throw new Exception('Failed to insert PAYMENT: ' . oci_error($paymentStmt)['message']);
+            }
+            
+            oci_free_statement($paymentStmt);
+            // ====================================================================
+            // STEP 4: COMMIT TRANSACTION
+            // ====================================================================
+            
+            if (!oci_commit($conn)) {
+                throw new Exception('Failed to commit transaction: ' . oci_error($conn)['message']);
+            }
+            
+            $paymentSuccess = true;
+            
+            // ====================================================================
+            // STEP 5: CLEAR CART (only after successful commit)
+            // ====================================================================
+            
+            foreach ($normalizedItems as $line) {
+                $pid = (int) $line['product_id'];
+                if ($pid <= 0) {
+                    continue;
+                }
+                
+                try {
+                    if (apex_cart_enabled()) {
+                        try {
+                            apex_update_cart_quantity($customerId, $pid, 0);
+                        } catch (Throwable $exception) {
+                            update_cart_item_quantity($customerId, $pid, 0);
+                        }
+                    } else {
                         update_cart_item_quantity($customerId, $pid, 0);
                     }
-                } else {
-                    update_cart_item_quantity($customerId, $pid, 0);
+                } catch (Throwable $exception) {
+                    // Cart cleanup is best-effort; don't fail the payment
                 }
-            } catch (Throwable $exception) {
-                // Keep payment success UX intact; cart cleanup best-effort only.
             }
+            
+        } catch (Exception $e) {
+            // ====================================================================
+            // ROLLBACK ON ERROR
+            // ====================================================================
+            
+            if (isset($conn)) {
+                oci_rollback($conn);
+            }
+            
+            $paymentSuccess = false;
+            $errors[] = 'Payment processing failed: ' . $e->getMessage();
         }
     }
 }

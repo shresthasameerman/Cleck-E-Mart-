@@ -133,32 +133,57 @@ if ($user === null) {
 }
 
 $orders = [];
+$historyOrders = [];
 $reviews = [];
 $orderCount = 0;
 $reviewCount = 0;
 $savedCount = 0;
 
-if (current_role() === 'CUSTOMER' && current_customer_id() !== null) {
-    $customerId = (int) current_customer_id();
+$activeTab = (string) ($_GET['tab'] ?? 'orders');
 
+// Use the logged-in user id as the customer id per requirements
+$customerId = $userId;
+
+if (current_role() === 'CUSTOMER' && $customerId > 0) {
     if (db_is_offline()) {
         $orders = offline_get_orders_for_customer($customerId, 5);
+        $historyOrders = offline_get_orders_for_customer($customerId, 5);
         $reviews = offline_get_reviews_for_customer($customerId, 5);
         $orderCount = offline_count_orders($customerId);
         $reviewCount = offline_count_reviews($customerId);
         $savedCount = offline_count_saved($customerId);
     } else {
+        // Orders with LISTAGG of product names
         $orders = db_fetch_all(
-            'SELECT o.order_id,
+            "SELECT o.order_id,
                     o.order_date,
                     o.order_status,
-                    NVL(SUM(oi.quantity * oi.unit_price), 0) AS order_total
-             FROM "ORDER" o
-             LEFT JOIN ORDER_ITEM oi ON oi.order_id = o.order_id
+                    NVL(SUM(oi.quantity * oi.unit_price), 0) AS ORDER_TOTAL,
+                    LISTAGG(p.product_name, ', ') WITHIN GROUP (ORDER BY p.product_name) AS ITEMS
+             FROM \"ORDER\" o
+             JOIN ORDER_ITEM oi ON oi.order_id = o.order_id
+             JOIN PRODUCT p ON p.product_id = oi.product_id
              WHERE o.customer_id = :customer_id
              GROUP BY o.order_id, o.order_date, o.order_status
              ORDER BY o.order_date DESC
-             FETCH FIRST 5 ROWS ONLY',
+             FETCH FIRST 5 ROWS ONLY",
+            ['customer_id' => $customerId]
+        );
+
+        // Collection history (only COLLECTED)
+        $historyOrders = db_fetch_all(
+            "SELECT o.order_id,
+                    o.order_date,
+                    o.order_status,
+                    NVL(SUM(oi.quantity * oi.unit_price), 0) AS ORDER_TOTAL,
+                    LISTAGG(p.product_name, ', ') WITHIN GROUP (ORDER BY p.product_name) AS ITEMS
+             FROM \"ORDER\" o
+             JOIN ORDER_ITEM oi ON oi.order_id = o.order_id
+             JOIN PRODUCT p ON p.product_id = oi.product_id
+             WHERE o.customer_id = :customer_id AND o.order_status = 'COLLECTED'
+             GROUP BY o.order_id, o.order_date, o.order_status
+             ORDER BY o.order_date DESC
+             FETCH FIRST 5 ROWS ONLY",
             ['customer_id' => $customerId]
         );
 
@@ -260,7 +285,7 @@ require __DIR__ . '/components/header.php';
                 <!-- SIDEBAR -->
                 <aside class="profile-sidebar" aria-label="Profile navigation">
                     <nav class="profile-nav" aria-label="Account sections">
-                        <a class="profile-nav__item is-active" href="#orders" data-profile-tab="orders">
+                        <a class="profile-nav__item<?php echo $activeTab === 'orders' ? ' is-active' : ''; ?>" href="profile.php?tab=orders" data-profile-tab="orders">
                             <span class="profile-nav__icon" aria-hidden="true">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
                                     <rect x="3" y="3" width="18" height="18" rx="3"/>
@@ -269,7 +294,7 @@ require __DIR__ . '/components/header.php';
                             </span>
                             My Orders
                         </a>
-                        <a class="profile-nav__item" href="#account" data-profile-tab="account">
+                        <a class="profile-nav__item<?php echo $activeTab === 'account' ? ' is-active' : ''; ?>" href="profile.php?tab=account" data-profile-tab="account">
                             <span class="profile-nav__icon" aria-hidden="true">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
                                     <circle cx="12" cy="8.2" r="3.2"/>
@@ -278,7 +303,7 @@ require __DIR__ . '/components/header.php';
                             </span>
                             Account Details
                         </a>
-                        <a class="profile-nav__item" href="#history" data-profile-tab="history">
+                        <a class="profile-nav__item<?php echo $activeTab === 'history' ? ' is-active' : ''; ?>" href="profile.php?tab=history" data-profile-tab="history">
                             <span class="profile-nav__icon" aria-hidden="true">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
                                     <circle cx="12" cy="12" r="9"/>
@@ -287,7 +312,7 @@ require __DIR__ . '/components/header.php';
                             </span>
                             Collection History
                         </a>
-                        <a class="profile-nav__item" href="#reviews" data-profile-tab="reviews">
+                        <a class="profile-nav__item<?php echo $activeTab === 'reviews' ? ' is-active' : ''; ?>" href="profile.php?tab=reviews" data-profile-tab="reviews">
                             <span class="profile-nav__icon" aria-hidden="true">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
                                     <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
@@ -295,7 +320,7 @@ require __DIR__ . '/components/header.php';
                             </span>
                             My Reviews
                         </a>
-                        <a class="profile-nav__item" href="#password" data-profile-tab="password">
+                        <a class="profile-nav__item<?php echo $activeTab === 'password' ? ' is-active' : ''; ?>" href="profile.php?tab=password" data-profile-tab="password">
                             <span class="profile-nav__icon" aria-hidden="true">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
                                     <rect x="5" y="11" width="14" height="10" rx="2"/>
@@ -325,7 +350,7 @@ require __DIR__ . '/components/header.php';
                 <div class="profile-content">
 
                     <!-- MY ORDERS -->
-                    <section class="profile-panel is-active" id="orders" data-profile-panel="orders" aria-labelledby="orders-title">
+                    <section class="profile-panel<?php echo $activeTab === 'orders' ? ' is-active' : ''; ?>" id="orders" data-profile-panel="orders" aria-labelledby="orders-title" <?php echo $activeTab !== 'orders' ? 'hidden' : ''; ?>>
                         <h2 id="orders-title" class="profile-panel__title">My Recent Orders</h2>
 
                         <!--
@@ -352,6 +377,9 @@ require __DIR__ . '/components/header.php';
                                         <span class="order-card__status <?php echo e($statusClass); ?>"><?php echo e($order['ORDER_STATUS']); ?></span>
                                     </div>
                                     <p class="order-card__summary">Order placed successfully.</p>
+                                    <?php if (!empty($order['ITEMS'])): ?>
+                                        <p class="order-card__items">Items: <?php echo e($order['ITEMS']); ?></p>
+                                    <?php endif; ?>
                                     <div class="order-card__footer">
                                         <span class="order-card__total">Total: $<?php echo e(number_format((float) $order['ORDER_TOTAL'], 2)); ?></span>
                                     </div>
@@ -362,7 +390,7 @@ require __DIR__ . '/components/header.php';
                     </section>
 
                     <!-- ACCOUNT DETAILS -->
-                    <section class="profile-panel" id="account" data-profile-panel="account" aria-labelledby="account-title" hidden>
+                    <section class="profile-panel<?php echo $activeTab === 'account' ? ' is-active' : ''; ?>" id="account" data-profile-panel="account" aria-labelledby="account-title" <?php echo $activeTab !== 'account' ? 'hidden' : ''; ?>>
                         <h2 id="account-title" class="profile-panel__title">Account Details</h2>
                         <!--
                             Backend note: set action to your update endpoint (example: update-profile.php).
@@ -398,7 +426,85 @@ require __DIR__ . '/components/header.php';
                     </section>
 
                     <!-- COLLECTION HISTORY -->
-                    <section class="profile-panel" id="history" data-profile-panel="history" aria-labelledby="history-title" hidden>
+                    <section class="profile-panel<?php echo $activeTab === 'history' ? ' is-active' : ''; ?>" id="history" data-profile-panel="history" aria-labelledby="history-title" <?php echo $activeTab !== 'history' ? 'hidden' : ''; ?>>
+                                                <h2 id="history-title" class="profile-panel__title">Collection History</h2>
+                                                <div class="order-list">
+                                                    <?php if ($historyOrders === []): ?>
+                                                        <div class="order-card">
+                                                            <p class="order-card__summary">No collection history found.</p>
+                                                        </div>
+                                                    <?php endif; ?>
+                                                    <?php foreach ($historyOrders as $order): ?>
+                                                        <div class="order-card">
+                                                            <div class="order-card__header">
+                                                                <div>
+                                                                    <p class="order-card__id">Order #EM-<?php echo e($order['ORDER_ID']); ?></p>
+                                                                    <p class="order-card__date"><?php echo e(date('j F Y', strtotime((string) $order['ORDER_DATE']))); ?></p>
+                                                                </div>
+                                                                <span class="order-card__status"><?php echo e($order['ORDER_STATUS']); ?></span>
+                                                            </div>
+                                                            <p class="order-card__summary">Collected on <?php echo e(date('j F Y', strtotime((string) $order['ORDER_DATE']))); ?></p>
+                                                            <?php if (!empty($order['ITEMS'])): ?>
+                                                                <p class="order-card__items">Items: <?php echo e($order['ITEMS']); ?></p>
+                                                            <?php endif; ?>
+                                                            <div class="order-card__footer">
+                                                                <span class="order-card__total">Total: $<?php echo e(number_format((float) $order['ORDER_TOTAL'], 2)); ?></span>
+                                                            </div>
+                                                        </div>
+                                                    <?php endforeach; ?>
+                                                </div>
+
+                                            </section>
+
+                                            <!-- REVIEWS -->
+                                            <section class="profile-panel<?php echo $activeTab === 'reviews' ? ' is-active' : ''; ?>" id="reviews" data-profile-panel="reviews" aria-labelledby="reviews-title" <?php echo $activeTab !== 'reviews' ? 'hidden' : ''; ?>>
+                                                <h2 id="reviews-title" class="profile-panel__title">My Reviews</h2>
+                                                <?php if ($reviews === []): ?>
+                                                    <p>No reviews yet.</p>
+                                                <?php else: ?>
+                                                    <ul class="reviews-list">
+                                                        <?php foreach ($reviews as $r): ?>
+                                                            <li class="review-item">
+                                                                <strong><?php echo e($r['PRODUCT_NAME']); ?></strong>
+                                                                <div class="review-meta"><?php echo e(date('j F Y', strtotime((string) $r['REVIEW_DATE']))); ?> — Rating: <?php echo e($r['RATING']); ?></div>
+                                                                <p><?php echo e($r['REVIEW_COMMENT']); ?></p>
+                                                            </li>
+                                                        <?php endforeach; ?>
+                                                    </ul>
+                                                <?php endif; ?>
+                                            </section>
+
+                                            <!-- PASSWORD -->
+                                            <section class="profile-panel<?php echo $activeTab === 'password' ? ' is-active' : ''; ?>" id="password" data-profile-panel="password" aria-labelledby="password-title" <?php echo $activeTab !== 'password' ? 'hidden' : ''; ?>>
+                                                <h2 id="password-title" class="profile-panel__title">Change Password</h2>
+                                                <!-- Password form exists below in current file -->
+                                            </section>
+
+                                            <script>
+                                                (function () {
+                                                    var navItems = document.querySelectorAll('[data-profile-tab]');
+                                                    var panels = document.querySelectorAll('[data-profile-panel]');
+
+                                                    function activateTab(name, push) {
+                                                        navItems.forEach(function (a) { a.classList.toggle('is-active', a.getAttribute('data-profile-tab') === name); });
+                                                        panels.forEach(function (p) {
+                                                            var match = p.getAttribute('data-profile-panel') === name;
+                                                            p.classList.toggle('is-active', match);
+                                                            if (match) p.removeAttribute('hidden'); else p.setAttribute('hidden', '');
+                                                        });
+                                                        if (push && window.history && window.history.pushState) {
+                                                            window.history.pushState({}, '', 'profile.php?tab=' + encodeURIComponent(name));
+                                                        }
+                                                    }
+
+                                                    navItems.forEach(function (a) {
+                                                        a.addEventListener('click', function (ev) {
+                                                            ev.preventDefault();
+                                                            activateTab(a.getAttribute('data-profile-tab'), true);
+                                                        });
+                                                    });
+                                                })();
+                                            </script>
                         <h2 id="history-title" class="profile-panel__title">Collection History</h2>
                         <div class="order-list">
                             <div class="order-card">

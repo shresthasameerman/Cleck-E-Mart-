@@ -223,6 +223,20 @@
             "profile_picture_path": null,
             "created_at": "2025-04-26T00:00:00+00:00",
             "updated_at": "2026-04-26T00:00:00+00:00"
+        },
+        {
+            "user_id": 1017,
+            "first_name": "sameer man",
+            "last_name": "shrestha",
+            "gender": null,
+            "email": "ssameer23@tbc.edu.np",
+            "password": "$2y$10$J/yvF3iL6Iuh/k54TsE1weAfRgaje.0BZFqEdUfpc1Fqqqm7xKH4m",
+            "phone_number": null,
+            "address": null,
+            "role": "CUSTOMER",
+            "profile_picture_path": null,
+            "created_at": "2026-05-13T13:59:54+00:00",
+            "updated_at": null
         }
     ],
     "customers": [
@@ -264,6 +278,10 @@
         },
         {
             "customer_id": 1010,
+            "loyalty_points": 0
+        },
+        {
+            "customer_id": 1017,
             "loyalty_points": 0
         }
     ],
@@ -900,6 +918,18 @@
             "customer_id": 1001,
             "cart_status": "ACTIVE",
             "created_at": "2026-04-26T02:14:52+00:00"
+        },
+        {
+            "cart_id": 11105,
+            "customer_id": 1017,
+            "cart_status": "ACTIVE",
+            "created_at": "2026-05-13T14:00:28+00:00"
+        },
+        {
+            "cart_id": 11106,
+            "customer_id": 1,
+            "cart_status": "ACTIVE",
+            "created_at": "2026-05-13T14:42:03+00:00"
         }
     ],
     "cart_items": [
@@ -944,6 +974,18 @@
             "product_id": 7113,
             "quantity": 1,
             "unit_price": 3.5
+        },
+        {
+            "cart_id": 11105,
+            "product_id": 7114,
+            "quantity": 4,
+            "unit_price": 3.99
+        },
+        {
+            "cart_id": 11105,
+            "product_id": 7109,
+            "quantity": 5,
+            "unit_price": 6.99
         }
     ],
     "orders": [

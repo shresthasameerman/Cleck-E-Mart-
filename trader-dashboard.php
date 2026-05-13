@@ -6,11 +6,78 @@ trader_role_guard();
 $userId = (int) current_user_id();
 $metrics = trader_dashboard_metrics($userId);
 $shop = $metrics['shop'];
-$products = $metrics['products'];
-$topProducts = $metrics['top_products'];
+$inventoryProducts = $metrics['inventory_products'];
 $lowStockProducts = $metrics['low_stock_products'];
 $pageTitle = 'Trader Dashboard | Cleck E-Mart';
 $metaDescription = 'Trader dashboard for reviewing sales, stock, and refill alerts.';
+
+// ====================================================================
+// DYNAMIC TIMEFRAME FILTERING FOR TOP PRODUCTS
+// ====================================================================
+
+$timeframe = $_GET['timeframe'] ?? 'week';
+$validTimeframes = ['week', 'month', 'year'];
+if (!in_array($timeframe, $validTimeframes)) {
+    $timeframe = 'week';
+}
+
+// Build date filter based on timeframe
+$dateFilter = '';
+$timeframeLabel = 'This Week';
+switch ($timeframe) {
+    case 'month':
+        $dateFilter = "AND o.order_date >= ADD_MONTHS(SYSDATE, -1)";
+        $timeframeLabel = 'This Month';
+        break;
+    case 'year':
+        $dateFilter = "AND o.order_date >= ADD_MONTHS(SYSDATE, -12)";
+        $timeframeLabel = 'This Year';
+        break;
+    case 'week':
+    default:
+        $dateFilter = "AND o.order_date >= SYSDATE - 7";
+        $timeframeLabel = 'This Week';
+        break;
+}
+
+// Fetch top products dynamically from Oracle
+$topProducts = [];
+if ($shop && isset($shop['SHOP_ID'])) {
+    try {
+        require_once __DIR__ . '/lib/oci_db.php';
+        $conn = db_connect();
+        
+        if ($conn) {
+            $sql = "SELECT p.product_name, SUM(oi.quantity) as total_sold
+                    FROM \"ORDER\" o
+                    JOIN ORDER_ITEM oi ON o.order_id = oi.order_id
+                    JOIN PRODUCT p ON oi.product_id = p.product_id
+                    WHERE p.shop_id = :shop_id
+                    {$dateFilter}
+                    GROUP BY p.product_name
+                    ORDER BY total_sold DESC
+                    FETCH FIRST 5 ROWS ONLY";
+            
+            $stmt = oci_parse($conn, $sql);
+            if ($stmt) {
+                oci_bind_by_name($stmt, ':shop_id', $shop['SHOP_ID'], -1, SQLT_INT);
+                if (oci_execute($stmt)) {
+                    while ($row = oci_fetch_assoc($stmt)) {
+                        $topProducts[] = [
+                            'product_name' => $row['PRODUCT_NAME'],
+                            'sold_quantity' => (int)$row['TOTAL_SOLD']
+                        ];
+                    }
+                }
+                oci_free_statement($stmt);
+            }
+        }
+    } catch (Exception $e) {
+        $topProducts = array_slice($inventoryProducts, 0, 5);
+    }
+} else {
+    $topProducts = array_slice($inventoryProducts, 0, 5);
+}
 
 require __DIR__ . '/components/header.php';
 ?>
@@ -59,7 +126,7 @@ require __DIR__ . '/components/header.php';
                     </article>
                     <article class="trader-stat-card">
                         <span class="trader-stat-card__label">Live listings</span>
-                        <strong class="trader-stat-card__value"><?php echo e(count($products)); ?></strong>
+                        <strong class="trader-stat-card__value"><?php echo e($metrics['live_listings']); ?></strong>
                     </article>
                 </section>
 
@@ -68,15 +135,21 @@ require __DIR__ . '/components/header.php';
                         <div class="trader-card__header">
                             <div>
                                 <p class="trader-card__eyebrow">Sales snapshot</p>
-                                <h2>Top products this week</h2>
+                                <h2 id="chart-title">Top products <?php echo strtolower($timeframeLabel); ?></h2>
                             </div>
-                            <span class="trader-card__badge">This week</span>
+                            
+                            <!-- Timeframe Dropdown -->
+                            <select class="trader-card__timeframe-select" id="timeframe-select" aria-label="Select timeframe">
+                                <option value="week" <?php echo $timeframe === 'week' ? 'selected' : ''; ?>>This Week</option>
+                                <option value="month" <?php echo $timeframe === 'month' ? 'selected' : ''; ?>>This Month</option>
+                                <option value="year" <?php echo $timeframe === 'year' ? 'selected' : ''; ?>>This Year</option>
+                            </select>
                         </div>
 
                         <div class="trader-chart" aria-hidden="true">
                             <?php foreach ($topProducts as $product): ?>
                                 <?php $height = max(20, min(140, ((int) $product['sold_quantity'] + 1) * 18)); ?>
-                                <div class="trader-chart__bar" style="height: <?php echo e($height); ?>px;"></div>
+                                <div class="trader-chart__bar" style="height: <?php echo e($height); ?>px;" title="<?php echo e($product['product_name']); ?>"></div>
                             <?php endforeach; ?>
                         </div>
 
@@ -126,13 +199,13 @@ require __DIR__ . '/components/header.php';
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php foreach ($topProducts as $product): ?>
+                                <?php foreach ($inventoryProducts as $product): ?>
                                     <tr>
                                         <td><?php echo e($product['product_name']); ?></td>
                                         <td><?php echo e($product['sold_quantity']); ?></td>
                                         <td><?php echo e($product['stock_quantity']); ?></td>
                                         <td><?php echo e($product['product_status']); ?></td>
-                                        <td><?php echo e($product['needs_refill'] ? 'Yes' : 'No'); ?></td>
+                                        <td><?php echo e(((int) $product['stock_quantity'] < 10) ? 'Yes' : 'No'); ?></td>
                                     </tr>
                                 <?php endforeach; ?>
                             </tbody>
@@ -144,3 +217,46 @@ require __DIR__ . '/components/header.php';
     </section>
 </main>
 <?php require __DIR__ . '/components/footer.php'; ?>
+
+<script>
+    /**
+     * Handle timeframe dropdown change
+     * Reloads the page with the selected timeframe as a GET parameter
+     */
+    document.addEventListener('DOMContentLoaded', function() {
+        const timeframeSelect = document.getElementById('timeframe-select');
+        
+        if (timeframeSelect) {
+            timeframeSelect.addEventListener('change', function(e) {
+                const selectedTimeframe = e.target.value;
+                
+                // Get current URL and update the timeframe parameter
+                const url = new URL(window.location);
+                url.searchParams.set('timeframe', selectedTimeframe);
+                
+                // Reload the page with the new parameter
+                window.location.href = url.toString();
+            });
+        }
+    });
+</script>
+
+<style>
+    .trader-card__timeframe-select {
+        padding: 0.5rem 0.75rem;
+        border: 1px solid rgba(26, 26, 26, 0.2);
+        border-radius: 0.5rem;
+        background: white;
+        color: #1a1a1a;
+        font-size: 0.9rem;
+        cursor: pointer;
+        transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    }
+    
+    .trader-card__timeframe-select:hover,
+    .trader-card__timeframe-select:focus {
+        border-color: #6a8861;
+        box-shadow: 0 0 0 2px rgba(106, 136, 97, 0.1);
+        outline: none;
+    }
+</style>

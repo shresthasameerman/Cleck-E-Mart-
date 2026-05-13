@@ -1,263 +1,94 @@
 # Cleck E-Mart
 
-Cleck E-Mart is a PHP storefront prototype focused on clean UI, responsive layouts, and frontend checkout/profile interactions.
+Cleck E-Mart is a clean, responsive storefront homepage built with PHP includes, semantic HTML, modular CSS, and vanilla JavaScript.
 
-## Overview
+## What’s Included
 
-The project currently includes:
-
-- Storefront browsing pages (home, category, product)
-- Checkout flow pages (cart, collection slot)
-- Account pages (auth, customer dashboard, profile dashboard)
-- A contact page with business details and message form
-- Shared layout components (header and footer)
-- Global styling in a single CSS file
-- Interactive behavior handled in a single JavaScript file
+- A polished homepage based on the provided wireframe
+- Reusable `header.php` and `footer.php` components
+- Mobile-first responsive styling
+- Hamburger navigation for smaller screens
+- A lightweight JavaScript toggle for the menu
 
 ## Project Structure
 
 ```text
-index.php
-category.php
-product.php
-cart.php
-collection.php
-auth.php
-customer.php
-profile.php
-contact.php
-logout.php
-payment.php
-trader-add-product.php
-trader-dashboard.php
-trader-profile.php
-db_connect.php
-components/
-  header.php
-  footer.php
-assets/
-  css/
-    styles.css
-  images/
-    products/
-  js/
-    cart.js
-    script.js
-data/
-  offline_db.json
-lib/
-  apex_api.php
-  apex_auth.php
-  apex_cart.php
-  auth_helpers.php
-  bootstrap.php
-  cart_api.php
-  cart_helpers.php
-  oci_db.php
-  offline_store.php
-  product_images.php
-  trader_helpers.php
-README.md
+project-root/
+├── index.php
+├── db_connect.php
+├── README.md
+├── components/
+│   ├── header.php
+│   └── footer.php
+└── assets/
+    ├── css/
+    │   └── styles.css
+    ├── js/
+    │   └── script.js
+    └── images/
+        ├── Primary_Logo.png
+        └── product-placeholder.svg
 ```
 
-## Pages
+## How to Run
 
-### Home
-
-File: [index.php](index.php)
-
-- Hero/search section
-- Featured product cards
-- Delivery and browse call-to-action area
-
-### Category
-
-File: [category.php](category.php)
-
-- Search input for products
-- Trader and price filter controls
-- Product card grid
-- Links to product details
-
-### Product Detail
-
-File: [product.php](product.php)
-
-- Product image and trader details
-- Product name, rating, and description
-- Quantity selector
-- Add-to-basket button (routes to cart)
-
-### Basket
-
-File: [cart.php](cart.php)
-
-- Basket item rows with quantity controls
-- Line totals and order summary
-- Continue-to-collection action
-
-### Collection Slot
-
-File: [collection.php](collection.php)
-
-- Calendar-based day selection
-- Time slot availability and selection
-- Capacity-aware reservation feedback
-- Confirmation step before payment
-
-### Authentication
-
-File: [auth.php](auth.php)
-
-- Sign Up and Login modes
-- Frontend tab switch and optional URL mode query
-- Role selection in sign-up form (Customer/Trader)
-
-### Customer Dashboard
-
-File: [customer.php](customer.php)
-
-- Profile summary/sidebar
-- Recent orders panel
-- Account information form
-- Pricing summary area
-
-### Profile Dashboard
-
-File: [profile.php](profile.php)
-
-- Multi-panel account UI (orders, account, history, reviews, password)
-- Client-side tab navigation
-- Account update and password forms
-
-### Trader Dashboard
-
-File: [trader-dashboard.php](trader-dashboard.php)
-
-- Sales summary cards
-- Sold products table
-- Refill alerts and stock overview
-
-### Trader Profile Settings
-
-File: [trader-profile.php](trader-profile.php)
-
-- Trader account details
-- Shop branding and description updates
-- Public contact fields
-
-### Add Product
-
-File: [trader-add-product.php](trader-add-product.php)
-
-- New product form
-- Category, stock, and pricing fields
-- Publish or save as draft
-
-### Contact
-
-File: [contact.php](contact.php)
-
-- Contact information cards
-- Collection-hour details
-- Message form
-
-## Shared Components
-
-### Header
-
-File: [components/header.php](components/header.php)
-
-- Global meta/title setup
-- Site logo and primary navigation
-- Cart and account action icons
-
-### Footer
-
-File: [components/footer.php](components/footer.php)
-
-- Brand summary
-- Quick links for key sections/pages
-
-## Styling
-
-File: [assets/css/styles.css](assets/css/styles.css)
-
-The stylesheet controls:
-
-- Theme variables and visual palette
-- Responsive layouts across pages
-- Forms, cards, tables, and dashboard sections
-- Page-specific components (category/cart/collection/profile/contact)
-
-## JavaScript Behavior
-
-File: [assets/js/script.js](assets/js/script.js)
-
-Current scripts include:
-
-- Mobile navigation toggle with outside-click and Escape handling
-- Auth mode switching (signup/login)
-- Profile panel switching (orders/account/history/reviews/password)
-- Category filters (search, trader, price, empty state)
-- Cart quantity updates and summary recalculation
-- Collection calendar and slot-capacity logic (uses localStorage)
-- Product page quantity +/- controls
-
-## Run Locally
-
-From the project root:
+From the project root, start PHP’s built-in server:
 
 ```bash
-php -S localhost:8000
+php -S 0.0.0.0:8000
 ```
 
-Open:
+Open the site in your browser:
 
 ```text
-http://localhost:8000/
+http://localhost:8000
 ```
+
+If you want to view it from another device on the same network, use your machine’s local IP address instead of `localhost`:
+
+```text
+http://YOUR_LOCAL_IP:8000
+```
+
+If the page does not load from another device, allow the port through your firewall:
+
+```bash
+sudo ufw allow 8000/tcp
+```
+
+## Files
+
+### `index.php`
+
+Loads the homepage and includes the shared header and footer.
+
+### `components/header.php`
+
+Contains the site header, logo, navigation, and action icons.
+
+### `components/footer.php`
+
+Contains the footer markup and quick links.
+
+### `assets/css/styles.css`
+
+Contains the full responsive design system, layout styles, and component styling.
+
+### `assets/js/script.js`
+
+Controls the mobile hamburger navigation.
+
+## Customization
+
+- Replace `assets/images/Primary_Logo.png` with your final logo if needed.
+- Update homepage content in `index.php`.
+- Adjust colors, spacing, and typography in `assets/css/styles.css`.
+- Extend the mobile menu behavior in `assets/js/script.js` if you add more navigation items.
 
 ## Notes
 
-- Core auth, product browsing, cart, and profile flows are connected to the shared data layer (offline JSON by default, Oracle when enabled).
-- Some pages (`collection.php`, `contact.php`, and parts of `customer.php`) are still mostly UI-first and can be connected to backend endpoints next.
-- `logout.php` is implemented and wired from the header/profile actions.
-
-## Oracle (OCI8) Integration
-
-The app now runs in **offline mode by default** for local development.
-
-- Default driver: `DB_DRIVER=offline`
-- Offline data file: `data/offline_db.json` (auto-created with seed data)
-- Offline seed now mirrors the provided Cleck E-Mart sample dataset (16 users, 20 products, carts, orders, payments, invoices, reviews).
-- No database extension is required for offline mode.
-
-Demo login in offline mode:
-
-- Customer: `aarav.sharma@gmail.com`
-- Trader: `robert.firth@firth-butchers.co.uk`
-- Admin: `admin@cleckemart.co.uk`
-- Password for all seeded users: `password123`
-
-Quick login test:
-
-1. Run `php -S localhost:8000`
-2. Open `http://localhost:8000/auth.php?mode=login`
-3. Use the customer account `aarav.sharma@gmail.com` with password `password123`
-4. After sign-in, open `category.php` and `profile.php` to verify data-backed pages
-
-To force Oracle mode, set:
-
-```bash
-export DB_DRIVER=oracle
-```
-
-This project now includes Oracle-backed flows for:
-
-- Sign up and login (`auth.php`)
-- Session logout (`logout.php`)
-- Category/product listing from database (`category.php`, `product.php`)
+- This repo is frontend-first and does not require a database for the current homepage.
+- `db_connect.php` can remain in the project if you plan to add backend features later.
 - Add-to-cart and cart quantity updates (`product.php`, `cart.php`)
 - Profile updates and password change (`profile.php`)
 

@@ -85,11 +85,11 @@ function trader_shop_for_user(int $userId): ?array
                 u.phone_number,
                 t.brand_name,
                 t.pan_number
-         FROM SHOP s
-         JOIN TRADER t ON t.trader_id = s.trader_id
-         JOIN "USER" u ON u.user_id = t.trader_id
-         WHERE t.trader_id = :trader_id',
-        ['trader_id' => $userId]
+         FROM "USER" u
+         JOIN TRADER t ON t.trader_id = u.user_id
+         JOIN SHOP s ON s.trader_id = t.trader_id
+         WHERE u.user_id = :user_id',
+        ['user_id' => $userId]
     );
 }
 
@@ -108,6 +108,20 @@ function trader_products_for_user(int $userId): array
         return offline_get_trader_products($userId);
     }
 
+    $shop = trader_shop_for_user($userId);
+    if ($shop === null) {
+        return [];
+    }
+
+    return trader_products_for_shop((int) $shop['SHOP_ID']);
+}
+
+function trader_products_for_shop(int $shopId): array
+{
+    if (db_is_offline()) {
+        return [];
+    }
+
     return db_fetch_all(
         'SELECT p.product_id,
                 p.product_name,
@@ -118,15 +132,11 @@ function trader_products_for_user(int $userId): array
                 p.product_image,
                 p.max_order,
                 p.min_order,
-                c.category_name,
                 NVL(SUM(oi.quantity), 0) AS sold_quantity,
                 NVL(SUM(oi.quantity * oi.unit_price), 0) AS revenue
          FROM PRODUCT p
-         JOIN SHOP s ON s.shop_id = p.shop_id
-         JOIN CATEGORY c ON c.category_id = p.category_id
          LEFT JOIN ORDER_ITEM oi ON oi.product_id = p.product_id
-         LEFT JOIN "ORDER" o ON o.order_id = oi.order_id
-         WHERE s.trader_id = :trader_id
+         WHERE p.shop_id = :shop_id
          GROUP BY p.product_id,
                   p.product_name,
                   p.product_description,
@@ -136,9 +146,9 @@ function trader_products_for_user(int $userId): array
                   p.product_image,
                   p.max_order,
                   p.min_order,
-                  c.category_name
+                  p.shop_id
          ORDER BY p.product_name',
-        ['trader_id' => $userId]
+        ['shop_id' => $shopId]
     );
 }
 
@@ -153,31 +163,46 @@ function trader_dashboard_metrics(int $userId): array
         return [
             'shop' => null,
             'products' => [],
+            'inventory_products' => [],
+            'live_listings' => 0,
             'sold_total' => 0,
-            'revenue_total' => 0.0,
             'stock_total' => 0,
             'refill_count' => 0,
-            'active_count' => 0,
             'low_stock_products' => [],
             'top_products' => [],
         ];
     }
 
-    $products = trader_products_for_user($userId);
-    $soldTotal = 0;
-    $revenueTotal = 0.0;
-    $stockTotal = 0;
+    $shopId = (int) $shop['SHOP_ID'];
+    $products = trader_products_for_shop($shopId);
+    $inventoryMetrics = db_fetch_one(
+        "SELECT COUNT(CASE WHEN product_status = 'IN_STOCK' THEN 1 END) AS live_listings,
+            NVL(SUM(stock_quantity), 0) AS stock_total,
+            COUNT(CASE WHEN product_status = 'LOW_STOCK' OR stock_quantity < 10 THEN 1 END) AS refill_count
+         FROM PRODUCT
+         WHERE shop_id = :shop_id",
+        ['shop_id' => $shopId]
+    );
+
+    $soldMetrics = db_fetch_one(
+        'SELECT NVL(SUM(oi.quantity), 0) AS sold_total
+         FROM ORDER_ITEM oi
+         JOIN PRODUCT p ON p.product_id = oi.product_id
+         WHERE p.shop_id = :shop_id',
+        ['shop_id' => $shopId]
+    );
+
+    $liveListings = (int) ($inventoryMetrics['LIVE_LISTINGS'] ?? 0);
+    $stockTotal = (int) ($inventoryMetrics['STOCK_TOTAL'] ?? 0);
+    $refillCount = (int) ($inventoryMetrics['REFILL_COUNT'] ?? 0);
+    $soldTotal = (int) ($soldMetrics['SOLD_TOTAL'] ?? 0);
+
     $refillProducts = [];
     $topProducts = [];
 
     foreach ($products as $product) {
         $soldQuantity = (int) ($product['SOLD_QUANTITY'] ?? 0);
         $stockQuantity = (int) ($product['STOCK_QUANTITY'] ?? 0);
-        $revenue = (float) ($product['REVENUE'] ?? 0);
-
-        $soldTotal += $soldQuantity;
-        $revenueTotal += $revenue;
-        $stockTotal += $stockQuantity;
 
         $needsRefill = $stockQuantity <= 10 || strtoupper((string) ($product['PRODUCT_STATUS'] ?? '')) === 'LOW_STOCK';
         if ($needsRefill) {
@@ -191,7 +216,6 @@ function trader_dashboard_metrics(int $userId): array
             'stock_quantity' => $stockQuantity,
             'needs_refill' => $needsRefill,
             'product_status' => (string) $product['PRODUCT_STATUS'],
-            'revenue' => $revenue,
         ];
     }
 
@@ -200,11 +224,11 @@ function trader_dashboard_metrics(int $userId): array
     return [
         'shop' => $shop,
         'products' => $products,
+        'inventory_products' => $topProducts,
+        'live_listings' => $liveListings,
         'sold_total' => $soldTotal,
-        'revenue_total' => $revenueTotal,
         'stock_total' => $stockTotal,
-        'refill_count' => count($refillProducts),
-        'active_count' => count(array_filter($products, static fn(array $product): bool => (int) ($product['STOCK_QUANTITY'] ?? 0) > 0)),
+        'refill_count' => $refillCount,
         'low_stock_products' => array_slice($refillProducts, 0, 5),
         'top_products' => array_slice($topProducts, 0, 5),
     ];
