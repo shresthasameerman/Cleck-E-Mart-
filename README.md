@@ -26,15 +26,37 @@ auth.php
 customer.php
 profile.php
 contact.php
+logout.php
+payment.php
+trader-add-product.php
+trader-dashboard.php
+trader-profile.php
+db_connect.php
 components/
   header.php
   footer.php
 assets/
   css/
     styles.css
-  js/
-    script.js
   images/
+    products/
+  js/
+    cart.js
+    script.js
+data/
+  offline_db.json
+lib/
+  apex_api.php
+  apex_auth.php
+  apex_cart.php
+  auth_helpers.php
+  bootstrap.php
+  cart_api.php
+  cart_helpers.php
+  oci_db.php
+  offline_store.php
+  product_images.php
+  trader_helpers.php
 README.md
 ```
 
@@ -255,21 +277,49 @@ This project now includes Oracle-backed flows for:
 
 If `DB_DRIVER=offline`, these Oracle prerequisites are not needed.
 
+### Database Connection Setup
+
+File: [db_connect.php](db_connect.php)
+
+This file establishes a direct connection to your Oracle database using OCI8. It contains:
+
+- **Database Username**: `ADMIN`
+- **Database Password**: `Oracle123#Apex`
+- **Connection String**: `localhost:1521/XEPDB1`
+
+To test the database connection:
+
+```bash
+php db_connect.php
+```
+
+If successful, you'll see:
+```
+🎉 Boom! PHP is successfully connected to the Cleck E-Mart Database!
+```
+
+**Note:** This file uses hardcoded credentials for development. For production, use environment variables or secure credential management:
+
+```php
+$db_user = getenv('ORACLE_USERNAME');
+$db_pass = getenv('ORACLE_PASSWORD');
+```
+
 ### Environment Variables
 
 Set these before running PHP:
 
 ```bash
-export ORACLE_USERNAME=your_username
-export ORACLE_PASSWORD=your_password
-export ORACLE_CONNECTION_STRING=host/service_name
+export ORACLE_USERNAME=ADMIN
+export ORACLE_PASSWORD=Oracle123#Apex
+export ORACLE_CONNECTION_STRING=localhost:1521/XEPDB1
 ```
 
 Defaults used if variables are not set:
 
-- `ORACLE_USERNAME=system`
-- `ORACLE_PASSWORD=oracle`
-- `ORACLE_CONNECTION_STRING=localhost/XEPDB1`
+- `ORACLE_USERNAME=ADMIN`
+- `ORACLE_PASSWORD=Oracle123#Apex`
+- `ORACLE_CONNECTION_STRING=localhost:1521/XEPDB1`
 
 ### Run
 
