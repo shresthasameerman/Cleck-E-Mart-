@@ -216,7 +216,7 @@ if (current_role() === 'CUSTOMER' && $customerId > 0) {
              FROM WISHLIST_ITEM wi
              JOIN WISHLIST w ON w.wishlist_id = wi.wishlist_id
              JOIN PRODUCT p ON p.product_id = wi.product_id
-             LEFT JOIN DISCOUNT d ON d.discount_id = p.discount_id
+             LEFT JOIN DISCOUNT d ON d.discount_id = p.discount_id AND d.end_date >= SYSDATE
              WHERE w.customer_id = :customer_id
              ORDER BY wi.added_date DESC',
             ['customer_id' => $customerId]

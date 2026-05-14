@@ -8,8 +8,9 @@ $userId = (int) current_user_id();
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'update_discount') {
     $productId = (int) ($_POST['product_id'] ?? 0);
     $percentage = (float) ($_POST['discount_percentage'] ?? 0);
+    $duration = (int) ($_POST['discount_duration'] ?? 30);
     try {
-        trader_update_discount($userId, $productId, $percentage);
+        trader_update_discount($userId, $productId, $percentage, $duration);
         set_flash('success', 'Discount updated.');
     } catch (Throwable $e) {
         set_flash('error', $e->getMessage());
@@ -127,6 +128,7 @@ require __DIR__ . '/components/header.php';
         <div class="container trader-layout">
             <aside class="trader-sidebar" aria-label="Trader navigation">
                 <a class="trader-sidebar__item is-active" href="trader-dashboard.php">Dashboard</a>
+                <a class="trader-sidebar__item" href="trader-orders.php">Orders</a>
                 <a class="trader-sidebar__item" href="trader-profile.php">Profile Settings</a>
                 <a class="trader-sidebar__item" href="trader-add-product.php">Add Product</a>
                 <a class="trader-sidebar__item" href="logout.php">Sign Out</a>
@@ -233,7 +235,15 @@ require __DIR__ . '/components/header.php';
                                             <form method="post" action="trader-dashboard.php" style="display:inline-flex; gap:0.25rem;">
                                                 <input type="hidden" name="action" value="update_discount" />
                                                 <input type="hidden" name="product_id" value="<?php echo e($product['product_id']); ?>" />
-                                                <input type="number" name="discount_percentage" style="width: 70px; padding: 0.25rem;" min="0" max="100" value="<?php echo e($product['discount_percentage'] ?? ''); ?>" placeholder="%" />
+                                                <input type="number" name="discount_percentage" style="width: 60px; padding: 0.25rem;" min="0" max="100" value="<?php echo e($product['discount_percentage'] ?? ''); ?>" placeholder="%" />
+                                                <select name="discount_duration" style="width: 85px; padding: 0.25rem; font-size: 0.8rem;">
+                                                    <option value="1">1 Day</option>
+                                                    <option value="3">3 Days</option>
+                                                    <option value="5">5 Days</option>
+                                                    <option value="10">10 Days</option>
+                                                    <option value="20">20 Days</option>
+                                                    <option value="30" selected>1 Month</option>
+                                                </select>
                                                 <button type="submit" class="button button--secondary" style="padding: 0.2rem 0.5rem; font-size: 0.8rem;">Set</button>
                                             </form>
                                         </td>

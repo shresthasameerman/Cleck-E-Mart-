@@ -74,6 +74,7 @@ require __DIR__ . '/components/header.php';
         <div class="container trader-layout">
             <aside class="trader-sidebar" aria-label="Trader navigation">
                 <a class="trader-sidebar__item" href="trader-dashboard.php">Dashboard</a>
+                <a class="trader-sidebar__item" href="trader-orders.php">Orders</a>
                 <a class="trader-sidebar__item" href="trader-profile.php">Profile Settings</a>
                 <a class="trader-sidebar__item is-active" href="trader-add-product.php">Add Product</a>
                 <a class="trader-sidebar__item" href="logout.php">Sign Out</a>

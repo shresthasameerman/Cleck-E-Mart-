@@ -74,7 +74,7 @@ try {
                 FROM PRODUCT p
                 LEFT JOIN SHOP s ON s.shop_id = p.shop_id
                 LEFT JOIN CATEGORY c ON c.category_id = p.category_id
-                LEFT JOIN DISCOUNT d ON d.discount_id = p.discount_id";
+                LEFT JOIN DISCOUNT d ON d.discount_id = p.discount_id AND d.end_date >= SYSDATE";
 
         $conditions = [];
         $searchBind = null;

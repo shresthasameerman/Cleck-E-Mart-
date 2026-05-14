@@ -121,7 +121,7 @@ if ($productId !== false && $productId !== null) {
                         d.discount_percentage,
                         NVL(u.first_name || ' ' || u.last_name, s.shop_name) AS trader_name
                  FROM PRODUCT p
-                 LEFT JOIN DISCOUNT d ON p.discount_id = d.discount_id
+                 LEFT JOIN DISCOUNT d ON p.discount_id = d.discount_id AND d.end_date >= SYSDATE
                  JOIN SHOP s ON s.shop_id = p.shop_id
                  JOIN TRADER t ON t.trader_id = s.trader_id
                  JOIN \"USER\" u ON u.user_id = t.trader_id

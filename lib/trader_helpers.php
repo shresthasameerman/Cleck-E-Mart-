@@ -136,7 +136,7 @@ function trader_products_for_shop(int $shopId): array
                 NVL(ag.sold_quantity, 0) AS sold_quantity,
                 NVL(ag.revenue, 0) AS revenue
          FROM PRODUCT p
-         LEFT JOIN DISCOUNT d ON p.discount_id = d.discount_id
+         LEFT JOIN DISCOUNT d ON p.discount_id = d.discount_id AND d.end_date >= SYSDATE
          LEFT JOIN (
              SELECT product_id,
                     SUM(quantity) AS sold_quantity,
@@ -427,7 +427,7 @@ function trader_update_profile(int $userId, array $payload): array
     return trader_shop_for_user($userId) ?? [];
 }
 
-function trader_update_discount(int $userId, int $productId, float $percentage): void
+function trader_update_discount(int $userId, int $productId, float $percentage, int $durationDays = 30): void
 {
     $shop = trader_shop_for_user($userId);
     if ($shop === null) {
@@ -455,8 +455,8 @@ function trader_update_discount(int $userId, int $productId, float $percentage):
             $discountId = db_next_id('DISCOUNT', 'discount_id');
             db_execute(
                 "INSERT INTO DISCOUNT (discount_id, discount_percentage, start_date, end_date, discount_status) 
-                 VALUES (:discount_id, :percentage, SYSDATE, SYSDATE + 30, 'ACTIVE')",
-                ['discount_id' => $discountId, 'percentage' => $percentage]
+                 VALUES (:discount_id, :percentage, SYSDATE, SYSDATE + :duration, 'ACTIVE')",
+                ['discount_id' => $discountId, 'percentage' => $percentage, 'duration' => $durationDays]
             );
             db_execute('UPDATE PRODUCT SET discount_id = :discount_id WHERE product_id = :product_id', [
                 'discount_id' => $discountId,
@@ -467,5 +467,119 @@ function trader_update_discount(int $userId, int $productId, float $percentage):
     } catch (Throwable $e) {
         db_rollback();
         throw $e;
+    }
+}
+
+function trader_get_orders(int $userId, array $filters = []): array
+{
+    $shop = trader_shop_for_user($userId);
+    if ($shop === null) return [];
+    
+    $params = ['shop_id' => $shop['SHOP_ID']];
+    $where = "WHERE p.shop_id = :shop_id";
+    
+    if (!empty($filters['customer_name'])) {
+        $where .= " AND LOWER(u.first_name || ' ' || u.last_name) LIKE LOWER(:customer_name)";
+        $params['customer_name'] = '%' . $filters['customer_name'] . '%';
+    }
+    
+    if (!empty($filters['status'])) {
+        $where .= " AND o.order_status = :status";
+        $params['status'] = $filters['status'];
+    }
+    
+    if (!empty($filters['date_from'])) {
+        $where .= " AND o.order_date >= TO_DATE(:date_from, 'YYYY-MM-DD')";
+        $params['date_from'] = $filters['date_from'];
+    }
+    
+    if (!empty($filters['date_to'])) {
+        $where .= " AND o.order_date <= TO_DATE(:date_to, 'YYYY-MM-DD')";
+        $params['date_to'] = $filters['date_to'];
+    }
+
+    $sql = "SELECT o.order_id,
+                   u.first_name || ' ' || u.last_name AS customer_name,
+                   o.order_date,
+                   py.payment_status,
+                   o.order_status,
+                   SUM(oi.quantity) as total_items
+            FROM \"ORDER\" o
+            JOIN CUSTOMER c ON o.customer_id = c.customer_id
+            JOIN \"USER\" u ON c.customer_id = u.user_id
+            JOIN ORDER_ITEM oi ON o.order_id = oi.order_id
+            JOIN PRODUCT p ON oi.product_id = p.product_id
+            LEFT JOIN PAYMENT py ON o.order_id = py.order_id
+            $where
+            GROUP BY o.order_id, u.first_name, u.last_name, o.order_date, py.payment_status, o.order_status
+            ORDER BY o.order_id DESC";
+
+    return db_fetch_all($sql, $params);
+}
+
+function trader_get_order_details(int $userId, int $orderId): ?array
+{
+    $shop = trader_shop_for_user($userId);
+    if ($shop === null) return null;
+
+    $orderSql = "SELECT o.order_id,
+                        u.first_name || ' ' || u.last_name AS customer_name,
+                        o.order_date,
+                        u.address AS delivery_address,
+                        py.payment_method,
+                        py.payment_status,
+                        o.order_status
+                 FROM \"ORDER\" o
+                 JOIN CUSTOMER c ON o.customer_id = c.customer_id
+                 JOIN \"USER\" u ON c.customer_id = u.user_id
+                 LEFT JOIN PAYMENT py ON o.order_id = py.order_id
+                 WHERE o.order_id = :order_id";
+    
+    $orderInfo = db_fetch_one($orderSql, ['order_id' => $orderId]);
+    
+    if (!$orderInfo) return null;
+    
+    $itemsSql = "SELECT p.product_id,
+                        p.product_image,
+                        p.product_name,
+                        oi.quantity,
+                        oi.unit_price,
+                        (oi.quantity * oi.unit_price) AS total_price,
+                        NVL(oi.item_status, 'PENDING') AS item_status
+                 FROM ORDER_ITEM oi
+                 JOIN PRODUCT p ON oi.product_id = p.product_id
+                 WHERE oi.order_id = :order_id AND p.shop_id = :shop_id";
+                 
+    $items = db_fetch_all($itemsSql, ['order_id' => $orderId, 'shop_id' => $shop['SHOP_ID']]);
+    
+    if (empty($items)) return null; 
+    
+    $orderInfo['items'] = $items;
+    return $orderInfo;
+}
+
+function trader_update_item_status(int $userId, int $orderId, int $productId, string $newStatus): void
+{
+    $shop = trader_shop_for_user($userId);
+    if ($shop === null) throw new RuntimeException('Trader shop not found.');
+    
+    $product = db_fetch_one("SELECT product_id FROM PRODUCT WHERE product_id = :product_id AND shop_id = :shop_id", [
+        'product_id' => $productId,
+        'shop_id' => $shop['SHOP_ID']
+    ]);
+    
+    if (!$product) throw new RuntimeException('Product not found or access denied.');
+    
+    db_execute("UPDATE ORDER_ITEM SET item_status = :status WHERE order_id = :order_id AND product_id = :product_id", [
+        'status' => $newStatus,
+        'order_id' => $orderId,
+        'product_id' => $productId
+    ]);
+    
+    // As per requirement: "once the order is set to ready, it should update the order status in the database to be ready as well"
+    if ($newStatus === 'READY') {
+        db_execute("UPDATE \"ORDER\" SET order_status = 'READY' WHERE order_id = :order_id", [
+            'order_id' => $orderId
+        ]);
     }
 }
