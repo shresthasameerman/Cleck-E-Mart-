@@ -134,6 +134,91 @@ function processCheckoutTransaction($conn, $customer_id, $slot_id, $cart_items, 
         }
         
         // ====================================================================
+        // STEP 4.5: SEND INVOICE EMAIL
+        // ====================================================================
+        try {
+            $cust_sql = "SELECT first_name, email FROM \"USER\" WHERE user_id = :cust_id";
+            $cust_stmt = oci_parse($conn, $cust_sql);
+            oci_bind_by_name($cust_stmt, ':cust_id', $customer_id, -1, SQLT_INT);
+            oci_execute($cust_stmt);
+            $cust_row = oci_fetch_assoc($cust_stmt);
+            oci_free_statement($cust_stmt);
+            
+            if ($cust_row && !empty($cust_row['EMAIL'])) {
+                $customerEmail = $cust_row['EMAIL'];
+                $customerName = $cust_row['FIRST_NAME'] ?? 'Customer';
+                
+                $subject = "Invoice for Order #" . $new_order_id . " - Cleck E-Mart";
+                
+                $message = "
+                <html>
+                <head>
+                <title>Invoice for Order #{$new_order_id}</title>
+                <style>
+                    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                    .invoice-box { max-width: 800px; margin: auto; padding: 30px; border: 1px solid #eee; box-shadow: 0 0 10px rgba(0, 0, 0, 0.15); }
+                    .header { text-align: center; margin-bottom: 20px; }
+                    .table { width: 100%; border-collapse: collapse; }
+                    .table th, .table td { padding: 10px; border-bottom: 1px solid #ddd; text-align: left; }
+                    .total { font-weight: bold; font-size: 1.2em; text-align: right; }
+                </style>
+                </head>
+                <body>
+                    <div class='invoice-box'>
+                        <div class='header'>
+                            <h2>Cleck E-Mart</h2>
+                            <p>Invoice for Order #{$new_order_id}</p>
+                        </div>
+                        <p>Dear {$customerName},</p>
+                        <p>Thank you for your purchase! Here are the details of your order:</p>
+                        <table class='table'>
+                            <thead>
+                                <tr>
+                                    <th>Item</th>
+                                    <th>Quantity</th>
+                                    <th>Unit Price</th>
+                                    <th>Line Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>";
+                            
+                foreach ($cart_items as $item) {
+                    $itemTotalNum = $item['quantity'] * $item['unit_price'];
+                    $itemTotal = number_format($itemTotalNum, 2);
+                    $unitPrice = number_format($item['unit_price'], 2);
+                    $productName = $item['name'] ?? $item['product_name'] ?? 'Product #' . $item['product_id'];
+                    $message .= "
+                                <tr>
+                                    <td>{$productName}</td>
+                                    <td>{$item['quantity']}</td>
+                                    <td>£{$unitPrice}</td>
+                                    <td>£{$itemTotal}</td>
+                                </tr>";
+                }
+                
+                $formattedTotal = number_format($total_amount, 2);
+                $message .= "
+                            </tbody>
+                        </table>
+                        <p class='total'>Total Amount: £{$formattedTotal}</p>
+                        <p>We hope to see you again soon!</p>
+                        <p>Regards,<br>The Cleck E-Mart Team</p>
+                    </div>
+                </body>
+                </html>
+                ";
+
+                $headers = "MIME-Version: 1.0" . "\r\n";
+                $headers .= "Content-type:text/html;charset=UTF-8" . "\r\n";
+                $headers .= "From: Cleck E-Mart <noreply@cleck-e-mart.com>" . "\r\n";
+                
+                @mail($customerEmail, $subject, $message, $headers);
+            }
+        } catch (Exception $e) {
+            // Ignore email errors
+        }
+        
+        // ====================================================================
         // STEP 5: CLEAR CART (after successful commit)
         // ====================================================================
         

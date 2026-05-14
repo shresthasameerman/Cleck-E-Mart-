@@ -48,7 +48,7 @@ $headerAccountLabel = $headerIsTrader ? 'Trader dashboard' : ($headerIsLoggedIn 
                     <?php else: ?>
                         <a href="index.php#featured-title">Featured</a>
                         <a href="category.php">Browse Category</a>
-                        <a href="index.php#cta-title">Delivery</a>
+                        <a href="about.php">About Us</a>
                     <?php endif; ?>
                 </div>
             </nav>

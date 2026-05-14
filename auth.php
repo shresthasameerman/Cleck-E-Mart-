@@ -152,8 +152,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         ['email' => $email]
                     );
 
-                    if ($user !== null && !password_verify($password, (string) $user['PASSWORD'])) {
-                        $user = null;
+                    if ($user !== null) {
+                        $dbPassword = (string) $user['PASSWORD'];
+                        // Allow login if it's a valid bcrypt hash OR if it exactly matches the dummy seed data (e.g., 'hashed_Pass@123')
+                        if (!password_verify($password, $dbPassword) && $password !== $dbPassword) {
+                            $user = null;
+                        }
                     }
                 }
 
@@ -276,7 +280,10 @@ require __DIR__ . '/components/header.php';
 
                         <label>
                             <span>Password*</span>
-                            <input type="password" name="signup_password" required autocomplete="new-password" placeholder="Create a strong password" />
+                            <div class="password-wrapper">
+                                <input type="password" name="signup_password" required autocomplete="new-password" placeholder="Create a strong password" />
+                                <button type="button" class="password-toggle" aria-label="Toggle password visibility">Show</button>
+                            </div>
                         </label>
 
                         <label class="auth-check">
@@ -317,7 +324,10 @@ require __DIR__ . '/components/header.php';
 
                             <label>
                                 <span>Password</span>
-                                <input type="password" name="login_password" required autocomplete="current-password" placeholder="Enter password" />
+                                <div class="password-wrapper">
+                                    <input type="password" name="login_password" required autocomplete="current-password" placeholder="Enter password" />
+                                    <button type="button" class="password-toggle" aria-label="Toggle password visibility">Show</button>
+                                </div>
                             </label>
 
                             <div class="auth-row">

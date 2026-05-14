@@ -2,6 +2,7 @@
 $pageTitle = 'Browse Category | Cleck E-Mart';
 $metaDescription = 'Browse product categories and discover items from local traders.';
 require_once __DIR__ . '/lib/oci_db.php';
+require_once __DIR__ . '/lib/auth_helpers.php';
 
 $selectedCategoryId = filter_input(INPUT_GET, 'category_id', FILTER_VALIDATE_INT);
 $categoryTitle = 'All Categories';
@@ -151,7 +152,16 @@ require __DIR__ . '/components/header.php';
                                 <p class="category-card__trader">Trader: <?php echo e($traderName); ?></p>
                                 <h3><?php echo e($product['PRODUCT_NAME']); ?></h3>
                                 <p class="category-card__rating" aria-label="Price for <?php echo e($product['PRODUCT_NAME']); ?>">$<?php echo e(number_format($price, 2)); ?></p>
-                                <a class="category-card__button" href="product.php?product_id=<?php echo e($product['PRODUCT_ID']); ?>">View Product</a>
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.5rem;">
+                                    <a class="category-card__button" href="product.php?product_id=<?php echo e($product['PRODUCT_ID']); ?>" style="margin-top:0;">View Product</a>
+                                    <?php if (is_logged_in() && current_role() === 'CUSTOMER'): ?>
+                                        <form method="post" action="product.php" style="display:inline; margin-left: 0.5rem;">
+                                            <input type="hidden" name="action" value="add_to_wishlist" />
+                                            <input type="hidden" name="product_id" value="<?php echo e($product['PRODUCT_ID']); ?>" />
+                                            <button type="submit" style="background:none; border:none; color:var(--color-primary); cursor:pointer; font-size:1.5rem;" aria-label="Add to Wishlist" title="Add to Wishlist">♥</button>
+                                        </form>
+                                    <?php endif; ?>
+                                </div>
                             </div>
                         </article>
                     <?php endforeach; ?>

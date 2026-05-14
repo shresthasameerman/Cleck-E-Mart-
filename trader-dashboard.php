@@ -4,12 +4,28 @@ require_once __DIR__ . '/lib/trader_helpers.php';
 trader_role_guard();
 
 $userId = (int) current_user_id();
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'update_discount') {
+    $productId = (int) ($_POST['product_id'] ?? 0);
+    $percentage = (float) ($_POST['discount_percentage'] ?? 0);
+    try {
+        trader_update_discount($userId, $productId, $percentage);
+        set_flash('success', 'Discount updated.');
+    } catch (Throwable $e) {
+        set_flash('error', $e->getMessage());
+    }
+    redirect('trader-dashboard.php');
+}
+
 $metrics = trader_dashboard_metrics($userId);
 $shop = $metrics['shop'];
 $inventoryProducts = $metrics['inventory_products'];
 $lowStockProducts = $metrics['low_stock_products'];
 $pageTitle = 'Trader Dashboard | Cleck E-Mart';
 $metaDescription = 'Trader dashboard for reviewing sales, stock, and refill alerts.';
+
+$successMessage = get_flash('success');
+$errorMessage = get_flash('error');
 
 // ====================================================================
 // DYNAMIC TIMEFRAME FILTERING FOR TOP PRODUCTS
@@ -83,6 +99,12 @@ require __DIR__ . '/components/header.php';
 ?>
 <main id="main-content" class="trader-page">
     <div class="container">
+        <?php if ($successMessage): ?>
+            <p class="page-message page-message--success"><?php echo e($successMessage); ?></p>
+        <?php endif; ?>
+        <?php if ($errorMessage): ?>
+            <p class="page-message page-message--error"><?php echo e($errorMessage); ?></p>
+        <?php endif; ?>
         <?php if ($shop === null): ?>
             <p class="page-message page-message--error">No trader shop was found for this account.</p>
         <?php endif; ?>
@@ -196,6 +218,7 @@ require __DIR__ . '/components/header.php';
                                     <th>Stock</th>
                                     <th>Status</th>
                                     <th>Refill</th>
+                                    <th>Discount %</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -206,6 +229,14 @@ require __DIR__ . '/components/header.php';
                                         <td><?php echo e($product['stock_quantity']); ?></td>
                                         <td><?php echo e($product['product_status']); ?></td>
                                         <td><?php echo e(((int) $product['stock_quantity'] < 10) ? 'Yes' : 'No'); ?></td>
+                                        <td>
+                                            <form method="post" action="trader-dashboard.php" style="display:inline-flex; gap:0.25rem;">
+                                                <input type="hidden" name="action" value="update_discount" />
+                                                <input type="hidden" name="product_id" value="<?php echo e($product['product_id']); ?>" />
+                                                <input type="number" name="discount_percentage" style="width: 70px; padding: 0.25rem;" min="0" max="100" value="<?php echo e($product['discount_percentage'] ?? ''); ?>" placeholder="%" />
+                                                <button type="submit" class="button button--secondary" style="padding: 0.2rem 0.5rem; font-size: 0.8rem;">Set</button>
+                                            </form>
+                                        </td>
                                     </tr>
                                 <?php endforeach; ?>
                             </tbody>

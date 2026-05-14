@@ -6,6 +6,7 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
 // Load APEX API integration
 require_once __DIR__ . '/lib/apex_api.php';
 require_once __DIR__ . '/lib/oci_db.php';
+require_once __DIR__ . '/lib/auth_helpers.php';
 
 // Supports multiple common login flags so this works with your current or future auth flow.
 $isLoggedIn = !empty($_SESSION['user_id'])
@@ -68,10 +69,12 @@ try {
                        p.product_image,
                        p.product_status,
                        s.shop_name,
-                       c.category_name
+                       c.category_name,
+                       d.discount_percentage
                 FROM PRODUCT p
                 LEFT JOIN SHOP s ON s.shop_id = p.shop_id
-                LEFT JOIN CATEGORY c ON c.category_id = p.category_id";
+                LEFT JOIN CATEGORY c ON c.category_id = p.category_id
+                LEFT JOIN DISCOUNT d ON d.discount_id = p.discount_id";
 
         $conditions = [];
         $searchBind = null;
@@ -121,10 +124,10 @@ try {
             $featuredProducts[] = [
                 'product_id' => $productId,
                 'product_name' => (string) ($row['PRODUCT_NAME'] ?? ''),
-                'product_description' => (string) ($row['PRODUCT_DESCRIPTION'] ?? ''),
+                'product_description' => is_object($row['PRODUCT_DESCRIPTION']) ? $row['PRODUCT_DESCRIPTION']->load() : (string) ($row['PRODUCT_DESCRIPTION'] ?? ''),
                 'price' => (float) ($row['PRICE'] ?? 0),
                 'product_image' => default_product_image($productId, $uploadedImage, 400),
-                'discount_percentage' => null,
+                'discount_percentage' => isset($row['DISCOUNT_PERCENTAGE']) ? (float) $row['DISCOUNT_PERCENTAGE'] : null,
                 'shop_name' => (string) ($row['SHOP_NAME'] ?? ''),
                 'category_name' => (string) ($row['CATEGORY_NAME'] ?? ''),
                 'product_status' => (string) ($row['PRODUCT_STATUS'] ?? 'ACTIVE'),
@@ -194,7 +197,16 @@ require __DIR__ . '/components/header.php';
                                 <p class="product-card__shop">Shop: <?php echo htmlspecialchars((string) $product['shop_name'], ENT_QUOTES, 'UTF-8'); ?></p>
                                 <p class="product-card__category">Category: <?php echo htmlspecialchars((string) $product['category_name'], ENT_QUOTES, 'UTF-8'); ?></p>
                                 <p class="product-card__price"><?php echo format_product_price($product); ?></p>
-                                <a class="product-card__link" href="product.php?product_id=<?php echo (int) $product['product_id']; ?>">View details</a>
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.5rem;">
+                                    <a class="product-card__link" href="product.php?product_id=<?php echo (int) $product['product_id']; ?>">View details</a>
+                                    <?php if (is_logged_in() && current_role() === 'CUSTOMER'): ?>
+                                        <form method="post" action="product.php" style="display:inline;">
+                                            <input type="hidden" name="action" value="add_to_wishlist" />
+                                            <input type="hidden" name="product_id" value="<?php echo (int) $product['product_id']; ?>" />
+                                            <button type="submit" style="background:none; border:none; color:var(--color-primary); cursor:pointer; font-size:1.5rem;" aria-label="Add to Wishlist" title="Add to Wishlist">♥</button>
+                                        </form>
+                                    <?php endif; ?>
+                                </div>
                             </div>
                         </article>
                     <?php endforeach; ?>
@@ -264,6 +276,13 @@ require __DIR__ . '/components/header.php';
                                 <div class="product-card__meta">
                                     <span class="product-card__price"><?php echo format_product_price($product); ?></span>
                                     <a class="product-card__link" href="product.php?product_id=<?php echo (int) $product['product_id']; ?>">View details</a>
+                                    <?php if (is_logged_in() && current_role() === 'CUSTOMER'): ?>
+                                        <form method="post" action="product.php" style="display:inline; margin-left: 0.5rem;">
+                                            <input type="hidden" name="action" value="add_to_wishlist" />
+                                            <input type="hidden" name="product_id" value="<?php echo (int) $product['product_id']; ?>" />
+                                            <button type="submit" style="background:none; border:none; color:var(--color-primary); cursor:pointer; font-size:1.5rem;" aria-label="Add to Wishlist" title="Add to Wishlist">♥</button>
+                                        </form>
+                                    <?php endif; ?>
                                 </div>
                             </div>
                         </article>

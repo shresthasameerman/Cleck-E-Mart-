@@ -132,21 +132,19 @@ function trader_products_for_shop(int $shopId): array
                 p.product_image,
                 p.max_order,
                 p.min_order,
-                NVL(SUM(oi.quantity), 0) AS sold_quantity,
-                NVL(SUM(oi.quantity * oi.unit_price), 0) AS revenue
+                d.discount_percentage,
+                NVL(ag.sold_quantity, 0) AS sold_quantity,
+                NVL(ag.revenue, 0) AS revenue
          FROM PRODUCT p
-         LEFT JOIN ORDER_ITEM oi ON oi.product_id = p.product_id
+         LEFT JOIN DISCOUNT d ON p.discount_id = d.discount_id
+         LEFT JOIN (
+             SELECT product_id,
+                    SUM(quantity) AS sold_quantity,
+                    SUM(quantity * unit_price) AS revenue
+             FROM ORDER_ITEM
+             GROUP BY product_id
+         ) ag ON ag.product_id = p.product_id
          WHERE p.shop_id = :shop_id
-         GROUP BY p.product_id,
-                  p.product_name,
-                  p.product_description,
-                  p.price,
-                  p.stock_quantity,
-                  p.product_status,
-                  p.product_image,
-                  p.max_order,
-                  p.min_order,
-                  p.shop_id
          ORDER BY p.product_name',
         ['shop_id' => $shopId]
     );
@@ -427,4 +425,47 @@ function trader_update_profile(int $userId, array $payload): array
     }
 
     return trader_shop_for_user($userId) ?? [];
+}
+
+function trader_update_discount(int $userId, int $productId, float $percentage): void
+{
+    $shop = trader_shop_for_user($userId);
+    if ($shop === null) {
+        throw new RuntimeException('Trader shop could not be found.');
+    }
+
+    if (db_is_offline()) {
+        return;
+    }
+
+    $product = db_fetch_one('SELECT product_id, discount_id FROM PRODUCT WHERE product_id = :product_id AND shop_id = :shop_id', [
+        'product_id' => $productId,
+        'shop_id' => (int) $shop['SHOP_ID']
+    ]);
+
+    if (!$product) {
+        throw new RuntimeException('Product not found or does not belong to you.');
+    }
+
+    db_begin();
+    try {
+        if ($percentage <= 0) {
+            db_execute('UPDATE PRODUCT SET discount_id = NULL WHERE product_id = :product_id', ['product_id' => $productId]);
+        } else {
+            $discountId = db_next_id('DISCOUNT', 'discount_id');
+            db_execute(
+                "INSERT INTO DISCOUNT (discount_id, discount_percentage, start_date, end_date, discount_status) 
+                 VALUES (:discount_id, :percentage, SYSDATE, SYSDATE + 30, 'ACTIVE')",
+                ['discount_id' => $discountId, 'percentage' => $percentage]
+            );
+            db_execute('UPDATE PRODUCT SET discount_id = :discount_id WHERE product_id = :product_id', [
+                'discount_id' => $discountId,
+                'product_id' => $productId
+            ]);
+        }
+        db_commit();
+    } catch (Throwable $e) {
+        db_rollback();
+        throw $e;
+    }
 }

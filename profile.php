@@ -210,6 +210,17 @@ if (current_role() === 'CUSTOMER' && $customerId > 0) {
         $orderCount = (int) ($orderCountRow['TOTAL_COUNT'] ?? 0);
         $reviewCount = (int) ($reviewCountRow['TOTAL_COUNT'] ?? 0);
         $savedCount = (int) ($savedCountRow['TOTAL_COUNT'] ?? 0);
+
+        $wishlistItems = db_fetch_all(
+            'SELECT p.product_id, p.product_name, p.price, p.product_image, d.discount_percentage, wi.added_date
+             FROM WISHLIST_ITEM wi
+             JOIN WISHLIST w ON w.wishlist_id = wi.wishlist_id
+             JOIN PRODUCT p ON p.product_id = wi.product_id
+             LEFT JOIN DISCOUNT d ON d.discount_id = p.discount_id
+             WHERE w.customer_id = :customer_id
+             ORDER BY wi.added_date DESC',
+            ['customer_id' => $customerId]
+        );
     }
 }
 
@@ -320,6 +331,14 @@ require __DIR__ . '/components/header.php';
                             </span>
                             My Reviews
                         </a>
+                        <a class="profile-nav__item<?php echo $activeTab === 'wishlist' ? ' is-active' : ''; ?>" href="profile.php?tab=wishlist" data-profile-tab="wishlist">
+                            <span class="profile-nav__icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                                </svg>
+                            </span>
+                            Wishlist
+                        </a>
                         <a class="profile-nav__item<?php echo $activeTab === 'password' ? ' is-active' : ''; ?>" href="profile.php?tab=password" data-profile-tab="password">
                             <span class="profile-nav__icon" aria-hidden="true">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
@@ -380,8 +399,9 @@ require __DIR__ . '/components/header.php';
                                     <?php if (!empty($order['ITEMS'])): ?>
                                         <p class="order-card__items">Items: <?php echo e($order['ITEMS']); ?></p>
                                     <?php endif; ?>
-                                    <div class="order-card__footer">
-                                        <span class="order-card__total">Total: $<?php echo e(number_format((float) $order['ORDER_TOTAL'], 2)); ?></span>
+                                    <div class="order-card__footer" style="display: flex; justify-content: space-between; align-items: center;">
+                                        <span class="order-card__total">Total: £<?php echo e(number_format((float) $order['ORDER_TOTAL'], 2)); ?></span>
+                                        <a href="download-invoice.php?order_id=<?php echo e($order['ORDER_ID']); ?>" class="button button--small button--secondary" target="_blank" style="padding: 0.5rem 1rem; text-decoration: none; font-size: 0.9rem;">Download Invoice</a>
                                     </div>
                                 </div>
                             <?php endforeach; ?>
@@ -447,8 +467,9 @@ require __DIR__ . '/components/header.php';
                                                             <?php if (!empty($order['ITEMS'])): ?>
                                                                 <p class="order-card__items">Items: <?php echo e($order['ITEMS']); ?></p>
                                                             <?php endif; ?>
-                                                            <div class="order-card__footer">
-                                                                <span class="order-card__total">Total: $<?php echo e(number_format((float) $order['ORDER_TOTAL'], 2)); ?></span>
+                                                            <div class="order-card__footer" style="display: flex; justify-content: space-between; align-items: center;">
+                                                                <span class="order-card__total">Total: £<?php echo e(number_format((float) $order['ORDER_TOTAL'], 2)); ?></span>
+                                                                <a href="download-invoice.php?order_id=<?php echo e($order['ORDER_ID']); ?>" class="button button--small button--secondary" target="_blank" style="padding: 0.5rem 1rem; text-decoration: none; font-size: 0.9rem;">Download Invoice</a>
                                                             </div>
                                                         </div>
                                                     <?php endforeach; ?>
@@ -456,82 +477,8 @@ require __DIR__ . '/components/header.php';
 
                                             </section>
 
-                                            <!-- REVIEWS -->
-                                            <section class="profile-panel<?php echo $activeTab === 'reviews' ? ' is-active' : ''; ?>" id="reviews" data-profile-panel="reviews" aria-labelledby="reviews-title" <?php echo $activeTab !== 'reviews' ? 'hidden' : ''; ?>>
-                                                <h2 id="reviews-title" class="profile-panel__title">My Reviews</h2>
-                                                <?php if ($reviews === []): ?>
-                                                    <p>No reviews yet.</p>
-                                                <?php else: ?>
-                                                    <ul class="reviews-list">
-                                                        <?php foreach ($reviews as $r): ?>
-                                                            <li class="review-item">
-                                                                <strong><?php echo e($r['PRODUCT_NAME']); ?></strong>
-                                                                <div class="review-meta"><?php echo e(date('j F Y', strtotime((string) $r['REVIEW_DATE']))); ?> — Rating: <?php echo e($r['RATING']); ?></div>
-                                                                <p><?php echo e($r['REVIEW_COMMENT']); ?></p>
-                                                            </li>
-                                                        <?php endforeach; ?>
-                                                    </ul>
-                                                <?php endif; ?>
-                                            </section>
-
-                                            <!-- PASSWORD -->
-                                            <section class="profile-panel<?php echo $activeTab === 'password' ? ' is-active' : ''; ?>" id="password" data-profile-panel="password" aria-labelledby="password-title" <?php echo $activeTab !== 'password' ? 'hidden' : ''; ?>>
-                                                <h2 id="password-title" class="profile-panel__title">Change Password</h2>
-                                                <!-- Password form exists below in current file -->
-                                            </section>
-
-                                            <script>
-                                                (function () {
-                                                    var navItems = document.querySelectorAll('[data-profile-tab]');
-                                                    var panels = document.querySelectorAll('[data-profile-panel]');
-
-                                                    function activateTab(name, push) {
-                                                        navItems.forEach(function (a) { a.classList.toggle('is-active', a.getAttribute('data-profile-tab') === name); });
-                                                        panels.forEach(function (p) {
-                                                            var match = p.getAttribute('data-profile-panel') === name;
-                                                            p.classList.toggle('is-active', match);
-                                                            if (match) p.removeAttribute('hidden'); else p.setAttribute('hidden', '');
-                                                        });
-                                                        if (push && window.history && window.history.pushState) {
-                                                            window.history.pushState({}, '', 'profile.php?tab=' + encodeURIComponent(name));
-                                                        }
-                                                    }
-
-                                                    navItems.forEach(function (a) {
-                                                        a.addEventListener('click', function (ev) {
-                                                            ev.preventDefault();
-                                                            activateTab(a.getAttribute('data-profile-tab'), true);
-                                                        });
-                                                    });
-                                                })();
-                                            </script>
-                        <h2 id="history-title" class="profile-panel__title">Collection History</h2>
-                        <div class="order-list">
-                            <div class="order-card">
-                                <div class="order-card__header">
-                                    <div>
-                                        <p class="order-card__id">Collected: 13 April 2026</p>
-                                        <p class="order-card__date">Order #EM-00124</p>
-                                    </div>
-                                    <span class="order-card__status order-card__status--delivered">Collected</span>
-                                </div>
-                                <p class="order-card__summary">Picked up from 123 Market Street, Kathmandu</p>
-                            </div>
-                            <div class="order-card">
-                                <div class="order-card__header">
-                                    <div>
-                                        <p class="order-card__id">Collected: 20 March 2026</p>
-                                        <p class="order-card__date">Order #EM-00103</p>
-                                    </div>
-                                    <span class="order-card__status order-card__status--delivered">Collected</span>
-                                </div>
-                                <p class="order-card__summary">Picked up from 123 Market Street, Kathmandu</p>
-                            </div>
-                        </div>
-                    </section>
-
                     <!-- MY REVIEWS -->
-                    <section class="profile-panel" id="reviews" data-profile-panel="reviews" aria-labelledby="reviews-title" hidden>
+                    <section class="profile-panel<?php echo $activeTab === 'reviews' ? ' is-active' : ''; ?>" id="reviews" data-profile-panel="reviews" aria-labelledby="reviews-title" <?php echo $activeTab !== 'reviews' ? 'hidden' : ''; ?>>
                         <h2 id="reviews-title" class="profile-panel__title">My Reviews</h2>
                         <div class="order-list">
                             <?php if ($reviews === []): ?>
@@ -560,7 +507,7 @@ require __DIR__ . '/components/header.php';
                     </section>
 
                     <!-- PASSWORD -->
-                    <section class="profile-panel" id="password" data-profile-panel="password" aria-labelledby="password-title" hidden>
+                    <section class="profile-panel<?php echo $activeTab === 'password' ? ' is-active' : ''; ?>" id="password" data-profile-panel="password" aria-labelledby="password-title" <?php echo $activeTab !== 'password' ? 'hidden' : ''; ?>>
                         <h2 id="password-title" class="profile-panel__title">Change Password</h2>
                         <!--
                             Backend note: verify current_password before hashing and saving new_password.
@@ -569,15 +516,24 @@ require __DIR__ . '/components/header.php';
                             <input type="hidden" name="profile_action" value="change_password" />
                             <label>
                                 <span>Current Password*</span>
-                                <input type="password" name="current_password" required autocomplete="current-password" placeholder="Enter current password" />
+                                <div class="password-wrapper">
+                                    <input type="password" name="current_password" required autocomplete="current-password" placeholder="Enter current password" />
+                                    <button type="button" class="password-toggle" aria-label="Toggle password visibility">Show</button>
+                                </div>
                             </label>
                             <label>
                                 <span>New Password*</span>
-                                <input type="password" name="new_password" required autocomplete="new-password" placeholder="Create a strong password" />
+                                <div class="password-wrapper">
+                                    <input type="password" name="new_password" required autocomplete="new-password" placeholder="Create a strong password" />
+                                    <button type="button" class="password-toggle" aria-label="Toggle password visibility">Show</button>
+                                </div>
                             </label>
                             <label>
                                 <span>Confirm New Password*</span>
-                                <input type="password" name="confirm_password" required autocomplete="new-password" placeholder="Repeat new password" />
+                                <div class="password-wrapper">
+                                    <input type="password" name="confirm_password" required autocomplete="new-password" placeholder="Repeat new password" />
+                                    <button type="button" class="password-toggle" aria-label="Toggle password visibility">Show</button>
+                                </div>
                             </label>
                             <button class="profile-submit" type="submit">
                                 Update Password
@@ -587,6 +543,54 @@ require __DIR__ . '/components/header.php';
                             </button>
                         </form>
                     </section>
+
+                    <!-- WISHLIST -->
+                    <section class="profile-panel<?php echo $activeTab === 'wishlist' ? ' is-active' : ''; ?>" id="wishlist" data-profile-panel="wishlist" aria-labelledby="wishlist-title" <?php echo $activeTab !== 'wishlist' ? 'hidden' : ''; ?>>
+                        <h2 id="wishlist-title" class="profile-panel__title">My Wishlist</h2>
+                        <div class="orders-grid">
+                            <?php if (empty($wishlistItems)): ?>
+                                <p class="profile-empty">Your wishlist is empty. Browse products and click "Add to Wishlist" to save them here.</p>
+                            <?php else: ?>
+                                <?php foreach ($wishlistItems as $item): ?>
+                                    <div class="order-card" style="display:flex; flex-direction:column; gap:0.5rem;">
+                                        <div class="order-card__header">
+                                            <div>
+                                                <p class="order-card__id"><?php echo e($item['PRODUCT_NAME']); ?></p>
+                                                <p class="order-card__date">Added: <?php echo e(date('j F Y', strtotime((string) $item['ADDED_DATE']))); ?></p>
+                                            </div>
+                                            <a href="product.php?product_id=<?php echo e($item['PRODUCT_ID']); ?>" class="profile-submit" style="width:auto; padding: 0.5rem 1rem;">View Product</a>
+                                        </div>
+                                    </div>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </div>
+                    </section>
+
+                    <script>
+                        (function () {
+                            var navItems = document.querySelectorAll('[data-profile-tab]');
+                            var panels = document.querySelectorAll('[data-profile-panel]');
+
+                            function activateTab(name, push) {
+                                navItems.forEach(function (a) { a.classList.toggle('is-active', a.getAttribute('data-profile-tab') === name); });
+                                panels.forEach(function (p) {
+                                    var match = p.getAttribute('data-profile-panel') === name;
+                                    p.classList.toggle('is-active', match);
+                                    if (match) p.removeAttribute('hidden'); else p.setAttribute('hidden', '');
+                                });
+                                if (push && window.history && window.history.pushState) {
+                                    window.history.pushState({}, '', 'profile.php?tab=' + encodeURIComponent(name));
+                                }
+                            }
+
+                            navItems.forEach(function (a) {
+                                a.addEventListener('click', function (ev) {
+                                    ev.preventDefault();
+                                    activateTab(a.getAttribute('data-profile-tab'), true);
+                                });
+                            });
+                        })();
+                    </script>
 
                 </div>
             </div>

@@ -683,3 +683,24 @@ document.addEventListener('DOMContentLoaded', () => {
         setQuantity(nextQuantity);
     });
 });
+
+// Password toggle controller:
+// Toggles password visibility across the site.
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.password-toggle').forEach(button => {
+        button.addEventListener('click', () => {
+            const wrapper = button.closest('.password-wrapper');
+            if (!wrapper) return;
+            const input = wrapper.querySelector('input');
+            if (!input) return;
+            
+            if (input.type === 'password') {
+                input.type = 'text';
+                button.textContent = 'Hide';
+            } else {
+                input.type = 'password';
+                button.textContent = 'Show';
+            }
+        });
+    });
+});

@@ -4,8 +4,8 @@ require_once __DIR__ . '/offline_store.php';
 
 function db_driver(): string
 {
-    $driver = strtolower((string) (getenv('DB_DRIVER') ?: 'offline'));
-    return in_array($driver, ['offline', 'oracle'], true) ? $driver : 'offline';
+    $driver = strtolower((string) (getenv('DB_DRIVER') ?: 'oracle'));
+    return in_array($driver, ['offline', 'oracle'], true) ? $driver : 'oracle';
 }
 
 function db_is_offline(): bool
@@ -29,12 +29,13 @@ function db_connect()
         throw new RuntimeException('OCI8 extension is not loaded in this PHP runtime. Use DB_DRIVER=offline for local mode, or enable php-oci8.');
     }
 
-    $username = getenv('ORACLE_USERNAME') ?: 'system';
-    $password = getenv('ORACLE_PASSWORD') ?: 'oracle';
-    $connectionString = getenv('ORACLE_CONNECTION_STRING') ?: 'localhost/XEPDB1';
+    $username = getenv('ORACLE_USERNAME') ?: 'ADMIN';
+    $password = getenv('ORACLE_PASSWORD') ?: 'Oracle123#Apex';
+    $connectionString = getenv('ORACLE_CONNECTION_STRING') ?: 'localhost:1521/XEPDB1';
 
     $conn = @oci_connect($username, $password, $connectionString, 'AL32UTF8');
     if ($conn === false) {
+        $conn = null;
         $error = oci_error();
         throw new RuntimeException('Oracle connection failed: ' . ($error['message'] ?? 'unknown error'));
     }
@@ -94,7 +95,7 @@ function db_fetch_all(string $sql, array $binds = []): array
     db_execute_statement($statement, $binds);
 
     $rows = [];
-    while (($row = oci_fetch_assoc($statement)) !== false) {
+    while (($row = oci_fetch_array($statement, OCI_ASSOC | OCI_RETURN_LOBS)) !== false) {
         $rows[] = $row;
     }
 
@@ -112,7 +113,7 @@ function db_fetch_one(string $sql, array $binds = []): ?array
     $statement = db_parse($sql);
     db_execute_statement($statement, $binds);
 
-    $row = oci_fetch_assoc($statement) ?: null;
+    $row = oci_fetch_array($statement, OCI_ASSOC | OCI_RETURN_LOBS) ?: null;
     oci_free_statement($statement);
 
     return $row;
@@ -137,11 +138,18 @@ function db_next_id(string $table, string $column): int
         throw new RuntimeException('db_next_id SQL path is disabled in offline mode.');
     }
 
-    if (!preg_match('/^[A-Z_\"]+$/', $table) || !preg_match('/^[A-Z_\"]+$/', $column)) {
+    if (!preg_match('/^[a-zA-Z_\"]+$/', $table) || !preg_match('/^[a-zA-Z_\"]+$/', $column)) {
         throw new InvalidArgumentException('Unsafe table or column identifier provided.');
     }
 
-    $sql = 'SELECT NVL(MAX(' . $column . '), 0) + 1 AS NEXT_ID FROM ' . $table;
+    $clean_table = trim($table, '"');
+    if ($clean_table === 'COLLECTION_SLOT') {
+        $seq = 'seq_slot';
+    } else {
+        $seq = 'seq_' . strtolower($clean_table);
+    }
+
+    $sql = 'SELECT ' . $seq . '.NEXTVAL AS NEXT_ID FROM DUAL';
     $row = db_fetch_one($sql);
 
     if ($row === null || !isset($row['NEXT_ID'])) {

@@ -55,6 +55,54 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'add_t
             }
         }
     }
+} elseif ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'add_to_wishlist') {
+    if (!is_logged_in()) {
+        set_flash('error', 'Please login before adding items to your wishlist.');
+        redirect('auth.php?mode=login');
+    }
+
+    if (current_role() !== 'CUSTOMER' || current_customer_id() === null) {
+        $errors[] = 'Only customer accounts can use the wishlist.';
+    } else {
+        $postedProductId = filter_input(INPUT_POST, 'product_id', FILTER_VALIDATE_INT);
+        if ($postedProductId === false || $postedProductId === null) {
+            $errors[] = 'Invalid product selected.';
+        } else {
+            try {
+                $customerId = (int) current_customer_id();
+                if (!db_is_offline()) {
+                    // Check if customer has a wishlist
+                    $wishlist = db_fetch_one('SELECT wishlist_id FROM WISHLIST WHERE customer_id = :customer_id', ['customer_id' => $customerId]);
+                    if (!$wishlist) {
+                        $wishlistId = db_next_id('WISHLIST', 'wishlist_id');
+                        db_execute('INSERT INTO WISHLIST (wishlist_id, customer_id) VALUES (:wishlist_id, :customer_id)', [
+                            'wishlist_id' => $wishlistId,
+                            'customer_id' => $customerId
+                        ]);
+                    } else {
+                        $wishlistId = (int) $wishlist['WISHLIST_ID'];
+                    }
+                    
+                    // Add to wishlist item
+                    try {
+                        db_execute('INSERT INTO WISHLIST_ITEM (product_id, wishlist_id) VALUES (:product_id, :wishlist_id)', [
+                            'product_id' => $postedProductId,
+                            'wishlist_id' => $wishlistId
+                        ]);
+                        set_flash('success', 'Product added to wishlist.');
+                    } catch (Throwable $e) {
+                        // Likely a unique constraint violation
+                        set_flash('success', 'Product is already in your wishlist.');
+                    }
+                } else {
+                    set_flash('error', 'Wishlist is not supported in offline mode.');
+                }
+                redirect('product.php?product_id=' . $postedProductId);
+            } catch (Throwable $exception) {
+                $errors[] = 'Unable to add product to wishlist: ' . $exception->getMessage();
+            }
+        }
+    }
 }
 
 $product = null;
@@ -70,8 +118,10 @@ if ($productId !== false && $productId !== null) {
                         p.product_description,
                         p.price,
                         p.product_image,
+                        d.discount_percentage,
                         NVL(u.first_name || ' ' || u.last_name, s.shop_name) AS trader_name
                  FROM PRODUCT p
+                 LEFT JOIN DISCOUNT d ON p.discount_id = d.discount_id
                  JOIN SHOP s ON s.shop_id = p.shop_id
                  JOIN TRADER t ON t.trader_id = s.trader_id
                  JOIN \"USER\" u ON u.user_id = t.trader_id
@@ -151,15 +201,25 @@ require __DIR__ . '/components/header.php';
                         <span class="product-star">&#9733;</span>
                         <span class="product-star">&#9733;</span>
                     </span>
-                        <span class="product-price">$<?php echo e(number_format((float) $product['PRICE'], 2)); ?></span>
+                        <span class="product-price">
+                            <?php 
+                            $rawPrice = (float) $product['PRICE'];
+                            $discount = isset($product['DISCOUNT_PERCENTAGE']) ? (float) $product['DISCOUNT_PERCENTAGE'] : 0;
+                            if ($discount > 0) {
+                                $discounted = $rawPrice * (1 - $discount / 100);
+                                echo '<s>$' . number_format($rawPrice, 2) . '</s> $' . number_format($discounted, 2);
+                            } else {
+                                echo '$' . number_format($rawPrice, 2);
+                            }
+                            ?>
+                        </span>
                 </p>
 
                 <p class="product-box product-description">
-                    Product Description: <?php echo e($product['PRODUCT_DESCRIPTION']); ?>
+                    Product Description: <?php echo e(is_object($product['PRODUCT_DESCRIPTION']) ? $product['PRODUCT_DESCRIPTION']->load() : (string)($product['PRODUCT_DESCRIPTION'] ?? '')); ?>
                 </p>
 
                 <form class="product-form" method="post" action="product.php?product_id=<?php echo e($product['PRODUCT_ID']); ?>">
-                    <input type="hidden" name="action" value="add_to_cart" />
                     <input type="hidden" name="product_id" value="<?php echo e($product['PRODUCT_ID']); ?>" />
                     <div class="product-box product-quantity" aria-label="Quantity selector">
                         <p class="product-quantity__label">Quantity:</p>
@@ -168,9 +228,17 @@ require __DIR__ . '/components/header.php';
                         </div>
                     </div>
 
-                    <button class="product-add-button" type="submit">
-                        Add to Basket
-                    </button>
+                    <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+                        <button class="product-add-button" type="submit" name="action" value="add_to_cart" style="flex: 1; font-size: 1.1rem; padding: 0.75rem;">
+                            Add to Basket
+                        </button>
+                        <button class="product-add-button" type="submit" name="action" value="add_to_wishlist" style="flex: 1; font-size: 1.1rem; padding: 0.75rem; background: transparent; color: #1a1a1a; border: 1px solid #1a1a1a; display: flex; align-items: center; justify-content: center; gap: 0.5rem;" title="Save to Wishlist">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                            </svg>
+                            Add to Wishlist
+                        </button>
+                    </div>
                 </form>
             </article>
         </div>

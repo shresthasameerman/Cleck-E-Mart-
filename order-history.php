@@ -24,7 +24,7 @@ if (!$conn) {
 } else {
     // Fetch all orders for this customer
     $sql = "SELECT o.order_id, o.order_status, o.order_date, p.amount_paid,
-                   COUNT(oi.order_item_id) as item_count
+                   SUM(oi.quantity) as item_count
             FROM \"ORDER\" o
             LEFT JOIN PAYMENT p ON o.order_id = p.order_id
             LEFT JOIN ORDER_ITEM oi ON o.order_id = oi.order_id
@@ -107,6 +107,9 @@ if (!$conn) {
                                 <div class="order-card__footer">
                                     <a href="order-confirmation.php?order_id=<?php echo (int)$order['ORDER_ID']; ?>" class="button button--small">
                                         View Details
+                                    </a>
+                                    <a href="download-invoice.php?order_id=<?php echo (int)$order['ORDER_ID']; ?>" class="button button--small button--secondary" target="_blank">
+                                        Download Invoice
                                     </a>
                                 </div>
                             </article>

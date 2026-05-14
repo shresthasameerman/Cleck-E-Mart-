@@ -974,18 +974,6 @@
             "product_id": 7113,
             "quantity": 1,
             "unit_price": 3.5
-        },
-        {
-            "cart_id": 11105,
-            "product_id": 7114,
-            "quantity": 4,
-            "unit_price": 3.99
-        },
-        {
-            "cart_id": 11105,
-            "product_id": 7109,
-            "quantity": 5,
-            "unit_price": 6.99
         }
     ],
     "orders": [

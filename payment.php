@@ -256,6 +256,79 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'paypa
             $paymentSuccess = true;
             
             // ====================================================================
+            // STEP 4.5: SEND INVOICE EMAIL
+            // ====================================================================
+            
+            $customerName = $_SESSION['first_name'] ?? 'Customer';
+            $customerEmail = $_SESSION['email'] ?? '';
+            
+            if ($customerEmail) {
+                $subject = "Invoice for Order #" . $newOrderId . " - Cleck E-Mart";
+                
+                $message = "
+                <html>
+                <head>
+                <title>Invoice for Order #{$newOrderId}</title>
+                <style>
+                    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                    .invoice-box { max-width: 800px; margin: auto; padding: 30px; border: 1px solid #eee; box-shadow: 0 0 10px rgba(0, 0, 0, 0.15); }
+                    .header { text-align: center; margin-bottom: 20px; }
+                    .table { width: 100%; border-collapse: collapse; }
+                    .table th, .table td { padding: 10px; border-bottom: 1px solid #ddd; text-align: left; }
+                    .total { font-weight: bold; font-size: 1.2em; text-align: right; }
+                </style>
+                </head>
+                <body>
+                    <div class='invoice-box'>
+                        <div class='header'>
+                            <h2>Cleck E-Mart</h2>
+                            <p>Invoice for Order #{$newOrderId}</p>
+                        </div>
+                        <p>Dear {$customerName},</p>
+                        <p>Thank you for your purchase! Here are the details of your order:</p>
+                        <table class='table'>
+                            <thead>
+                                <tr>
+                                    <th>Item</th>
+                                    <th>Quantity</th>
+                                    <th>Unit Price</th>
+                                    <th>Line Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>";
+                            
+                foreach ($normalizedItems as $line) {
+                    $itemTotal = number_format($line['line_total'], 2);
+                    $unitPrice = number_format($line['unit_price'], 2);
+                    $message .= "
+                                <tr>
+                                    <td>{$line['name']}</td>
+                                    <td>{$line['quantity']}</td>
+                                    <td>£{$unitPrice}</td>
+                                    <td>£{$itemTotal}</td>
+                                </tr>";
+                }
+                
+                $formattedTotal = number_format($total, 2);
+                $message .= "
+                            </tbody>
+                        </table>
+                        <p class='total'>Total Amount: £{$formattedTotal}</p>
+                        <p>We hope to see you again soon!</p>
+                        <p>Regards,<br>The Cleck E-Mart Team</p>
+                    </div>
+                </body>
+                </html>
+                ";
+
+                $headers = "MIME-Version: 1.0" . "\r\n";
+                $headers .= "Content-type:text/html;charset=UTF-8" . "\r\n";
+                $headers .= "From: Cleck E-Mart <noreply@cleck-e-mart.com>" . "\r\n";
+                
+                @mail($customerEmail, $subject, $message, $headers);
+            }
+            
+            // ====================================================================
             // STEP 5: CLEAR CART (only after successful commit)
             // ====================================================================
             
