@@ -31,7 +31,7 @@ $resolveImage = static function (?string $path): string {
         return $clean;
     }
 
-    $relative = 'assets/images/' . ltrim($clean, '/');
+    $relative = 'assets/images/products/' . ltrim($clean, '/');
     $absolute = __DIR__ . '/' . $relative;
     return file_exists($absolute) ? $relative : 'assets/images/product-placeholder.svg';
 };
@@ -67,9 +67,12 @@ try {
 
         $binds = [];
         if ($selectedCategoryId !== false && $selectedCategoryId !== null) {
-            $sql .= ' WHERE p.category_id = :category_id';
+            $sql .= ' WHERE p.category_id = :category_id AND p.product_verification_status = :verification_status';
             $binds['category_id'] = $selectedCategoryId;
+        } else {
+            $sql .= ' WHERE p.product_verification_status = :verification_status';
         }
+        $binds['verification_status'] = 'APPROVED';
 
         $sql .= ' ORDER BY p.product_name';
         $products = db_fetch_all($sql, $binds);

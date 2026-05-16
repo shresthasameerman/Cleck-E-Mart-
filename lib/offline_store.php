@@ -42,11 +42,11 @@ function offline_default_data(): array
             ['customer_id' => 1010, 'loyalty_points' => 0],
         ],
         'traders' => [
-            ['trader_id' => 1011, 'brand_name' => "Firth's Butchers", 'pan_number' => 'PAN-UK-11001'],
-            ['trader_id' => 1012, 'brand_name' => "Greenwood's Greengrocers", 'pan_number' => 'PAN-UK-11002'],
-            ['trader_id' => 1013, 'brand_name' => "Fishwick's Fishmonger", 'pan_number' => 'PAN-UK-11003'],
-            ['trader_id' => 1014, 'brand_name' => 'The Dough Bakery', 'pan_number' => 'PAN-UK-11004'],
-            ['trader_id' => 1015, 'brand_name' => 'Claes Deli & Delicatessen', 'pan_number' => 'PAN-UK-11005'],
+            ['trader_id' => 1011, 'brand_name' => "Firth's Butchers", 'pan_number' => 'PAN-UK-11001', 'trader_status' => 'VERIFIED'],
+            ['trader_id' => 1012, 'brand_name' => "Greenwood's Greengrocers", 'pan_number' => 'PAN-UK-11002', 'trader_status' => 'VERIFIED'],
+            ['trader_id' => 1013, 'brand_name' => "Fishwick's Fishmonger", 'pan_number' => 'PAN-UK-11003', 'trader_status' => 'VERIFIED'],
+            ['trader_id' => 1014, 'brand_name' => 'The Dough Bakery', 'pan_number' => 'PAN-UK-11004', 'trader_status' => 'VERIFIED'],
+            ['trader_id' => 1015, 'brand_name' => 'Claes Deli & Delicatessen', 'pan_number' => 'PAN-UK-11005', 'trader_status' => 'VERIFIED'],
         ],
         'admins' => [
             ['admin_id' => 1016, 'privileges' => 'FULL_ACCESS'],
@@ -73,7 +73,7 @@ function offline_default_data(): array
             ['shop_id' => 5105, 'trader_id' => 1015, 'shop_name' => 'Claes Deli & Delicatessen', 'shop_description' => 'Continental meats, cheeses, olives, antipasti and specialist condiments. Dine-in and takeaway platters.', 'shop_logo' => 'claes_logo.png', 'shop_status' => 'ACTIVE'],
         ],
         'products' => [
-            ['product_id' => 7101, 'shop_id' => 5101, 'category_id' => 6101, 'discount_id' => null, 'product_name' => 'Beef Sirloin Steak (200g)', 'product_description' => 'Prime 21-day dry-aged Yorkshire beef sirloin. Perfect for grilling or pan-frying.', 'price' => 8.99, 'stock_quantity' => 40, 'product_status' => 'IN_STOCK', 'allergy_information' => null, 'min_order' => 1, 'max_order' => null, 'product_image' => 'beef_sirloin.jpg'],
+            ['product_id' => 7101, 'shop_id' => 5101, 'category_id' => 6101, 'discount_id' => null, 'product_name' => 'Beef Sirloin Steak (200g)', 'product_description' => 'Prime 21-day dry-aged Yorkshire beef sirloin. Perfect for grilling or pan-frying.', 'price' => 8.99, 'stock_quantity' => 40, 'product_status' => 'IN_STOCK', 'product_verification_status' => 'APPROVED', 'allergy_information' => null, 'min_order' => 1, 'max_order' => null, 'product_image' => 'beef_sirloin.jpg'],
             ['product_id' => 7102, 'shop_id' => 5101, 'category_id' => 6101, 'discount_id' => 8105, 'product_name' => 'Lamb Shoulder (per kg)', 'product_description' => 'Locally sourced Yorkshire lamb shoulder - ideal for slow roasting.', 'price' => 12.50, 'stock_quantity' => 25, 'product_status' => 'IN_STOCK', 'allergy_information' => null, 'min_order' => 1, 'max_order' => null, 'product_image' => 'lamb_shoulder.jpg'],
             ['product_id' => 7103, 'shop_id' => 5101, 'category_id' => 6101, 'discount_id' => null, 'product_name' => 'Pork Belly Slices (500g)', 'product_description' => 'Hand-prepared pork belly, great for BBQ or slow-roasting. Allergens: none.', 'price' => 5.49, 'stock_quantity' => 30, 'product_status' => 'IN_STOCK', 'allergy_information' => null, 'min_order' => 1, 'max_order' => null, 'product_image' => 'pork_belly.jpg'],
             ['product_id' => 7104, 'shop_id' => 5101, 'category_id' => 6101, 'discount_id' => null, 'product_name' => 'Free-Range Whole Chicken (1.5kg)', 'product_description' => 'Free-range Yorkshire chicken, oven-ready. Allergens: none.', 'price' => 9.75, 'stock_quantity' => 20, 'product_status' => 'IN_STOCK', 'allergy_information' => null, 'min_order' => 1, 'max_order' => null, 'product_image' => 'whole_chicken.jpg'],
@@ -92,7 +92,7 @@ function offline_default_data(): array
             ['product_id' => 7117, 'shop_id' => 5105, 'category_id' => 6105, 'discount_id' => null, 'product_name' => 'Italian Prosciutto (100g)', 'product_description' => 'Hand-sliced DOP Prosciutto di Parma, aged 18 months. Allergens: none.', 'price' => 6.50, 'stock_quantity' => 30, 'product_status' => 'IN_STOCK', 'allergy_information' => null, 'min_order' => 1, 'max_order' => null, 'product_image' => 'prosciutto.jpg'],
             ['product_id' => 7118, 'shop_id' => 5105, 'category_id' => 6105, 'discount_id' => 8105, 'product_name' => 'Manchego Cheese (150g)', 'product_description' => 'Spanish semi-cured sheep\'s milk cheese with a firm texture. Allergens: Dairy.', 'price' => 5.75, 'stock_quantity' => 25, 'product_status' => 'IN_STOCK', 'allergy_information' => 'Dairy', 'min_order' => 1, 'max_order' => null, 'product_image' => 'manchego.jpg'],
             ['product_id' => 7119, 'shop_id' => 5105, 'category_id' => 6105, 'discount_id' => null, 'product_name' => 'Mixed Marinated Olives (200g)', 'product_description' => 'Kalamata and Sicilian green olives in herb-infused oil. Allergens: none.', 'price' => 3.25, 'stock_quantity' => 40, 'product_status' => 'IN_STOCK', 'allergy_information' => null, 'min_order' => 1, 'max_order' => null, 'product_image' => 'mixed_olives.jpg'],
-            ['product_id' => 7120, 'shop_id' => 5105, 'category_id' => 6105, 'discount_id' => null, 'product_name' => 'Sun-Dried Tomato Pesto (190g jar)', 'product_description' => 'Artisan pesto made with sun-dried tomatoes, basil and pine nuts. Allergens: Nuts, Dairy.', 'price' => 4.10, 'stock_quantity' => 35, 'product_status' => 'IN_STOCK', 'allergy_information' => 'Nuts, Dairy', 'min_order' => 1, 'max_order' => null, 'product_image' => 'pesto_jar.jpg'],
+            ['product_id' => 7120, 'shop_id' => 5105, 'category_id' => 6105, 'discount_id' => null, 'product_name' => 'Sun-Dried Tomato Pesto (190g jar)', 'product_description' => 'Artisan pesto made with sun-dried tomatoes, basil and pine nuts. Allergens: Nuts, Dairy.', 'price' => 4.10, 'stock_quantity' => 35, 'product_status' => 'IN_STOCK', 'product_verification_status' => 'APPROVED', 'allergy_information' => 'Nuts, Dairy', 'min_order' => 1, 'max_order' => null, 'product_image' => 'pesto_jar.jpg'],
         ],
         'collection_slots' => [
             ['slot_id' => 501, 'slot_time' => '10:00-13:00', 'slot_date' => '2026-04-15', 'max_orders' => 20, 'slot_status' => 'AVAILABLE'],
@@ -284,6 +284,19 @@ function offline_create_account(string $firstName, string $lastName, string $ema
             'trader_id' => $userId,
             'brand_name' => null,
             'pan_number' => null,
+            'trader_status' => 'PENDING_VERIFICATION',
+        ];
+
+        // Create a default SHOP for the trader
+        $shopId = offline_next_id($data['shops'], 'shop_id');
+        $defaultShopName = $firstName . "'s Shop";
+        $data['shops'][] = [
+            'shop_id' => $shopId,
+            'trader_id' => $userId,
+            'shop_name' => $defaultShopName,
+            'shop_description' => 'Welcome to our shop!',
+            'shop_logo' => null,
+            'shop_status' => 'ACTIVE',
         ];
     } else {
         $data['customers'][] = [
@@ -386,6 +399,11 @@ function offline_get_products(?int $categoryId = null): array
     $rows = [];
 
     foreach ($data['products'] as $product) {
+        // Only show approved products to customers
+        if (strtoupper((string) ($product['product_verification_status'] ?? 'PENDING_VERIFICATION')) !== 'APPROVED') {
+            continue;
+        }
+
         if ($categoryId !== null && (int) $product['category_id'] !== $categoryId) {
             continue;
         }
@@ -878,6 +896,7 @@ function offline_create_product(int $shopId, array $payload): array
         'price' => (float) ($payload['price'] ?? 0),
         'stock_quantity' => max(0, (int) ($payload['stock_quantity'] ?? 0)),
         'product_status' => (string) ($payload['product_status'] ?? 'IN_STOCK'),
+        'product_verification_status' => 'PENDING_VERIFICATION',
         'allergy_information' => $payload['allergy_information'] ?? null,
         'min_order' => (int) ($payload['min_order'] ?? 1),
         'max_order' => $payload['max_order'] === null ? null : (int) $payload['max_order'],
@@ -910,4 +929,98 @@ function offline_user_to_upper(array $user): array
         'PHONE_NUMBER' => $user['phone_number'],
         'ROLE' => (string) $user['role'],
     ];
+}
+
+function offline_get_pending_products(): array
+{
+    $data = offline_load();
+    $rows = [];
+
+    foreach ($data['products'] as $product) {
+        if (($product['product_verification_status'] ?? 'PENDING_VERIFICATION') !== 'PENDING_VERIFICATION') {
+            continue;
+        }
+
+        $shopName = '';
+        foreach ($data['shops'] as $shop) {
+            if ((int) $shop['shop_id'] === (int) $product['shop_id']) {
+                $shopName = (string) $shop['shop_name'];
+                break;
+            }
+        }
+
+        $rows[] = [
+            'PRODUCT_ID' => (int) $product['product_id'],
+            'PRODUCT_NAME' => (string) $product['product_name'],
+            'PRICE' => (float) $product['price'],
+            'PRODUCT_VERIFICATION_STATUS' => $product['product_verification_status'] ?? 'PENDING_VERIFICATION',
+            'SHOP_NAME' => $shopName,
+        ];
+    }
+    return $rows;
+}
+
+function offline_update_product_status(int $productId, string $status): void
+{
+    $data = offline_load();
+    foreach ($data['products'] as $index => $product) {
+        if ((int) $product['product_id'] === $productId) {
+            $data['products'][$index]['product_verification_status'] = $status;
+            offline_save($data);
+            return;
+    }
+}
+
+function offline_get_pending_traders(): array
+{
+    $data = offline_load();
+    $rows = [];
+
+    foreach ($data['traders'] as $trader) {
+        if (($trader['trader_status'] ?? 'PENDING_VERIFICATION') !== 'PENDING_VERIFICATION') {
+            continue;
+        }
+
+        $user = null;
+        foreach ($data['users'] as $u) {
+            if ((int) $u['user_id'] === (int) $trader['trader_id']) {
+                $user = $u;
+                break;
+            }
+        }
+        
+        $shopName = '';
+        foreach ($data['shops'] as $s) {
+            if ((int) $s['trader_id'] === (int) $trader['trader_id']) {
+                $shopName = (string) $s['shop_name'];
+                break;
+            }
+        }
+
+        if ($user) {
+            $rows[] = [
+                'TRADER_ID' => (int) $trader['trader_id'],
+                'FIRST_NAME' => (string) $user['first_name'],
+                'LAST_NAME' => (string) $user['last_name'],
+                'EMAIL' => (string) $user['email'],
+                'BRAND_NAME' => (string) $trader['brand_name'],
+                'SHOP_NAME' => $shopName,
+                'TRADER_STATUS' => $trader['trader_status'] ?? 'PENDING_VERIFICATION'
+            ];
+        }
+    }
+    return $rows;
+}
+
+function offline_update_trader_status(int $traderId, string $status): void
+{
+    $data = offline_load();
+    foreach ($data['traders'] as $index => $trader) {
+        if ((int) $trader['trader_id'] === $traderId) {
+            $data['traders'][$index]['trader_status'] = $status;
+            offline_save($data);
+            return;
+        }
+    }
+}
 }

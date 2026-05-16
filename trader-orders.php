@@ -13,11 +13,24 @@ if ($shop === null) {
 $successMessage = get_flash('success');
 $errorMessage = get_flash('error');
 
+// Handle Overall Order Status Update
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'update_order_status') {
+    $orderId = (int) ($_POST['order_id'] ?? 0);
+    $newStatus = strtoupper(trim((string) ($_POST['new_status'] ?? '')));
+    try {
+        trader_update_order_status($userId, $orderId, $newStatus);
+        set_flash('success', "Order status updated to $newStatus successfully.");
+    } catch (Throwable $e) {
+        set_flash('error', $e->getMessage());
+    }
+    redirect("trader-orders.php?id=$orderId");
+}
+
 // Handle Item Status Update (Ready/Cancel Item)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'update_status') {
     $orderId = (int) ($_POST['order_id'] ?? 0);
     $productId = (int) ($_POST['product_id'] ?? 0);
-    $newStatus = $_POST['new_status'] ?? '';
+    $newStatus = strtoupper(trim((string) ($_POST['new_status'] ?? '')));
     try {
         if (!in_array($newStatus, ['READY', 'CANCELLED'])) {
             throw new Exception('Please select a valid status.');
@@ -81,6 +94,10 @@ require __DIR__ . '/components/header.php';
                 ?>
                     <p class="trader-empty">Order not found or contains no products from your shop.</p>
                 <?php else: ?>
+                    <?php
+                        $orderStatus = strtoupper($orderInfo['ORDER_STATUS'] ?? 'PENDING');
+                        $orderStatusOptions = ['PAID' => 'Paid', 'READY' => 'Ready', 'COLLECTED' => 'Collected'];
+                    ?>
                     <section class="trader-card">
                         <div class="trader-card__header">
                             <div>
@@ -105,6 +122,24 @@ require __DIR__ . '/components/header.php';
                                 <span>Payment Status</span>
                                 <input type="text" value="<?php echo e($orderInfo['PAYMENT_STATUS'] ?? 'PENDING'); ?>" readonly />
                             </label>
+                            <div class="trader-form__full" style="display: grid; gap: 0.35rem;">
+                                <span>Overall Status</span>
+                                <form method="post" action="trader-orders.php" style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                                    <input type="hidden" name="action" value="update_order_status" />
+                                    <input type="hidden" name="order_id" value="<?php echo e($orderInfo['ORDER_ID']); ?>" />
+                                    <select name="new_status" required style="padding: 0.3rem; font-size: 0.9rem; border-radius: 4px; border: 1px solid #ccc; background-color: #fff;">
+                                        <?php if (isset($orderStatusOptions[$orderStatus])): ?>
+                                            <option value="" disabled>Select...</option>
+                                        <?php else: ?>
+                                            <option value="" disabled selected><?php echo e($orderStatus); ?> (current)</option>
+                                        <?php endif; ?>
+                                        <?php foreach ($orderStatusOptions as $value => $label): ?>
+                                            <option value="<?php echo e($value); ?>" <?php echo $orderStatus === $value ? 'selected' : ''; ?>><?php echo e($label); ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                    <button type="submit" class="button button--secondary" style="padding: 0.3rem 0.6rem; font-size: 0.8rem;">Update</button>
+                                </form>
+                            </div>
                         </div>
 
                         <h3>Your Products in this Order</h3>
@@ -197,6 +232,7 @@ require __DIR__ . '/components/header.php';
                                     <option value="">All Statuses</option>
                                     <option value="PAID" <?php echo $filters['status'] === 'PAID' ? 'selected' : ''; ?>>Paid</option>
                                     <option value="READY" <?php echo $filters['status'] === 'READY' ? 'selected' : ''; ?>>Ready</option>
+                                    <option value="COLLECTED" <?php echo $filters['status'] === 'COLLECTED' ? 'selected' : ''; ?>>Collected</option>
                                     <option value="SHIPPED" <?php echo $filters['status'] === 'SHIPPED' ? 'selected' : ''; ?>>Shipped</option>
                                     <option value="DELIVERED" <?php echo $filters['status'] === 'DELIVERED' ? 'selected' : ''; ?>>Delivered</option>
                                 </select>
@@ -231,6 +267,7 @@ require __DIR__ . '/components/header.php';
                                             $badgeClass = 'badge--default';
                                             if ($orderStatus === 'PAID') $badgeClass = 'badge--blue';
                                             elseif ($orderStatus === 'READY') $badgeClass = 'badge--orange';
+                                            elseif ($orderStatus === 'COLLECTED') $badgeClass = 'badge--green';
                                             elseif ($orderStatus === 'SHIPPED') $badgeClass = 'badge--purple';
                                             elseif ($orderStatus === 'DELIVERED') $badgeClass = 'badge--green';
                                         ?>

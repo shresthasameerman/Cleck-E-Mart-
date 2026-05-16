@@ -125,7 +125,7 @@ if ($productId !== false && $productId !== null) {
                  JOIN SHOP s ON s.shop_id = p.shop_id
                  JOIN TRADER t ON t.trader_id = s.trader_id
                  JOIN \"USER\" u ON u.user_id = t.trader_id
-                 WHERE p.product_id = :product_id",
+                 WHERE p.product_id = :product_id AND p.product_verification_status = 'APPROVED'",
                 ['product_id' => $productId]
             );
         }
@@ -176,7 +176,7 @@ require __DIR__ . '/components/header.php';
                 if ($productImage === '') {
                     $productImage = 'assets/images/product-placeholder.svg';
                 } elseif (!str_starts_with($productImage, 'http://') && !str_starts_with($productImage, 'https://') && !str_starts_with($productImage, 'assets/')) {
-                    $productImage = 'assets/images/' . ltrim($productImage, '/');
+                    $productImage = 'assets/images/products/' . ltrim($productImage, '/');
                 }
                 if (!str_starts_with($productImage, 'http://') && !str_starts_with($productImage, 'https://')) {
                     $absoluteImage = __DIR__ . '/' . $productImage;

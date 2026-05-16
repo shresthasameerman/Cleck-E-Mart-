@@ -90,6 +90,9 @@ try {
             $categoryBind = (int) $selectedCategoryId;
         }
 
+        // Only show approved products to customers
+        $conditions[] = "p.product_verification_status = 'APPROVED'";
+
         if ($conditions !== []) {
             $sql .= ' WHERE ' . implode(' AND ', $conditions);
         }
@@ -154,7 +157,7 @@ require __DIR__ . '/components/header.php';
         <div class="container">
             <div class="welcome-hero__banner">
                 <h1 id="welcome-title" class="sr-only">Welcome back to Cleck E-Mart</h1>
-                <img src="assets/images/product-placeholder.svg" alt="Featured shopping banner" />
+                <img src="assets/images/banner.png" alt="Cleck E-Mart Farmers Market" style="width: 100%; height: auto; border-radius: var(--radius-lg); object-fit: cover; max-height: 400px;" />
             </div>
         </div>
     </section>
@@ -215,9 +218,25 @@ require __DIR__ . '/components/header.php';
         </div>
     </section>
 
-    <section class="promo" aria-label="Promotions">
+    <section class="promo" aria-label="Promotions" style="margin-top: 2rem;">
         <div class="container">
-            <a class="promo-banner" href="category.php">Promotion / Offer Banner</a>
+            <h2 class="section-heading__title-sm" style="margin-bottom: 1.5rem;">Special Offers</h2>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem;">
+                <a href="category.php?category_id=6104" style="position: relative; display: block; border-radius: var(--radius-lg); overflow: hidden; text-decoration: none;">
+                    <img src="assets/images/promo_bakery.png" alt="Bakery Discount" style="width: 100%; height: 250px; object-fit: cover; display: block; transition: transform 0.3s ease;" />
+                    <div style="position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.8), rgba(0,0,0,0.1)); display: flex; flex-direction: column; justify-content: flex-end; padding: 2rem;">
+                        <span style="color: white; font-weight: bold; font-size: 1.5rem; margin-bottom: 0.5rem;">15% OFF Bakery</span>
+                        <span style="color: rgba(255,255,255,0.9); font-size: 1rem;">Fresh sourdough, croissants & more</span>
+                    </div>
+                </a>
+                <a href="category.php?category_id=6102" style="position: relative; display: block; border-radius: var(--radius-lg); overflow: hidden; text-decoration: none;">
+                    <img src="assets/images/promo_produce.png" alt="Produce Discount" style="width: 100%; height: 250px; object-fit: cover; display: block; transition: transform 0.3s ease;" />
+                    <div style="position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.8), rgba(0,0,0,0.1)); display: flex; flex-direction: column; justify-content: flex-end; padding: 2rem;">
+                        <span style="color: white; font-weight: bold; font-size: 1.5rem; margin-bottom: 0.5rem;">10% OFF Fresh Produce</span>
+                        <span style="color: rgba(255,255,255,0.9); font-size: 1rem;">Organic vegetables straight from the farm</span>
+                    </div>
+                </a>
+            </div>
         </div>
     </section>
 </main>

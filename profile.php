@@ -72,6 +72,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
+    if ($profileAction === 'remove_wishlist') {
+        $productId = filter_input(INPUT_POST, 'product_id', FILTER_VALIDATE_INT);
+        if ($productId !== false && $productId !== null) {
+            try {
+                if (!db_is_offline()) {
+                    db_execute(
+                        'DELETE FROM WISHLIST_ITEM 
+                         WHERE product_id = :product_id 
+                           AND wishlist_id IN (SELECT wishlist_id FROM WISHLIST WHERE customer_id = :customer_id)',
+                        [
+                            'product_id' => $productId,
+                            'customer_id' => $userId
+                        ]
+                    );
+                    set_flash('success', 'Item removed from wishlist.');
+                }
+                redirect('profile.php?tab=wishlist');
+            } catch (Throwable $exception) {
+                $errors[] = 'Unable to remove item from wishlist: ' . $exception->getMessage();
+            }
+        }
+    }
+
     if ($profileAction === 'change_password') {
         $currentPassword = (string) ($_POST['current_password'] ?? '');
         $newPassword = (string) ($_POST['new_password'] ?? '');
@@ -558,7 +581,14 @@ require __DIR__ . '/components/header.php';
                                                 <p class="order-card__id"><?php echo e($item['PRODUCT_NAME']); ?></p>
                                                 <p class="order-card__date">Added: <?php echo e(date('j F Y', strtotime((string) $item['ADDED_DATE']))); ?></p>
                                             </div>
-                                            <a href="product.php?product_id=<?php echo e($item['PRODUCT_ID']); ?>" class="profile-submit" style="width:auto; padding: 0.5rem 1rem;">View Product</a>
+                                            <div style="display:flex; gap:0.5rem; align-items:center;">
+                                                <a href="product.php?product_id=<?php echo e($item['PRODUCT_ID']); ?>" class="profile-submit" style="width:auto; padding: 0.5rem 1rem;">View Product</a>
+                                                <form method="post" action="profile.php?tab=wishlist" style="margin:0;">
+                                                    <input type="hidden" name="profile_action" value="remove_wishlist" />
+                                                    <input type="hidden" name="product_id" value="<?php echo e($item['PRODUCT_ID']); ?>" />
+                                                    <button type="submit" class="button button--secondary" style="padding: 0.5rem 1rem;" title="Remove from wishlist">Remove</button>
+                                                </form>
+                                            </div>
                                         </div>
                                     </div>
                                 <?php endforeach; ?>

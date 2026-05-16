@@ -123,11 +123,11 @@ require __DIR__ . '/components/header.php';
                     }
                     
                     // Handle image
-                    $image = trim((string) ($item['product_image'] ?? ''));
+                    $image = trim((string) ($item['product_image'] ?? $item['PRODUCT_IMAGE'] ?? ''));
                     if ($image === '') {
                         $image = 'assets/images/product-placeholder.svg';
                     } elseif (!str_starts_with($image, 'http://') && !str_starts_with($image, 'https://') && !str_starts_with($image, 'assets/')) {
-                        $image = 'assets/images/' . ltrim($image, '/');
+                        $image = 'assets/images/products/' . ltrim($image, '/');
                     }
                     if (!str_starts_with($image, 'http://') && !str_starts_with($image, 'https://')) {
                         $absoluteImage = __DIR__ . '/' . $image;

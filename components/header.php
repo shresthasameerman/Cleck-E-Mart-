@@ -6,8 +6,18 @@ $metaDescription = $metaDescription ?? 'A responsive storefront homepage built f
 
 $headerIsLoggedIn = is_logged_in();
 $headerIsTrader = $headerIsLoggedIn && current_role() === 'TRADER';
-$headerAccountHref = $headerIsTrader ? 'trader-dashboard.php' : ($headerIsLoggedIn ? 'profile.php' : 'auth.php?mode=login');
-$headerAccountLabel = $headerIsTrader ? 'Trader dashboard' : ($headerIsLoggedIn ? 'Account profile' : 'Login / signup');
+$headerIsAdmin = $headerIsLoggedIn && current_role() === 'ADMIN';
+
+if ($headerIsAdmin) {
+    $headerAccountHref = 'admin-dashboard.php';
+    $headerAccountLabel = 'Admin dashboard';
+} elseif ($headerIsTrader) {
+    $headerAccountHref = 'trader-dashboard.php';
+    $headerAccountLabel = 'Trader dashboard';
+} else {
+    $headerAccountHref = $headerIsLoggedIn ? 'profile.php' : 'auth.php?mode=login';
+    $headerAccountLabel = $headerIsLoggedIn ? 'Account profile' : 'Login / signup';
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -41,7 +51,9 @@ $headerAccountLabel = $headerIsTrader ? 'Trader dashboard' : ($headerIsLoggedIn 
                 </button>
 
                 <div class="site-nav__panel" id="primary-navigation" data-nav-panel>
-                    <?php if ($headerIsTrader): ?>
+                    <?php if ($headerIsAdmin): ?>
+                        <a href="admin-dashboard.php">Admin Dashboard</a>
+                    <?php elseif ($headerIsTrader): ?>
                         <a href="trader-dashboard.php">Dashboard</a>
                         <a href="trader-profile.php">Profile Settings</a>
                         <a href="trader-add-product.php">Add Product</a>

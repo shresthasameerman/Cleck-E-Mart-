@@ -80,6 +80,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     'brand_name' => null,
                                 ]
                             );
+
+                            // Create a default SHOP for the trader
+                            $shopId = db_next_id('SHOP', 'shop_id');
+                            $defaultShopName = $firstName . "'s Shop";
+                            db_execute(
+                                'INSERT INTO SHOP (shop_id, trader_id, shop_name, shop_description, shop_logo, shop_status) 
+                                 VALUES (:shop_id, :trader_id, :shop_name, :shop_description, :shop_logo, :shop_status)',
+                                [
+                                    'shop_id' => $shopId,
+                                    'trader_id' => $userId,
+                                    'shop_name' => $defaultShopName,
+                                    'shop_description' => 'Welcome to our shop!',
+                                    'shop_logo' => null,
+                                    'shop_status' => 'ACTIVE',
+                                ]
+                            );
                         } else {
                             db_execute(
                                 'INSERT INTO CUSTOMER (customer_id, loyalty_points) VALUES (:customer_id, :loyalty_points)',
@@ -105,7 +121,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     session_regenerate_id(true);
                     login_session($newUser);
                     set_flash('success', 'Account created successfully. Welcome to Cleck E-Mart.');
-                    redirect('index.php');
+                    
+                    $newRole = strtoupper((string) $newUser['ROLE']);
+                    if ($newRole === 'TRADER') {
+                        redirect('trader-dashboard.php');
+                    } else {
+                        redirect('index.php');
+                    }
                 }
             } catch (Throwable $exception) {
                 db_rollback();

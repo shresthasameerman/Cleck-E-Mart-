@@ -67,6 +67,39 @@ function trader_handle_product_image_upload(?array $fileInput): ?string
     return $filename;
 }
 
+function trader_verification_status(int $userId): ?string
+{
+    if (db_is_offline()) {
+        $data = offline_load();
+        foreach ($data['traders'] as $trader) {
+            if ((int) $trader['trader_id'] === $userId) {
+                return (string) ($trader['trader_status'] ?? 'PENDING_VERIFICATION');
+            }
+        }
+        return null;
+    }
+
+    try {
+        $result = db_fetch_one(
+            'SELECT trader_status FROM TRADER WHERE trader_id = :trader_id',
+            ['trader_id' => $userId]
+        );
+
+        return $result ? (string) $result['TRADER_STATUS'] : null;
+    } catch (Throwable $e) {
+        // If the column doesn't exist yet in the database, assume existing traders are VERIFIED
+        // This is a fallback for development mode before schema migration
+        error_log('Trader verification status query failed: ' . $e->getMessage());
+        return 'VERIFIED';
+    }
+}
+
+function trader_is_verified(int $userId): bool
+{
+    $status = trader_verification_status($userId);
+    return $status === 'VERIFIED';
+}
+
 function trader_shop_for_user(int $userId): ?array
 {
     if (db_is_offline()) {
@@ -291,6 +324,7 @@ function trader_create_product(int $userId, array $payload): array
                 price,
                 stock_quantity,
                 product_status,
+                product_verification_status,
                 allergy_information,
                 min_order,
                 max_order,
@@ -305,6 +339,7 @@ function trader_create_product(int $userId, array $payload): array
                 :price,
                 :stock_quantity,
                 :product_status,
+                :product_verification_status,
                 :allergy_information,
                 :min_order,
                 :max_order,
@@ -319,6 +354,7 @@ function trader_create_product(int $userId, array $payload): array
                 'price' => $price,
                 'stock_quantity' => $stockQuantity,
                 'product_status' => $productStatus,
+                'product_verification_status' => 'PENDING_VERIFICATION',
                 'allergy_information' => $allergyInformation === '' ? null : $allergyInformation,
                 'min_order' => 1,
                 'max_order' => $maxOrder,
@@ -578,8 +614,40 @@ function trader_update_item_status(int $userId, int $orderId, int $productId, st
     
     // As per requirement: "once the order is set to ready, it should update the order status in the database to be ready as well"
     if ($newStatus === 'READY') {
-        db_execute("UPDATE \"ORDER\" SET order_status = 'READY' WHERE order_id = :order_id", [
-            'order_id' => $orderId
-        ]);
+        trader_update_order_status($userId, $orderId, 'READY');
     }
+}
+
+function trader_update_order_status(int $userId, int $orderId, string $newStatus): void
+{
+    $shop = trader_shop_for_user($userId);
+    if ($shop === null) {
+        throw new RuntimeException('Trader shop not found.');
+    }
+
+    if (!in_array($newStatus, ['PAID', 'READY', 'COLLECTED'], true)) {
+        throw new RuntimeException('Please select a valid status.');
+    }
+
+    $order = db_fetch_one(
+        'SELECT o.order_id
+         FROM "ORDER" o
+         JOIN ORDER_ITEM oi ON o.order_id = oi.order_id
+         JOIN PRODUCT p ON oi.product_id = p.product_id
+         WHERE o.order_id = :order_id AND p.shop_id = :shop_id
+         GROUP BY o.order_id',
+        [
+            'order_id' => $orderId,
+            'shop_id' => (int) $shop['SHOP_ID']
+        ]
+    );
+
+    if (!$order) {
+        throw new RuntimeException('Order not found or access denied.');
+    }
+
+    db_execute('UPDATE "ORDER" SET order_status = :status WHERE order_id = :order_id', [
+        'status' => $newStatus,
+        'order_id' => $orderId
+    ]);
 }

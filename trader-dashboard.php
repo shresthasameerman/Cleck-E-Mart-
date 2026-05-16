@@ -28,6 +28,10 @@ $metaDescription = 'Trader dashboard for reviewing sales, stock, and refill aler
 $successMessage = get_flash('success');
 $errorMessage = get_flash('error');
 
+// Check trader verification status
+$traderStatus = trader_verification_status($userId);
+$isVerified = trader_is_verified($userId);
+
 // ====================================================================
 // DYNAMIC TIMEFRAME FILTERING FOR TOP PRODUCTS
 // ====================================================================
@@ -105,6 +109,12 @@ require __DIR__ . '/components/header.php';
         <?php endif; ?>
         <?php if ($errorMessage): ?>
             <p class="page-message page-message--error"><?php echo e($errorMessage); ?></p>
+        <?php endif; ?>
+        <?php if (!$isVerified): ?>
+            <div class="page-message page-message--warning" style="background-color: #fff3cd; border: 1px solid #ffc107; color: #856404; padding: 1rem;">
+                <p><strong>Account Pending Verification</strong></p>
+                <p>Your trader account is currently awaiting admin verification. Once verified, you will be able to add products and manage your shop. Thank you for your patience!</p>
+            </div>
         <?php endif; ?>
         <?php if ($shop === null): ?>
             <p class="page-message page-message--error">No trader shop was found for this account.</p>

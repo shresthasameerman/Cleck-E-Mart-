@@ -10,30 +10,42 @@ $shop = trader_shop_for_user($userId);
 $categories = trader_categories();
 $metrics = trader_dashboard_metrics($userId);
 
+// Check trader verification status
+$traderStatus = trader_verification_status($userId);
+$isVerified = trader_is_verified($userId);
+
+if (!$isVerified) {
+    $errors[] = 'Your trader account is pending admin verification. You will be able to add products once your account has been verified.';
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['product_action'] ?? '') === 'save_product') {
-    try {
-        // Handle image upload
-        $productImage = null;
-        if (isset($_FILES['product_image']) && $_FILES['product_image']['name'] !== '') {
-            $productImage = trader_handle_product_image_upload($_FILES['product_image']);
+    if (!$isVerified) {
+        $errors[] = 'Cannot add products. Please wait for admin verification of your trader account.';
+    } else {
+        try {
+            // Handle image upload
+            $productImage = null;
+            if (isset($_FILES['product_image']) && $_FILES['product_image']['name'] !== '') {
+                $productImage = trader_handle_product_image_upload($_FILES['product_image']);
+            }
+
+            trader_create_product($userId, [
+                'product_name' => (string) ($_POST['product_name'] ?? ''),
+                'product_description' => (string) ($_POST['product_description'] ?? ''),
+                'category_id' => (int) ($_POST['category_id'] ?? 0),
+                'price' => (float) ($_POST['price'] ?? 0),
+                'stock_quantity' => (int) ($_POST['stock_quantity'] ?? 0),
+                'max_order' => (string) ($_POST['max_order'] ?? ''),
+                'allergy_information' => (string) ($_POST['allergy_information'] ?? ''),
+                'product_image' => $productImage ?? '',
+                'visibility' => (string) ($_POST['visibility'] ?? 'PUBLISH'),
+            ]);
+
+            set_flash('success', 'Product saved successfully.');
+            redirect('trader-add-product.php');
+        } catch (Throwable $exception) {
+            $errors[] = $exception->getMessage();
         }
-
-        trader_create_product($userId, [
-            'product_name' => (string) ($_POST['product_name'] ?? ''),
-            'product_description' => (string) ($_POST['product_description'] ?? ''),
-            'category_id' => (int) ($_POST['category_id'] ?? 0),
-            'price' => (float) ($_POST['price'] ?? 0),
-            'stock_quantity' => (int) ($_POST['stock_quantity'] ?? 0),
-            'max_order' => (string) ($_POST['max_order'] ?? ''),
-            'allergy_information' => (string) ($_POST['allergy_information'] ?? ''),
-            'product_image' => $productImage ?? '',
-            'visibility' => (string) ($_POST['visibility'] ?? 'PUBLISH'),
-        ]);
-
-        set_flash('success', 'Product saved successfully.');
-        redirect('trader-add-product.php');
-    } catch (Throwable $exception) {
-        $errors[] = $exception->getMessage();
     }
 }
 
@@ -90,6 +102,13 @@ require __DIR__ . '/components/header.php';
                         <span class="trader-card__badge">Draft ready</span>
                     </div>
 
+                    <?php if (!$isVerified): ?>
+                        <div style="padding: 2rem; text-align: center;">
+                            <p style="font-size: 1.1rem; margin-bottom: 1rem;">Your trader account is currently pending admin verification.</p>
+                            <p style="color: #666;">Once your account has been verified by an administrator, you will be able to add products to the platform.</p>
+                            <p style="margin-top: 1.5rem; color: #999; font-size: 0.9rem;">Check back soon, or contact support for more information.</p>
+                        </div>
+                    <?php else: ?>
                     <form class="trader-form" method="post" action="trader-add-product.php" enctype="multipart/form-data">
                         <input type="hidden" name="product_action" value="save_product" />
                         <div class="trader-form__grid">
@@ -149,6 +168,7 @@ require __DIR__ . '/components/header.php';
                             <button class="trader-submit" type="submit" name="visibility" value="PUBLISH">Publish Product</button>
                         </div>
                     </form>
+                    <?php endif; ?>
                 </section>
             </div>
         </div>
