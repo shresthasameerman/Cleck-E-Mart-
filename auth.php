@@ -124,7 +124,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     
                     $newRole = strtoupper((string) $newUser['ROLE']);
                     if ($newRole === 'TRADER') {
-                        redirect('trader-dashboard.php');
+                        redirect('trader-shops.php');
                     } else {
                         redirect('index.php');
                     }
@@ -193,7 +193,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     // Route based on role
                     $role = strtoupper((string) $user['ROLE']);
                     if ($role === 'TRADER') {
-                        redirect('trader-dashboard.php');
+                        redirect('trader-shops.php');
                     } else {
                         redirect('index.php');
                     }

@@ -100,10 +100,32 @@ function trader_is_verified(int $userId): bool
     return $status === 'VERIFIED';
 }
 
-function trader_shop_for_user(int $userId): ?array
+function trader_shop_for_user(int $userId, ?int $shopId = null): ?array
 {
     if (db_is_offline()) {
+        if ($shopId) {
+            $shops = offline_get_trader_shops($userId);
+            foreach ($shops as $shop) {
+                if ($shop['SHOP_ID'] == $shopId) {
+                    $user = offline_user_by_id($userId);
+                    $shop['FIRST_NAME'] = $user['FIRST_NAME'] ?? '';
+                    $shop['LAST_NAME'] = $user['LAST_NAME'] ?? '';
+                    $shop['EMAIL'] = $user['EMAIL'] ?? '';
+                    $shop['PHONE_NUMBER'] = $user['PHONE_NUMBER'] ?? '';
+                    $shop['BRAND_NAME'] = null;
+                    $shop['PAN_NUMBER'] = null;
+                    return $shop;
+                }
+            }
+        }
         return offline_get_trader_shop($userId);
+    }
+
+    $where = "u.user_id = :user_id";
+    $params = ['user_id' => $userId];
+    if ($shopId) {
+        $where .= " AND s.shop_id = :shop_id";
+        $params['shop_id'] = $shopId;
     }
 
     return db_fetch_one(
@@ -112,6 +134,7 @@ function trader_shop_for_user(int $userId): ?array
                 s.shop_name,
                 s.shop_description,
                 s.shop_logo,
+                s.shop_status,
                 u.first_name,
                 u.last_name,
                 u.email,
@@ -121,8 +144,10 @@ function trader_shop_for_user(int $userId): ?array
          FROM "USER" u
          JOIN TRADER t ON t.trader_id = u.user_id
          JOIN SHOP s ON s.trader_id = t.trader_id
-         WHERE u.user_id = :user_id',
-        ['user_id' => $userId]
+         WHERE ' . $where . '
+         ORDER BY s.shop_id ASC
+         FETCH FIRST 1 ROWS ONLY',
+        $params
     );
 }
 
@@ -183,13 +208,13 @@ function trader_products_for_shop(int $shopId): array
     );
 }
 
-function trader_dashboard_metrics(int $userId): array
+function trader_dashboard_metrics(int $userId, ?int $shopId = null): array
 {
     if (db_is_offline()) {
         return offline_get_trader_dashboard($userId);
     }
 
-    $shop = trader_shop_for_user($userId);
+    $shop = trader_shop_for_user($userId, $shopId);
     if ($shop === null) {
         return [
             'shop' => null,
@@ -267,7 +292,8 @@ function trader_dashboard_metrics(int $userId): array
 
 function trader_create_product(int $userId, array $payload): array
 {
-    $shop = trader_shop_for_user($userId);
+    $shopId = isset($payload['shop_id']) ? (int) $payload['shop_id'] : null;
+    $shop = trader_shop_for_user($userId, $shopId);
     if ($shop === null) {
         throw new RuntimeException('Trader shop could not be found.');
     }
@@ -294,6 +320,22 @@ function trader_create_product(int $userId, array $payload): array
         $productStatus = 'OUT_OF_STOCK';
     }
 
+    $userAge = db_is_offline() ? 31 : 0;
+    if (!db_is_offline()) {
+        try {
+            $userRow = db_fetch_one('SELECT created_at FROM "USER" WHERE user_id = :userId', ['userId' => $userId]);
+            if ($userRow && !empty($userRow['CREATED_AT'])) {
+                $createdAt = strtotime($userRow['CREATED_AT']);
+                $userAge = (time() - $createdAt) / (60 * 60 * 24);
+            }
+        } catch (Throwable $e) {}
+    }
+    
+    $verificationStatus = 'PENDING_VERIFICATION';
+    if ($userAge > 30) {
+        $verificationStatus = 'APPROVED';
+    }
+
     if (db_is_offline()) {
         return offline_create_product((int) $shop['SHOP_ID'], [
             'category_id' => $categoryId,
@@ -302,6 +344,7 @@ function trader_create_product(int $userId, array $payload): array
             'price' => $price,
             'stock_quantity' => $stockQuantity,
             'product_status' => $productStatus,
+            'product_verification_status' => $verificationStatus,
             'allergy_information' => $allergyInformation === '' ? null : $allergyInformation,
             'min_order' => 1,
             'max_order' => $maxOrder,
@@ -354,7 +397,7 @@ function trader_create_product(int $userId, array $payload): array
                 'price' => $price,
                 'stock_quantity' => $stockQuantity,
                 'product_status' => $productStatus,
-                'product_verification_status' => 'PENDING_VERIFICATION',
+                'product_verification_status' => $verificationStatus,
                 'allergy_information' => $allergyInformation === '' ? null : $allergyInformation,
                 'min_order' => 1,
                 'max_order' => $maxOrder,
@@ -650,4 +693,71 @@ function trader_update_order_status(int $userId, int $orderId, string $newStatus
         'status' => $newStatus,
         'order_id' => $orderId
     ]);
+}
+
+function trader_get_shops(int $userId): array
+{
+    if (db_is_offline()) {
+        return offline_get_trader_shops($userId);
+    }
+    return db_fetch_all(
+        'SELECT shop_id, trader_id, shop_name, shop_description, shop_logo, shop_status
+         FROM SHOP
+         WHERE trader_id = :user_id',
+        ['user_id' => $userId]
+    );
+}
+
+function trader_create_shop(int $userId, array $payload): array
+{
+    $shopName = trim($payload['shop_name'] ?? '');
+    $shopDesc = trim($payload['shop_description'] ?? '');
+    $shopLogo = trim($payload['shop_logo'] ?? '');
+    $shopLocation = trim($payload['shop_location'] ?? '');
+    $shopPan = trim($payload['shop_pan'] ?? '');
+    $shopProductsType = trim($payload['shop_products_type'] ?? '');
+    
+    if ($shopName === '') {
+        throw new InvalidArgumentException('Shop name is required.');
+    }
+    
+    if (db_is_offline()) {
+        return offline_create_shop_for_trader($userId, $shopName, $shopDesc, $shopLogo === '' ? null : $shopLogo, $shopLocation, $shopPan, $shopProductsType);
+    }
+    
+    db_begin();
+    try {
+        $shopId = db_next_id('SHOP', 'shop_id');
+        db_execute(
+            'INSERT INTO SHOP (shop_id, trader_id, shop_name, shop_description, shop_logo, shop_location, shop_pan, shop_products_type, shop_status)
+             VALUES (:shop_id, :trader_id, :shop_name, :shop_description, :shop_logo, :shop_location, :shop_pan, :shop_products_type, :shop_status)',
+            [
+                'shop_id' => $shopId,
+                'trader_id' => $userId,
+                'shop_name' => $shopName,
+                'shop_description' => $shopDesc,
+                'shop_logo' => $shopLogo === '' ? null : $shopLogo,
+                'shop_location' => $shopLocation,
+                'shop_pan' => $shopPan,
+                'shop_products_type' => $shopProductsType,
+                'shop_status' => 'PENDING_APPROVAL'
+            ]
+        );
+        db_commit();
+        
+        return [
+            'SHOP_ID' => $shopId,
+            'TRADER_ID' => $userId,
+            'SHOP_NAME' => $shopName,
+            'SHOP_DESCRIPTION' => $shopDesc,
+            'SHOP_LOGO' => $shopLogo === '' ? null : $shopLogo,
+            'SHOP_LOCATION' => $shopLocation,
+            'SHOP_PAN' => $shopPan,
+            'SHOP_PRODUCTS_TYPE' => $shopProductsType,
+            'SHOP_STATUS' => 'PENDING_APPROVAL'
+        ];
+    } catch (Throwable $e) {
+        db_rollback();
+        throw $e;
+    }
 }

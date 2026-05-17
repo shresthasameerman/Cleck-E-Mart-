@@ -6,7 +6,8 @@ trader_role_guard();
 $errors = [];
 $successMessage = get_flash('success');
 $userId = (int) current_user_id();
-$shop = trader_shop_for_user($userId);
+$shopId = isset($_GET['shop_id']) ? (int) $_GET['shop_id'] : null;
+$shop = trader_shop_for_user($userId, $shopId);
 $categories = trader_categories();
 $metrics = trader_dashboard_metrics($userId);
 
@@ -39,6 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['product_action'] ?? '') ==
                 'allergy_information' => (string) ($_POST['allergy_information'] ?? ''),
                 'product_image' => $productImage ?? '',
                 'visibility' => (string) ($_POST['visibility'] ?? 'PUBLISH'),
+                'shop_id' => isset($_POST['shop_id']) && $_POST['shop_id'] ? (int) $_POST['shop_id'] : null,
             ]);
 
             set_flash('success', 'Product saved successfully.');
@@ -85,10 +87,11 @@ require __DIR__ . '/components/header.php';
     <section class="trader-content">
         <div class="container trader-layout">
             <aside class="trader-sidebar" aria-label="Trader navigation">
+                <a class="trader-sidebar__item" href="trader-shops.php">My Shops</a>
                 <a class="trader-sidebar__item" href="trader-dashboard.php">Dashboard</a>
                 <a class="trader-sidebar__item" href="trader-orders.php">Orders</a>
                 <a class="trader-sidebar__item" href="trader-profile.php">Profile Settings</a>
-                <a class="trader-sidebar__item is-active" href="trader-add-product.php">Add Product</a>
+                <a class="trader-sidebar__item is-active" href="trader-add-product.php<?php echo isset($_GET['shop_id']) ? '?shop_id=' . (int)$_GET['shop_id'] : ''; ?>">Add Product</a>
                 <a class="trader-sidebar__item" href="logout.php">Sign Out</a>
             </aside>
 
@@ -109,8 +112,9 @@ require __DIR__ . '/components/header.php';
                             <p style="margin-top: 1.5rem; color: #999; font-size: 0.9rem;">Check back soon, or contact support for more information.</p>
                         </div>
                     <?php else: ?>
-                    <form class="trader-form" method="post" action="trader-add-product.php" enctype="multipart/form-data">
+                    <form class="trader-form" method="post" action="trader-add-product.php<?php echo isset($_GET['shop_id']) ? '?shop_id=' . (int)$_GET['shop_id'] : ''; ?>" enctype="multipart/form-data">
                         <input type="hidden" name="product_action" value="save_product" />
+                        <input type="hidden" name="shop_id" value="<?php echo isset($_GET['shop_id']) ? (int)$_GET['shop_id'] : ''; ?>" />
                         <div class="trader-form__grid">
                             <label class="trader-form__full">
                                 <span>Product name</span>

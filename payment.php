@@ -440,17 +440,46 @@ require __DIR__ . '/components/header.php';
                             <span class="paypal-lockup__text">Fast, encrypted checkout</span>
                         </div>
 
-                        <form method="post" action="payment.php<?php echo ($selectedSlotDate !== '' && $selectedSlotTime !== '') ? '?slot_date=' . urlencode($selectedSlotDate) . '&slot_time=' . urlencode($selectedSlotTime) : ''; ?>" class="payment-form">
+                        <form id="payment-form" method="post" action="payment.php<?php echo ($selectedSlotDate !== '' && $selectedSlotTime !== '') ? '?slot_date=' . urlencode($selectedSlotDate) . '&slot_time=' . urlencode($selectedSlotTime) : ''; ?>" class="payment-form">
                             <input type="hidden" name="action" value="paypal_checkout" />
 
                             <label class="auth-check payment-check">
-                                <input type="checkbox" name="terms_accepted" value="1" />
+                                <input type="checkbox" id="terms_accepted" name="terms_accepted" value="1" />
                                 <span>I confirm this order and agree to the payment terms.</span>
                             </label>
 
-                            <button type="submit" class="payment-paypal-btn">Pay with PayPal</button>
-                            <p class="payment-note">After clicking, your payment will be processed through PayPal.</p>
+                            <div id="paypal-button-container" style="margin-top: 1.5rem;"></div>
+                            <p class="payment-note">Your payment will be securely processed through PayPal Sandbox.</p>
                         </form>
+
+                        <!-- PayPal Sandbox SDK -->
+                        <script src="https://www.paypal.com/sdk/js?client-id=test&currency=GBP"></script>
+                        <script>
+                            paypal.Buttons({
+                                onClick: function(data, actions) {
+                                    if (!document.getElementById('terms_accepted').checked) {
+                                        alert('Please accept the terms before completing PayPal payment.');
+                                        return actions.reject();
+                                    }
+                                    return actions.resolve();
+                                },
+                                createOrder: function(data, actions) {
+                                    return actions.order.create({
+                                        purchase_units: [{
+                                            amount: {
+                                                value: '<?php echo number_format($total, 2, '.', ''); ?>'
+                                            }
+                                        }]
+                                    });
+                                },
+                                onApprove: function(data, actions) {
+                                    return actions.order.capture().then(function(details) {
+                                        // Once payment is approved, submit our form to process the order in the database
+                                        document.getElementById('payment-form').submit();
+                                    });
+                                }
+                            }).render('#paypal-button-container');
+                        </script>
                     <?php endif; ?>
                 </div>
             </section>

@@ -48,6 +48,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         redirect('admin-dashboard.php');
     }
+
+    if (isset($_POST['shop_id'])) {
+        $shopId = (int) $_POST['shop_id'];
+        
+        if ($action === 'approve_shop' && $shopId > 0) {
+            if (!db_is_offline()) {
+                db_execute("UPDATE SHOP SET shop_status = 'ACTIVE' WHERE shop_id = :id", ['id' => $shopId]);
+            } else {
+                offline_update_shop_status($shopId, 'ACTIVE');
+            }
+            set_flash('success', 'Shop approved successfully.');
+        } elseif ($action === 'reject_shop' && $shopId > 0) {
+            if (!db_is_offline()) {
+                db_execute("UPDATE SHOP SET shop_status = 'REJECTED' WHERE shop_id = :id", ['id' => $shopId]);
+            } else {
+                offline_update_shop_status($shopId, 'REJECTED');
+            }
+            set_flash('success', 'Shop rejected.');
+        }
+        redirect('admin-dashboard.php');
+    }
 }
 
 // Fetch pending products
@@ -74,6 +95,28 @@ if (!db_is_offline()) {
     ");
 } else {
     $pendingTraders = offline_get_pending_traders();
+}
+
+// Fetch pending shops
+$pendingShops = [];
+if (!db_is_offline()) {
+    $pendingShops = db_fetch_all("
+        SELECT s.shop_id, s.shop_name, s.shop_location, s.shop_pan, s.shop_products_type, s.shop_status, u.first_name, u.last_name, u.email
+        FROM SHOP s
+        JOIN TRADER t ON s.trader_id = t.trader_id
+        JOIN \"USER\" u ON t.trader_id = u.user_id
+        WHERE s.shop_status = 'PENDING_APPROVAL'
+    ");
+} else {
+    $pendingShops = offline_get_pending_shops();
+    // Add user info if missing
+    foreach ($pendingShops as &$shop) {
+        if (!isset($shop['FIRST_NAME'])) {
+            $shop['FIRST_NAME'] = 'Unknown';
+            $shop['LAST_NAME'] = 'Trader';
+            $shop['EMAIL'] = 'N/A';
+        }
+    }
 }
 
 $pageTitle = 'Admin Dashboard - Cleck E-Mart';
@@ -167,6 +210,57 @@ require __DIR__ . '/components/header.php';
                                         <form method="post" style="display:inline-flex; gap:0.5rem;">
                                             <input type="hidden" name="trader_id" value="<?php echo $trader['TRADER_ID']; ?>">
                                             <button type="submit" name="action" value="approve_trader" class="button button--small">Approve</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            <?php endif; ?>
+        </section>
+
+        <section class="admin-section" style="margin-top: 3rem;">
+            <h2>Shops Pending Verification</h2>
+            <?php if (empty($pendingShops)): ?>
+                <div class="empty-state">
+                    <p>No shops are currently pending verification.</p>
+                </div>
+            <?php else: ?>
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Shop Name</th>
+                                <th>Trader Info</th>
+                                <th>Location</th>
+                                <th>PAN Number</th>
+                                <th>Product Types</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($pendingShops as $shop): ?>
+                                <tr>
+                                    <td><?php echo e($shop['SHOP_NAME']); ?></td>
+                                    <td>
+                                        <?php echo e($shop['FIRST_NAME'] . ' ' . $shop['LAST_NAME']); ?><br>
+                                        <small style="color: #666;"><?php echo e($shop['EMAIL']); ?></small>
+                                    </td>
+                                    <td><?php echo e($shop['SHOP_LOCATION'] ?? 'N/A'); ?></td>
+                                    <td><?php echo e($shop['SHOP_PAN'] ?? 'N/A'); ?></td>
+                                    <td><?php echo e($shop['SHOP_PRODUCTS_TYPE'] ?? 'N/A'); ?></td>
+                                    <td>
+                                        <span class="status-badge status-badge--pending">
+                                            <?php echo e($shop['SHOP_STATUS']); ?>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <form method="post" style="display:inline-flex; gap:0.5rem;">
+                                            <input type="hidden" name="shop_id" value="<?php echo $shop['SHOP_ID']; ?>">
+                                            <button type="submit" name="action" value="approve_shop" class="button button--small">Approve</button>
+                                            <button type="submit" name="action" value="reject_shop" class="button button--secondary button--small">Reject</button>
                                         </form>
                                     </td>
                                 </tr>

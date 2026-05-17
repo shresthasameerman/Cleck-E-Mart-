@@ -80,6 +80,7 @@ require __DIR__ . '/components/header.php';
     <section class="trader-content">
         <div class="container trader-layout">
             <aside class="trader-sidebar" aria-label="Trader navigation">
+                <a class="trader-sidebar__item" href="trader-shops.php">My Shops</a>
                 <a class="trader-sidebar__item" href="trader-dashboard.php">Dashboard</a>
                 <a class="trader-sidebar__item is-active" href="trader-orders.php">Orders</a>
                 <a class="trader-sidebar__item" href="trader-profile.php">Profile Settings</a>

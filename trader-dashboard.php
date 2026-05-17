@@ -18,7 +18,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'updat
     redirect('trader-dashboard.php');
 }
 
-$metrics = trader_dashboard_metrics($userId);
+$shopId = isset($_GET['shop_id']) ? (int) $_GET['shop_id'] : null;
+$metrics = trader_dashboard_metrics($userId, $shopId);
 $shop = $metrics['shop'];
 $inventoryProducts = $metrics['inventory_products'];
 $lowStockProducts = $metrics['low_stock_products'];
@@ -137,7 +138,8 @@ require __DIR__ . '/components/header.php';
     <section class="trader-content">
         <div class="container trader-layout">
             <aside class="trader-sidebar" aria-label="Trader navigation">
-                <a class="trader-sidebar__item is-active" href="trader-dashboard.php">Dashboard</a>
+                <a class="trader-sidebar__item" href="trader-shops.php">My Shops</a>
+                <a class="trader-sidebar__item is-active" href="trader-dashboard.php<?php echo isset($_GET['shop_id']) ? '?shop_id=' . (int)$_GET['shop_id'] : ''; ?>">Dashboard</a>
                 <a class="trader-sidebar__item" href="trader-orders.php">Orders</a>
                 <a class="trader-sidebar__item" href="trader-profile.php">Profile Settings</a>
                 <a class="trader-sidebar__item" href="trader-add-product.php">Add Product</a>
@@ -218,7 +220,7 @@ require __DIR__ . '/components/header.php';
                             <p class="trader-card__eyebrow">Inventory view</p>
                             <h2>Products sold and refill status</h2>
                         </div>
-                        <a class="trader-link" href="trader-add-product.php">Add new product</a>
+                        <a class="trader-link" href="trader-add-product.php<?php echo isset($_GET['shop_id']) ? '?shop_id=' . (int)$_GET['shop_id'] : ''; ?>">Add new product</a>
                     </div>
 
                     <div class="trader-table-wrap">

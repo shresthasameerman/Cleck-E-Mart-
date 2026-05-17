@@ -106,6 +106,9 @@ CREATE TABLE SHOP (
     shop_name VARCHAR2(255) NOT NULL,
     shop_description CLOB,
     shop_logo VARCHAR2(500), 
+    shop_location VARCHAR2(500),
+    shop_pan VARCHAR2(255),
+    shop_products_type VARCHAR2(500),
     shop_status VARCHAR2(50) DEFAULT 'ACTIVE',
     CONSTRAINT fk_shop_trader FOREIGN KEY (trader_id) REFERENCES TRADER (trader_id),
     -- A single trader cannot have two shops with the exact same name
