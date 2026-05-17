@@ -47,87 +47,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 } else {
                     $role = strtoupper($accountType);
 
-                    if (db_is_offline()) {
-                        $newUser = offline_create_account(
-                            $firstName,
-                            $lastName,
-                            $email,
-                            password_hash($password, PASSWORD_DEFAULT),
-                            $role
-                        );
-                    } else {
-                        db_begin();
-                        $userId = db_next_id('"USER"', 'user_id');
+                    // Generate a 6-digit OTP
+                    $otp = sprintf("%06d", mt_rand(1, 999999));
 
-                        db_execute(
-                            'INSERT INTO "USER" (user_id, first_name, last_name, email, password, "ROLE", created_at)
-                             VALUES (:user_id, :first_name, :last_name, :email, :password, :role, CURRENT_TIMESTAMP)',
-                            [
-                                'user_id' => $userId,
-                                'first_name' => $firstName,
-                                'last_name' => $lastName,
-                                'email' => $email,
-                                'password' => password_hash($password, PASSWORD_DEFAULT),
-                                'role' => $role,
-                            ]
-                        );
+                    // Log the OTP to the terminal for local testing (since local mail() is restricted)
+                    error_log("\n=======================================================");
+                    error_log("🚨 NEW OTP GENERATED FOR: " . $email);
+                    error_log("👉 OTP CODE: " . $otp);
+                    error_log("=======================================================\n");
 
-                        if ($role === 'TRADER') {
-                            db_execute(
-                                'INSERT INTO TRADER (trader_id, brand_name) VALUES (:trader_id, :brand_name)',
-                                [
-                                    'trader_id' => $userId,
-                                    'brand_name' => null,
-                                ]
-                            );
+                    // Store pending signup data in session (do NOT insert to DB yet)
+                    $_SESSION['pending_signup'] = [
+                        'first_name' => $firstName,
+                        'last_name' => $lastName,
+                        'email' => $email,
+                        'password' => $password,
+                        'role' => $role
+                    ];
+                    $_SESSION['signup_otp'] = $otp;
 
-                            // Create a default SHOP for the trader
-                            $shopId = db_next_id('SHOP', 'shop_id');
-                            $defaultShopName = $firstName . "'s Shop";
-                            db_execute(
-                                'INSERT INTO SHOP (shop_id, trader_id, shop_name, shop_description, shop_logo, shop_status) 
-                                 VALUES (:shop_id, :trader_id, :shop_name, :shop_description, :shop_logo, :shop_status)',
-                                [
-                                    'shop_id' => $shopId,
-                                    'trader_id' => $userId,
-                                    'shop_name' => $defaultShopName,
-                                    'shop_description' => 'Welcome to our shop!',
-                                    'shop_logo' => null,
-                                    'shop_status' => 'ACTIVE',
-                                ]
-                            );
-                        } else {
-                            db_execute(
-                                'INSERT INTO CUSTOMER (customer_id, loyalty_points) VALUES (:customer_id, :loyalty_points)',
-                                [
-                                    'customer_id' => $userId,
-                                    'loyalty_points' => 0,
-                                ]
-                            );
-                        }
-
-                        db_commit();
-
-                        $newUser = db_fetch_one(
-                            'SELECT user_id, first_name, last_name, email, "ROLE" AS role FROM "USER" WHERE user_id = :user_id',
-                            ['user_id' => $userId]
-                        );
-                    }
-
-                    if ($newUser === null) {
-                        throw new RuntimeException('Unable to load newly created user session.');
-                    }
-
-                    session_regenerate_id(true);
-                    login_session($newUser);
-                    set_flash('success', 'Account created successfully. Welcome to Cleck E-Mart.');
+                    // Send the OTP via email
+                    $subject = "Your Cleck E-Mart Verification Code";
+                    $message = "
+                    <html>
+                    <head>
+                        <title>Verify your email</title>
+                    </head>
+                    <body>
+                        <h2>Cleck E-Mart Registration</h2>
+                        <p>Hello $firstName,</p>
+                        <p>Thank you for signing up! Your OTP verification code is: <strong style='font-size: 24px; color: #2c3e50;'>$otp</strong></p>
+                        <p>Please enter this code on the website to verify your email and complete your registration.</p>
+                        <br>
+                        <p>Best Regards,<br>The Cleck E-Mart Team</p>
+                    </body>
+                    </html>
+                    ";
                     
-                    $newRole = strtoupper((string) $newUser['ROLE']);
-                    if ($newRole === 'TRADER') {
-                        redirect('trader-shops.php');
-                    } else {
-                        redirect('index.php');
-                    }
+                    $headers = "MIME-Version: 1.0" . "\r\n";
+                    $headers .= "Content-type:text/html;charset=UTF-8" . "\r\n";
+                    $headers .= "From: Cleck E-Mart <noreply@cleck-e-mart.com>" . "\r\n";
+
+                    @mail($email, $subject, $message, $headers);
+
+                    set_flash('success', 'An OTP has been sent to your email. Please verify to continue.');
+                    redirect('verify-otp.php');
                 }
             } catch (Throwable $exception) {
                 db_rollback();
