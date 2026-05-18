@@ -101,7 +101,7 @@ if (!db_is_offline()) {
 $pendingShops = [];
 if (!db_is_offline()) {
     $pendingShops = db_fetch_all("
-        SELECT s.shop_id, s.shop_name, s.shop_location, s.shop_pan, s.shop_products_type, s.shop_status, u.first_name, u.last_name, u.email
+        SELECT s.shop_id, s.shop_name, s.shop_status, u.first_name, u.last_name, u.email
         FROM SHOP s
         JOIN TRADER t ON s.trader_id = t.trader_id
         JOIN \"USER\" u ON t.trader_id = u.user_id
@@ -124,20 +124,47 @@ require __DIR__ . '/components/header.php';
 ?>
 <main id="main-content" class="page-layout">
     <div class="container">
-        <h1 class="page-title">Admin Dashboard</h1>
-        
-        <?php if ($flashSuccess = get_flash('success')): ?>
-            <p class="page-message page-message--success"><?php echo e($flashSuccess); ?></p>
-        <?php endif; ?>
-        <?php if ($flashError = get_flash('error')): ?>
-            <p class="page-message page-message--error"><?php echo e($flashError); ?></p>
-        <?php endif; ?>
+        <div class="admin-dashboard-layout">
+            <aside class="admin-sidebar">
+                <div class="admin-dashboard-hero">
+                    <h1 class="page-title" style="margin: 0; color: white;">Admin Dashboard</h1>
+                    <p style="margin-top: 0.5rem; opacity: 0.9;">Manage pending verifications for products, traders, and shops.</p>
+                </div>
+                <?php if ($flashSuccess = get_flash('success')): ?>
+                    <p class="page-message page-message--success"><?php echo e($flashSuccess); ?></p>
+                <?php endif; ?>
+                <?php if ($flashError = get_flash('error')): ?>
+                    <p class="page-message page-message--error"><?php echo e($flashError); ?></p>
+                <?php endif; ?>
 
-        <section class="admin-section" style="margin-top: 2rem;">
-            <h2>Products Pending Verification</h2>
+                <div class="admin-tabs">
+                    <button class="tab-button active" onclick="openTab('products')">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+                        Products Pending
+                    </button>
+                    <button class="tab-button" onclick="openTab('traders')">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                        Traders Pending
+                    </button>
+                    <button class="tab-button" onclick="openTab('shops')">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                        Shops Pending
+                    </button>
+                </div>
+            </aside>
+
+            <div class="admin-content-grid" style="display: block;">
+
+        <section id="products" class="admin-section tab-content active-tab">
+            <h2>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--color-accent);"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+                Products Pending Verification
+            </h2>
             <?php if (empty($pendingProducts)): ?>
                 <div class="empty-state">
-                    <p>No products are currently pending verification.</p>
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 1rem; opacity: 0.5;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                    <p style="margin:0; font-size: 1.1rem; font-weight: 500;">All caught up!</p>
+                    <p style="margin-top: 0.25rem; font-size: 0.9rem;">No products are currently pending verification.</p>
                 </div>
             <?php else: ?>
                 <div class="table-responsive">
@@ -177,11 +204,16 @@ require __DIR__ . '/components/header.php';
             <?php endif; ?>
         </section>
 
-        <section class="admin-section" style="margin-top: 3rem;">
-            <h2>Traders Pending Verification</h2>
+        <section id="traders" class="admin-section tab-content">
+            <h2>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--color-accent);"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                Traders Pending Verification
+            </h2>
             <?php if (empty($pendingTraders)): ?>
                 <div class="empty-state">
-                    <p>No traders are currently pending verification.</p>
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 1rem; opacity: 0.5;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                    <p style="margin:0; font-size: 1.1rem; font-weight: 500;">All caught up!</p>
+                    <p style="margin-top: 0.25rem; font-size: 0.9rem;">No traders are currently pending verification.</p>
                 </div>
             <?php else: ?>
                 <div class="table-responsive">
@@ -220,11 +252,16 @@ require __DIR__ . '/components/header.php';
             <?php endif; ?>
         </section>
 
-        <section class="admin-section" style="margin-top: 3rem;">
-            <h2>Shops Pending Verification</h2>
+        <section id="shops" class="admin-section tab-content">
+            <h2>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--color-accent);"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                Shops Pending Verification
+            </h2>
             <?php if (empty($pendingShops)): ?>
                 <div class="empty-state">
-                    <p>No shops are currently pending verification.</p>
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 1rem; opacity: 0.5;"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                    <p style="margin:0; font-size: 1.1rem; font-weight: 500;">All caught up!</p>
+                    <p style="margin-top: 0.25rem; font-size: 0.9rem;">No shops are currently pending verification.</p>
                 </div>
             <?php else: ?>
                 <div class="table-responsive">
@@ -233,9 +270,6 @@ require __DIR__ . '/components/header.php';
                             <tr>
                                 <th>Shop Name</th>
                                 <th>Trader Info</th>
-                                <th>Location</th>
-                                <th>PAN Number</th>
-                                <th>Product Types</th>
                                 <th>Status</th>
                                 <th>Actions</th>
                             </tr>
@@ -248,9 +282,6 @@ require __DIR__ . '/components/header.php';
                                         <?php echo e($shop['FIRST_NAME'] . ' ' . $shop['LAST_NAME']); ?><br>
                                         <small style="color: #666;"><?php echo e($shop['EMAIL']); ?></small>
                                     </td>
-                                    <td><?php echo e($shop['SHOP_LOCATION'] ?? 'N/A'); ?></td>
-                                    <td><?php echo e($shop['SHOP_PAN'] ?? 'N/A'); ?></td>
-                                    <td><?php echo e($shop['SHOP_PRODUCTS_TYPE'] ?? 'N/A'); ?></td>
                                     <td>
                                         <span class="status-badge status-badge--pending">
                                             <?php echo e($shop['SHOP_STATUS']); ?>
@@ -270,6 +301,21 @@ require __DIR__ . '/components/header.php';
                 </div>
             <?php endif; ?>
         </section>
+        </div> <!-- end admin-content-grid -->
+        </div> <!-- end admin-dashboard-layout -->
     </div>
 </main>
+<script>
+function openTab(tabId) {
+    document.querySelectorAll('.tab-content').forEach(function(el) {
+        el.classList.remove('active-tab');
+    });
+    document.querySelectorAll('.tab-button').forEach(function(el) {
+        el.classList.remove('active');
+    });
+    
+    document.getElementById(tabId).classList.add('active-tab');
+    event.currentTarget.classList.add('active');
+}
+</script>
 <?php require __DIR__ . '/components/footer.php'; ?>

@@ -3515,3 +3515,171 @@ a {
     background-color: rgba(26, 26, 26, 0.08);
     color: var(--color-text);
 }
+
+/* 
+    Admin Dashboard Premium Styles 
+*/
+.admin-dashboard-hero {
+    background: linear-gradient(135deg, #1a1a1a 0%, #2d3748 100%);
+    border-radius: var(--radius-lg);
+    padding: 2.5rem;
+    color: white;
+    margin-bottom: 3rem;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+    position: relative;
+    overflow: hidden;
+}
+.admin-dashboard-hero::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -10%;
+    width: 300px;
+    height: 300px;
+    background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 60%);
+    border-radius: 50%;
+}
+.admin-section {
+    background: rgba(255, 255, 255, 0.6);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    border-radius: var(--radius-lg);
+    padding: 2rem;
+    box-shadow: var(--shadow-soft);
+    margin-bottom: 2.5rem;
+    transition: transform var(--transition), box-shadow var(--transition);
+}
+.admin-section:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow);
+}
+.admin-section h2 {
+    font-size: 1.5rem;
+    margin-bottom: 1.5rem;
+    color: var(--color-text);
+    border-bottom: 2px solid rgba(106, 136, 97, 0.2);
+    padding-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.table-responsive {
+    overflow-x: auto;
+    border-radius: var(--radius-md);
+    background: white;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+}
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    white-space: nowrap;
+}
+.data-table th,
+.data-table td {
+    padding: 1rem 1.5rem;
+    text-align: left;
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+}
+.data-table th {
+    background: #f8f9fa;
+    font-weight: 600;
+    color: #4a5568;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    letter-spacing: 0.05em;
+}
+.data-table tbody tr {
+    transition: background-color 0.2s ease;
+}
+.data-table tbody tr:hover {
+    background-color: #f8fafc;
+}
+.status-badge {
+    padding: 0.35rem 0.85rem;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    display: inline-block;
+}
+.status-badge--pending {
+    background: #fffbeb;
+    color: #b45309;
+    border: 1px solid #fde68a;
+}
+.status-badge--active, .status-badge--approved {
+    background: #f0fdf4;
+    color: #15803d;
+    border: 1px solid #bbf7d0;
+}
+.status-badge--rejected {
+    background: #fef2f2;
+    color: #b91c1c;
+    border: 1px solid #fecaca;
+}
+.empty-state {
+    padding: 3rem;
+    text-align: center;
+    background: rgba(255,255,255,0.5);
+    border-radius: var(--radius-md);
+    border: 2px dashed rgba(0,0,0,0.1);
+    color: var(--color-muted);
+}
+.admin-dashboard-layout {
+    display: grid;
+    gap: 2rem;
+    align-items: start;
+    margin-top: 3rem;
+}
+@media (min-width: 1024px) {
+    .admin-dashboard-layout {
+        grid-template-columns: 320px 1fr;
+    }
+}
+.admin-sidebar {
+    position: sticky;
+    top: 2rem;
+}
+.admin-tabs {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-top: 2rem;
+}
+.tab-button {
+    background: rgba(255, 255, 255, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    backdrop-filter: blur(12px);
+    padding: 1rem 1.5rem;
+    border-radius: var(--radius-sm);
+    text-align: left;
+    font-weight: 600;
+    color: var(--color-text);
+    cursor: pointer;
+    transition: all var(--transition);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    box-shadow: var(--shadow-soft);
+}
+.tab-button:hover {
+    background: rgba(255, 255, 255, 0.9);
+    transform: translateX(4px);
+}
+.tab-button.active {
+    background: linear-gradient(135deg, #1a1a1a 0%, #2d3748 100%);
+    color: white;
+    border-color: transparent;
+    box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+}
+.tab-content {
+    display: none;
+    animation: fadeIn 0.3s ease-in-out;
+}
+.tab-content.active-tab {
+    display: block;
+}
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
