@@ -67,6 +67,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $_SESSION['signup_otp'] = $otp;
 
                     // Send the OTP via email
+                    require_once __DIR__ . '/lib/email_helpers.php';
                     $subject = "Your Cleck E-Mart Verification Code";
                     $message = "
                     <html>
@@ -83,12 +84,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </body>
                     </html>
                     ";
-                    
-                    $headers = "MIME-Version: 1.0" . "\r\n";
-                    $headers .= "Content-type:text/html;charset=UTF-8" . "\r\n";
-                    $headers .= "From: Cleck E-Mart <noreply@cleck-e-mart.com>" . "\r\n";
 
-                    @mail($email, $subject, $message, $headers);
+                    send_email($email, $subject, $message);
 
                     set_flash('success', 'An OTP has been sent to your email. Please verify to continue.');
                     redirect('verify-otp.php');

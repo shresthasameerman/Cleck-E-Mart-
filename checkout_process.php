@@ -208,11 +208,8 @@ function processCheckoutTransaction($conn, $customer_id, $slot_id, $cart_items, 
                 </html>
                 ";
 
-                $headers = "MIME-Version: 1.0" . "\r\n";
-                $headers .= "Content-type:text/html;charset=UTF-8" . "\r\n";
-                $headers .= "From: Cleck E-Mart <noreply@cleck-e-mart.com>" . "\r\n";
-                
-                @mail($customerEmail, $subject, $message, $headers);
+                require_once __DIR__ . '/lib/email_helpers.php';
+                send_email($customerEmail, $subject, $message);
             }
         } catch (Exception $e) {
             // Ignore email errors

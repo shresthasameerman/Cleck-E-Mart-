@@ -14,6 +14,7 @@ if ($customerId === null) {
     $customerId = current_user_id();
 }
 $flashError = get_flash('error');
+$flashSuccess = get_flash('success');
 $errors = [];
 $paymentSuccess = false;
 $transactionId = null;
@@ -67,6 +68,69 @@ foreach ($items as $item) {
     ];
 
     $total += $lineTotal;
+}
+
+$subtotal = $total;
+$couponDiscount = 0.0;
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $action = $_POST['action'] ?? '';
+    
+    if ($action === 'apply_coupon') {
+        $couponCode = trim($_POST['coupon_code'] ?? '');
+        if ($couponCode === '') {
+            set_flash('error', 'Please enter a coupon code.');
+        } else {
+            global $conn;
+            $sql = "SELECT coupon_id, discount_amount, minimum_order_amount 
+                    FROM COUPON 
+                    WHERE UPPER(coupon_code) = UPPER(:code) 
+                    AND coupon_status = 'ACTIVE' 
+                    AND TRUNC(SYSDATE) >= TRUNC(valid_from) 
+                    AND TRUNC(SYSDATE) <= TRUNC(valid_to)";
+            $stmt = oci_parse($conn, $sql);
+            oci_bind_by_name($stmt, ':code', $couponCode);
+            oci_execute($stmt);
+            $coupon = oci_fetch_assoc($stmt);
+            oci_free_statement($stmt);
+            
+            if ($coupon) {
+                $minAmount = (float) $coupon['MINIMUM_ORDER_AMOUNT'];
+                if ($subtotal >= $minAmount) {
+                    $_SESSION['applied_coupon'] = [
+                        'id' => (int) $coupon['COUPON_ID'],
+                        'code' => strtoupper($couponCode),
+                        'discount' => (float) $coupon['DISCOUNT_AMOUNT'],
+                        'min_amount' => $minAmount
+                    ];
+                    set_flash('success', 'Coupon applied successfully!');
+                } else {
+                    set_flash('error', 'Minimum order amount for this coupon is £' . number_format($minAmount, 2));
+                }
+            } else {
+                set_flash('error', 'Invalid or expired coupon code.');
+            }
+        }
+        $url = 'payment.php' . ($selectedSlotDate !== '' && $selectedSlotTime !== '' ? '?slot_date=' . urlencode($selectedSlotDate) . '&slot_time=' . urlencode($selectedSlotTime) : '');
+        redirect($url);
+    } elseif ($action === 'remove_coupon') {
+        unset($_SESSION['applied_coupon']);
+        set_flash('success', 'Coupon removed.');
+        $url = 'payment.php' . ($selectedSlotDate !== '' && $selectedSlotTime !== '' ? '?slot_date=' . urlencode($selectedSlotDate) . '&slot_time=' . urlencode($selectedSlotTime) : '');
+        redirect($url);
+    }
+}
+
+$appliedCoupon = $_SESSION['applied_coupon'] ?? null;
+if ($appliedCoupon) {
+    if ($subtotal >= $appliedCoupon['min_amount']) {
+        $couponDiscount = $appliedCoupon['discount'];
+        $total = max(0.0, $subtotal - $couponDiscount);
+    } else {
+        unset($_SESSION['applied_coupon']);
+        $appliedCoupon = null;
+        set_flash('error', 'Coupon removed because your basket no longer meets the minimum amount.');
+    }
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'paypal_checkout') {
@@ -163,8 +227,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'paypa
             // STEP 1: INSERT ORDER
             // ====================================================================
             
-            $orderSql = "INSERT INTO \"ORDER\" (customer_id, slot_id, order_status, order_date) 
-                         VALUES (:customer_id, :slot_id, 'PAID', SYSDATE)
+            $couponId = $appliedCoupon ? (string)$appliedCoupon['id'] : null;
+            
+            $orderSql = "INSERT INTO \"ORDER\" (customer_id, slot_id, coupon_id, order_status, order_date) 
+                         VALUES (:customer_id, :slot_id, :coupon_id, 'PAID', SYSDATE)
                          RETURNING order_id INTO :new_order_id";
             
             $orderStmt = oci_parse($conn, $orderSql);
@@ -174,6 +240,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'paypa
             
             oci_bind_by_name($orderStmt, ':customer_id', $customerId, -1, SQLT_INT);
             oci_bind_by_name($orderStmt, ':slot_id', $actualSlotId, -1, SQLT_INT); // Uses our dynamic slot!
+            oci_bind_by_name($orderStmt, ':coupon_id', $couponId, -1, SQLT_INT);
             
             $newOrderId = null;
             oci_bind_by_name($orderStmt, ':new_order_id', $newOrderId, 32);
@@ -228,8 +295,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'paypa
             // STEP 3: INSERT PAYMENT RECORD
             // ====================================================================
             
-            $paymentSql = "INSERT INTO PAYMENT (order_id, amount_paid, payment_method, payment_status, payment_date) 
-                           VALUES (:order_id, :amount, 'PAYPAL', 'COMPLETED', SYSDATE)";
+            $paypalTransactionId = trim($_POST['paypal_transaction_id'] ?? '');
+            if ($paypalTransactionId === '') {
+                $paypalTransactionId = 'PP-TXN-' . date('Ymd') . '-' . rand(1000, 9999); // Fallback if missing
+            }
+            
+            $paymentSql = "INSERT INTO PAYMENT (order_id, amount_paid, payment_method, payment_status, payment_date, transaction_reference) 
+                           VALUES (:order_id, :amount, 'PAYPAL', 'COMPLETED', SYSDATE, :transaction_reference)";
             
             $paymentStmt = oci_parse($conn, $paymentSql);
             if (!$paymentStmt) {
@@ -239,6 +311,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'paypa
             $bindAmount = (string) $total; // Convert float to string
             oci_bind_by_name($paymentStmt, ':order_id', $newOrderId);
             oci_bind_by_name($paymentStmt, ':amount', $bindAmount);
+            oci_bind_by_name($paymentStmt, ':transaction_reference', $paypalTransactionId);
             
             if (!oci_execute($paymentStmt, OCI_NO_AUTO_COMMIT)) {
                 throw new Exception('Failed to insert PAYMENT: ' . oci_error($paymentStmt)['message']);
@@ -321,11 +394,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'paypa
                 </html>
                 ";
 
-                $headers = "MIME-Version: 1.0" . "\r\n";
-                $headers .= "Content-type:text/html;charset=UTF-8" . "\r\n";
-                $headers .= "From: Cleck E-Mart <noreply@cleck-e-mart.com>" . "\r\n";
-                
-                @mail($customerEmail, $subject, $message, $headers);
+                require_once __DIR__ . '/lib/email_helpers.php';
+                send_email($customerEmail, $subject, $message);
             }
             
             // ====================================================================
@@ -352,6 +422,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'paypa
                     // Cart cleanup is best-effort; don't fail the payment
                 }
             }
+            
+            unset($_SESSION['applied_coupon']);
             
         } catch (Exception $e) {
             // ====================================================================
@@ -415,6 +487,10 @@ require __DIR__ . '/components/header.php';
                     <?php if ($flashError !== null): ?>
                         <p class="page-message page-message--error"><?php echo e($flashError); ?></p>
                     <?php endif; ?>
+                    
+                    <?php if ($flashSuccess !== null): ?>
+                        <p class="page-message page-message--success"><?php echo e($flashSuccess); ?></p>
+                    <?php endif; ?>
 
                     <?php if ($errors !== []): ?>
                         <div class="page-message page-message--error">
@@ -435,6 +511,30 @@ require __DIR__ . '/components/header.php';
                             <a class="button button--secondary" href="profile.php">View My Account</a>
                         </div>
                     <?php else: ?>
+                    
+                        <!-- Coupon Section -->
+                        <div class="coupon-section" style="margin-bottom: 2rem; padding: 1.5rem; background: #f9f9f9; border-radius: 8px;">
+                            <h3 style="margin-top: 0; font-size: 1.1rem; margin-bottom: 1rem;">Have a coupon?</h3>
+                            <?php if ($appliedCoupon): ?>
+                                <div style="display: flex; justify-content: space-between; align-items: center; background: #e6f7ff; padding: 1rem; border-radius: 6px; border: 1px solid #b3e0ff;">
+                                    <div>
+                                        <strong><?php echo e($appliedCoupon['code']); ?></strong> applied 
+                                        <span style="color: #0066cc;">(-£<?php echo e(number_format($appliedCoupon['discount'], 2)); ?>)</span>
+                                    </div>
+                                    <form method="post" action="payment.php<?php echo ($selectedSlotDate !== '' && $selectedSlotTime !== '') ? '?slot_date=' . urlencode($selectedSlotDate) . '&slot_time=' . urlencode($selectedSlotTime) : ''; ?>" style="margin: 0;">
+                                        <input type="hidden" name="action" value="remove_coupon" />
+                                        <button type="submit" class="button button--secondary" style="padding: 0.5rem 1rem; min-height: auto; font-size: 0.9rem;">Remove</button>
+                                    </form>
+                                </div>
+                            <?php else: ?>
+                                <form method="post" action="payment.php<?php echo ($selectedSlotDate !== '' && $selectedSlotTime !== '') ? '?slot_date=' . urlencode($selectedSlotDate) . '&slot_time=' . urlencode($selectedSlotTime) : ''; ?>" style="display: flex; gap: 1rem;">
+                                    <input type="hidden" name="action" value="apply_coupon" />
+                                    <input type="text" name="coupon_code" placeholder="Enter code" style="flex: 1; padding: 0.75rem; border: 1px solid #ccc; border-radius: 4px;" />
+                                    <button type="submit" class="button" style="padding: 0.75rem 1.5rem; min-height: auto;">Apply</button>
+                                </form>
+                            <?php endif; ?>
+                        </div>
+
                         <div class="paypal-lockup" aria-hidden="true">
                             <span class="paypal-lockup__badge">PayPal</span>
                             <span class="paypal-lockup__text">Fast, encrypted checkout</span>
@@ -442,6 +542,7 @@ require __DIR__ . '/components/header.php';
 
                         <form id="payment-form" method="post" action="payment.php<?php echo ($selectedSlotDate !== '' && $selectedSlotTime !== '') ? '?slot_date=' . urlencode($selectedSlotDate) . '&slot_time=' . urlencode($selectedSlotTime) : ''; ?>" class="payment-form">
                             <input type="hidden" name="action" value="paypal_checkout" />
+                            <input type="hidden" name="paypal_transaction_id" id="paypal_transaction_id" value="" />
 
                             <label class="auth-check payment-check">
                                 <input type="checkbox" id="terms_accepted" name="terms_accepted" value="1" />
@@ -474,6 +575,8 @@ require __DIR__ . '/components/header.php';
                                 },
                                 onApprove: function(data, actions) {
                                     return actions.order.capture().then(function(details) {
+                                        // Capture transaction ID from PayPal
+                                        document.getElementById('paypal_transaction_id').value = details.id;
                                         // Once payment is approved, submit our form to process the order in the database
                                         document.getElementById('payment-form').submit();
                                     });
@@ -494,6 +597,21 @@ require __DIR__ . '/components/header.php';
                         </p>
                     <?php endforeach; ?>
                 </div>
+                
+                <?php if ($appliedCoupon): ?>
+                <div class="payment-summary__divider" aria-hidden="true" style="margin: 1rem 0;"></div>
+                <div class="payment-summary__lines">
+                    <p class="payment-summary__line">
+                        <span>Subtotal</span>
+                        <strong>£<?php echo e(number_format($subtotal, 2)); ?></strong>
+                    </p>
+                    <p class="payment-summary__line" style="color: #d32f2f;">
+                        <span>Discount (<?php echo e($appliedCoupon['code']); ?>)</span>
+                        <strong>-£<?php echo e(number_format($couponDiscount, 2)); ?></strong>
+                    </p>
+                </div>
+                <?php endif; ?>
+                
                 <div class="payment-summary__divider" aria-hidden="true"></div>
                 <p class="payment-summary__total">
                     <span>Total</span>
