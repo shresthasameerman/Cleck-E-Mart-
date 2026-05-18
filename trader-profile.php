@@ -14,9 +14,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['profile_action'] ?? '') ==
             'last_name' => (string) ($_POST['last_name'] ?? ''),
             'email' => (string) ($_POST['email'] ?? ''),
             'phone' => (string) ($_POST['phone'] ?? ''),
-            'shop_name' => (string) ($_POST['shop_name'] ?? ''),
-            'shop_description' => (string) ($_POST['shop_description'] ?? ''),
-            'shop_logo' => (string) ($_POST['shop_logo'] ?? ''),
+            'gender' => (string) ($_POST['gender'] ?? ''),
+            'address' => (string) ($_POST['address'] ?? ''),
+            'brand_name' => (string) ($_POST['brand_name'] ?? ''),
+            'pan_number' => (string) ($_POST['pan_number'] ?? ''),
+            'current_password' => (string) ($_POST['current_password'] ?? ''),
+            'new_password' => (string) ($_POST['new_password'] ?? ''),
         ]);
 
         set_flash('success', 'Trader profile settings updated successfully.');
@@ -28,13 +31,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['profile_action'] ?? '') ==
 
 $user = db_is_offline()
     ? offline_user_by_id($userId)
-    : db_fetch_one('SELECT user_id, first_name, last_name, email, phone_number, "ROLE" AS role FROM "USER" WHERE user_id = :user_id', ['user_id' => $userId]);
-$shop = trader_shop_for_user($userId);
-$metrics = trader_dashboard_metrics($userId);
-$categories = trader_categories();
+    : db_fetch_one('SELECT u.user_id, u.first_name, u.last_name, u.email, u.phone_number, u.gender, u.address, u."ROLE" AS role, t.brand_name, t.pan_number FROM "USER" u LEFT JOIN TRADER t ON u.user_id = t.trader_id WHERE u.user_id = :user_id', ['user_id' => $userId]);
 
 $pageTitle = 'Trader Profile Settings | Cleck E-Mart';
-$metaDescription = 'Update trader account details and shop settings.';
+$metaDescription = 'Update trader account details and password.';
 
 require __DIR__ . '/components/header.php';
 ?>
@@ -53,36 +53,40 @@ require __DIR__ . '/components/header.php';
         <?php endif; ?>
     </div>
 
-    <section class="trader-intro" aria-labelledby="trader-profile-title">
-        <div class="container trader-intro__inner">
-            <div>
-                <p class="trader-intro__eyebrow">Profile settings</p>
-                <h1 id="trader-profile-title"><?php echo e($shop['SHOP_NAME'] ?? 'Trader account'); ?></h1>
-                <p class="trader-intro__sub">Update your trader details, shop branding, and public contact information.</p>
-            </div>
-            <div class="trader-intro__meta">
-                <span><?php echo e($metrics['sold_total']); ?> products sold</span>
-            </div>
-        </div>
-    </section>
+    <div class="container">
+        <div class="admin-dashboard-layout">
+            <aside class="admin-sidebar">
+                <div class="admin-dashboard-hero">
+                    <h1 class="page-title" style="margin: 0; color: white;">Trader Dashboard</h1>
+                    <p style="margin-top: 0.5rem; opacity: 0.9;">Update your trader details and branding.</p>
+                </div>
 
-    <section class="trader-content">
-        <div class="container trader-layout">
-            <aside class="trader-sidebar" aria-label="Trader navigation">
-                <a class="trader-sidebar__item" href="trader-shops.php">My Shops</a>
-                <a class="trader-sidebar__item" href="trader-dashboard.php">Dashboard</a>
-                <a class="trader-sidebar__item" href="trader-orders.php">Orders</a>
-                <a class="trader-sidebar__item is-active" href="trader-profile.php">Profile Settings</a>
-                <a class="trader-sidebar__item" href="trader-add-product.php">Add Product</a>
-                <a class="trader-sidebar__item" href="logout.php">Sign Out</a>
+                <div class="admin-tabs">
+                    <a href="trader-profile.php" class="tab-button active">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                        My Profile
+                    </a>
+                    <a href="trader-shops.php" class="tab-button">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                        My Shop
+                    </a>
+                    <a href="trader-orders.php" class="tab-button">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+                        All Orders
+                    </a>
+                    <a href="logout.php" class="tab-button" style="margin-top: auto; color: var(--color-accent); border-top: 1px solid rgba(0,0,0,0.1); border-radius: 0; padding-top: 1rem;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                        Sign Out
+                    </a>
+                </div>
             </aside>
 
-            <div class="trader-main">
-                <section class="trader-card">
+            <div class="admin-content-grid" style="display: block;">
+                <section class="admin-section">
                     <div class="trader-card__header">
                         <div>
-                            <p class="trader-card__eyebrow">Shop details</p>
-                            <h2>Trader and shop profile</h2>
+                            <p class="trader-card__eyebrow">Personal details</p>
+                            <h2>Trader Profile</h2>
                         </div>
                         <span class="trader-card__badge"><?php echo e($user['ROLE'] ?? 'TRADER'); ?></span>
                     </div>
@@ -106,21 +110,39 @@ require __DIR__ . '/components/header.php';
                                 <span>Phone</span>
                                 <input type="tel" name="phone" value="<?php echo e($user['PHONE_NUMBER'] ?? ''); ?>" />
                             </label>
-                            <label class="trader-form__full">
-                                <span>Shop name</span>
-                                <input type="text" name="shop_name" value="<?php echo e($shop['SHOP_NAME'] ?? ''); ?>" required />
-                            </label>
-                            <label class="trader-form__full">
-                                <span>Shop description</span>
-                                <textarea name="shop_description" rows="4"><?php echo e($shop['SHOP_DESCRIPTION'] ?? ''); ?></textarea>
+                            <label>
+                                <span>Gender</span>
+                                <select name="gender" style="width: 100%; padding: 0.8rem; border-radius: var(--radius-sm); border: 1px solid rgba(0,0,0,0.1); font-family: inherit;">
+                                    <option value="">Select Gender</option>
+                                    <option value="Male" <?php echo ($user['GENDER'] ?? '') === 'Male' ? 'selected' : ''; ?>>Male</option>
+                                    <option value="Female" <?php echo ($user['GENDER'] ?? '') === 'Female' ? 'selected' : ''; ?>>Female</option>
+                                    <option value="Other" <?php echo ($user['GENDER'] ?? '') === 'Other' ? 'selected' : ''; ?>>Other</option>
+                                </select>
                             </label>
                             <label>
-                                <span>Shop logo filename</span>
-                                <input type="text" name="shop_logo" value="<?php echo e($shop['SHOP_LOGO'] ?? ''); ?>" placeholder="logo.png" />
+                                <span>PAN Number</span>
+                                <input type="text" name="pan_number" value="<?php echo e($user['PAN_NUMBER'] ?? ''); ?>" />
+                            </label>
+                            <label class="trader-form__full">
+                                <span>Address</span>
+                                <input type="text" name="address" value="<?php echo e($user['ADDRESS'] ?? ''); ?>" />
+                            </label>
+                            <label class="trader-form__full">
+                                <span>Brand Name</span>
+                                <input type="text" name="brand_name" value="<?php echo e($user['BRAND_NAME'] ?? ''); ?>" required />
+                            </label>
+                            
+                            <!-- Password Change Section -->
+                            <div class="trader-form__full" style="margin-top: 1.5rem;">
+                                <h3 style="font-size: 1.2rem; margin-bottom: 1rem; border-bottom: 1px solid rgba(0,0,0,0.1); padding-bottom: 0.5rem;">Change Password</h3>
+                            </div>
+                            <label>
+                                <span>Current Password</span>
+                                <input type="password" name="current_password" placeholder="Leave blank to keep current" />
                             </label>
                             <label>
-                                <span>Top category</span>
-                                <input type="text" value="<?php echo e($categories[0]['CATEGORY_NAME'] ?? 'Market listing'); ?>" readonly />
+                                <span>New Password</span>
+                                <input type="password" name="new_password" placeholder="Leave blank to keep current" />
                             </label>
                         </div>
 
@@ -129,6 +151,6 @@ require __DIR__ . '/components/header.php';
                 </section>
             </div>
         </div>
-    </section>
+    </div>
 </main>
 <?php require __DIR__ . '/components/footer.php'; ?>

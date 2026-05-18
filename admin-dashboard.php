@@ -30,24 +30,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         redirect('admin-dashboard.php');
     }
     
-    if (isset($_POST['trader_id'])) {
-        $traderId = (int) $_POST['trader_id'];
-        
-        if ($action === 'approve_trader' && $traderId > 0) {
-            if (!db_is_offline()) {
-                // First ensure trader_status column exists, then update
-                try {
-                    db_execute("UPDATE TRADER SET trader_status = 'VERIFIED' WHERE trader_id = :id", ['id' => $traderId]);
-                } catch(Exception $e) {
-                    // Ignore if trader_status column does not exist yet
-                }
-            } else {
-                offline_update_trader_status($traderId, 'VERIFIED');
-            }
-            set_flash('success', 'Trader approved successfully.');
-        }
-        redirect('admin-dashboard.php');
-    }
 
     if (isset($_POST['shop_id'])) {
         $shopId = (int) $_POST['shop_id'];
@@ -84,18 +66,6 @@ if (!db_is_offline()) {
     $pendingProducts = offline_get_pending_products();
 }
 
-// Fetch pending traders
-$pendingTraders = [];
-if (!db_is_offline()) {
-    $pendingTraders = db_fetch_all("
-        SELECT t.trader_id, t.brand_name, t.pan_number, u.first_name, u.last_name, u.email, t.trader_status
-        FROM TRADER t
-        JOIN \"USER\" u ON u.user_id = t.trader_id
-        WHERE t.trader_status = 'PENDING_VERIFICATION'
-    ");
-} else {
-    $pendingTraders = offline_get_pending_traders();
-}
 
 // Fetch pending shops
 $pendingShops = [];
@@ -105,7 +75,7 @@ if (!db_is_offline()) {
         FROM SHOP s
         JOIN TRADER t ON s.trader_id = t.trader_id
         JOIN \"USER\" u ON t.trader_id = u.user_id
-        WHERE s.shop_status = 'PENDING_APPROVAL'
+        WHERE s.shop_status = 'PENDING'
     ");
 } else {
     $pendingShops = offline_get_pending_shops();
@@ -128,7 +98,7 @@ require __DIR__ . '/components/header.php';
             <aside class="admin-sidebar">
                 <div class="admin-dashboard-hero">
                     <h1 class="page-title" style="margin: 0; color: white;">Admin Dashboard</h1>
-                    <p style="margin-top: 0.5rem; opacity: 0.9;">Manage pending verifications for products, traders, and shops.</p>
+                    <p style="margin-top: 0.5rem; opacity: 0.9;">Manage pending verifications for products and shops.</p>
                 </div>
                 <?php if ($flashSuccess = get_flash('success')): ?>
                     <p class="page-message page-message--success"><?php echo e($flashSuccess); ?></p>
@@ -142,14 +112,16 @@ require __DIR__ . '/components/header.php';
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
                         Products Pending
                     </button>
-                    <button class="tab-button" onclick="openTab('traders')">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-                        Traders Pending
-                    </button>
+
                     <button class="tab-button" onclick="openTab('shops')">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
                         Shops Pending
                     </button>
+
+                    <a href="logout.php" class="tab-button" style="margin-top: auto; color: var(--color-accent); border-top: 1px solid rgba(0,0,0,0.1); border-radius: 0; padding-top: 1rem;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                        Sign Out
+                    </a>
                 </div>
             </aside>
 
@@ -204,53 +176,6 @@ require __DIR__ . '/components/header.php';
             <?php endif; ?>
         </section>
 
-        <section id="traders" class="admin-section tab-content">
-            <h2>
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--color-accent);"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-                Traders Pending Verification
-            </h2>
-            <?php if (empty($pendingTraders)): ?>
-                <div class="empty-state">
-                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 1rem; opacity: 0.5;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-                    <p style="margin:0; font-size: 1.1rem; font-weight: 500;">All caught up!</p>
-                    <p style="margin-top: 0.25rem; font-size: 0.9rem;">No traders are currently pending verification.</p>
-                </div>
-            <?php else: ?>
-                <div class="table-responsive">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Trader Name</th>
-                                <th>Brand Name</th>
-                                <th>Email</th>
-                                <th>Status</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($pendingTraders as $trader): ?>
-                                <tr>
-                                    <td><?php echo e($trader['FIRST_NAME'] . ' ' . $trader['LAST_NAME']); ?></td>
-                                    <td><?php echo e($trader['BRAND_NAME'] ?: 'N/A'); ?></td>
-                                    <td><?php echo e($trader['EMAIL']); ?></td>
-                                    <td>
-                                        <span class="status-badge status-badge--pending">
-                                            <?php echo e($trader['TRADER_STATUS']); ?>
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <form method="post" style="display:inline-flex; gap:0.5rem;">
-                                            <input type="hidden" name="trader_id" value="<?php echo $trader['TRADER_ID']; ?>">
-                                            <button type="submit" name="action" value="approve_trader" class="button button--small">Approve</button>
-                                        </form>
-                                    </td>
-                                </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
-            <?php endif; ?>
-        </section>
 
         <section id="shops" class="admin-section tab-content">
             <h2>

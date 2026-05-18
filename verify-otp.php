@@ -108,7 +108,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             $newRole = strtoupper((string) $newUser['ROLE']);
             if ($newRole === 'TRADER') {
-                redirect('trader-shops.php');
+                redirect('trader-profile.php');
             } else {
                 redirect('index.php');
             }

@@ -439,28 +439,40 @@ function trader_update_profile(int $userId, array $payload): array
     $lastName = trim((string) ($payload['last_name'] ?? ''));
     $email = strtolower(trim((string) ($payload['email'] ?? '')));
     $phone = trim((string) ($payload['phone'] ?? ''));
-    $shopName = trim((string) ($payload['shop_name'] ?? ''));
-    $shopDescription = trim((string) ($payload['shop_description'] ?? ''));
-    $shopLogo = trim((string) ($payload['shop_logo'] ?? ''));
+    $gender = trim((string) ($payload['gender'] ?? ''));
+    $address = trim((string) ($payload['address'] ?? ''));
+    $brandName = trim((string) ($payload['brand_name'] ?? ''));
+    $panNumber = trim((string) ($payload['pan_number'] ?? ''));
+    
+    $currentPassword = (string) ($payload['current_password'] ?? '');
+    $newPassword = (string) ($payload['new_password'] ?? '');
 
-    if ($firstName === '' || $lastName === '' || $email === '' || $shopName === '') {
-        throw new InvalidArgumentException('First name, last name, email, and shop name are required.');
+    if ($firstName === '' || $lastName === '' || $email === '' || $brandName === '') {
+        throw new InvalidArgumentException('First name, last name, email, and brand name are required.');
     }
 
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         throw new InvalidArgumentException('Please provide a valid email address.');
     }
 
-    $shop = trader_shop_for_user($userId);
-    if ($shop === null) {
-        throw new RuntimeException('Trader shop could not be found.');
-    }
-
     if (db_is_offline()) {
         offline_update_user($userId, $firstName, $lastName, $email, $phone === '' ? null : $phone);
-        offline_update_shop((int) $shop['SHOP_ID'], $shopName, $shopDescription, $shopLogo === '' ? null : $shopLogo);
-
-        return trader_shop_for_user($userId) ?? [];
+        return [];
+    }
+    
+    // If password change is requested, verify current password
+    $passwordUpdateSql = "";
+    $passwordParams = [];
+    if ($currentPassword !== '' || $newPassword !== '') {
+        if ($currentPassword === '' || $newPassword === '') {
+            throw new InvalidArgumentException('Both current password and new password are required to change your password.');
+        }
+        $userRow = db_fetch_one('SELECT password FROM "USER" WHERE user_id = :user_id', ['user_id' => $userId]);
+        if (!$userRow || !password_verify($currentPassword, $userRow['PASSWORD'])) {
+            throw new InvalidArgumentException('The current password provided is incorrect.');
+        }
+        $passwordUpdateSql = ", password = :password";
+        $passwordParams = ['password' => password_hash($newPassword, PASSWORD_DEFAULT)];
     }
 
     db_begin();
@@ -472,38 +484,44 @@ function trader_update_profile(int $userId, array $payload): array
                  last_name = :last_name,
                  email = :email,
                  phone_number = :phone_number,
-                 updated_at = CURRENT_TIMESTAMP
+                 gender = :gender,
+                 address = :address,
+                 updated_at = CURRENT_TIMESTAMP' . $passwordUpdateSql . '
              WHERE user_id = :user_id',
-            [
+            array_merge([
                 'first_name' => $firstName,
                 'last_name' => $lastName,
                 'email' => $email,
                 'phone_number' => $phone === '' ? null : $phone,
+                'gender' => $gender === '' ? null : $gender,
+                'address' => $address === '' ? null : $address,
                 'user_id' => $userId,
-            ]
+            ], $passwordParams)
         );
 
         db_execute(
-            'UPDATE SHOP
-             SET shop_name = :shop_name,
-                 shop_description = :shop_description,
-                 shop_logo = :shop_logo
-             WHERE shop_id = :shop_id',
+            'UPDATE TRADER
+             SET brand_name = :brand_name,
+                 pan_number = :pan_number
+             WHERE trader_id = :user_id',
             [
-                'shop_name' => $shopName,
-                'shop_description' => $shopDescription,
-                'shop_logo' => $shopLogo === '' ? null : $shopLogo,
-                'shop_id' => (int) $shop['SHOP_ID'],
+                'brand_name' => $brandName,
+                'pan_number' => $panNumber === '' ? null : $panNumber,
+                'user_id' => $userId,
             ]
         );
 
         db_commit();
     } catch (Throwable $exception) {
         db_rollback();
+        // Check for unique constraint violation on email or brand name
+        if (strpos($exception->getMessage(), 'unique constraint') !== false) {
+            throw new InvalidArgumentException('The email or brand name is already in use.');
+        }
         throw $exception;
     }
 
-    return trader_shop_for_user($userId) ?? [];
+    return [];
 }
 
 function trader_update_discount(int $userId, int $productId, float $percentage, int $durationDays = 30): void
@@ -551,11 +569,15 @@ function trader_update_discount(int $userId, int $productId, float $percentage, 
 
 function trader_get_orders(int $userId, array $filters = []): array
 {
-    $shop = trader_shop_for_user($userId);
-    if ($shop === null) return [];
+    $shopId = $filters['shop_id'] ?? null;
     
-    $params = ['shop_id' => $shop['SHOP_ID']];
-    $where = "WHERE p.shop_id = :shop_id";
+    $params = ['user_id' => $userId];
+    $where = "WHERE s.trader_id = :user_id";
+    
+    if ($shopId) {
+        $where .= " AND s.shop_id = :shop_id";
+        $params['shop_id'] = $shopId;
+    }
     
     if (!empty($filters['customer_name'])) {
         $where .= " AND LOWER(u.first_name || ' ' || u.last_name) LIKE LOWER(:customer_name)";
@@ -588,6 +610,7 @@ function trader_get_orders(int $userId, array $filters = []): array
             JOIN \"USER\" u ON c.customer_id = u.user_id
             JOIN ORDER_ITEM oi ON o.order_id = oi.order_id
             JOIN PRODUCT p ON oi.product_id = p.product_id
+            JOIN SHOP s ON p.shop_id = s.shop_id
             LEFT JOIN PAYMENT py ON o.order_id = py.order_id
             $where
             GROUP BY o.order_id, u.first_name, u.last_name, o.order_date, py.payment_status, o.order_status
@@ -596,11 +619,8 @@ function trader_get_orders(int $userId, array $filters = []): array
     return db_fetch_all($sql, $params);
 }
 
-function trader_get_order_details(int $userId, int $orderId): ?array
+function trader_get_order_details(int $userId, int $orderId, ?int $shopId = null): ?array
 {
-    $shop = trader_shop_for_user($userId);
-    if ($shop === null) return null;
-
     $orderSql = "SELECT o.order_id,
                         u.first_name || ' ' || u.last_name AS customer_name,
                         o.order_date,
@@ -618,18 +638,25 @@ function trader_get_order_details(int $userId, int $orderId): ?array
     
     if (!$orderInfo) return null;
     
+    $whereShop = "s.trader_id = :user_id";
+    $params = ['order_id' => $orderId, 'user_id' => $userId];
+    if ($shopId) {
+        $whereShop .= " AND s.shop_id = :shop_id";
+        $params['shop_id'] = $shopId;
+    }
+    
     $itemsSql = "SELECT p.product_id,
                         p.product_image,
                         p.product_name,
                         oi.quantity,
                         oi.unit_price,
-                        (oi.quantity * oi.unit_price) AS total_price,
-                        NVL(oi.item_status, 'PENDING') AS item_status
+                        (oi.quantity * oi.unit_price) AS total_price
                  FROM ORDER_ITEM oi
                  JOIN PRODUCT p ON oi.product_id = p.product_id
-                 WHERE oi.order_id = :order_id AND p.shop_id = :shop_id";
+                 JOIN SHOP s ON p.shop_id = s.shop_id
+                 WHERE oi.order_id = :order_id AND $whereShop";
                  
-    $items = db_fetch_all($itemsSql, ['order_id' => $orderId, 'shop_id' => $shop['SHOP_ID']]);
+    $items = db_fetch_all($itemsSql, $params);
     
     if (empty($items)) return null; 
     
@@ -637,37 +664,10 @@ function trader_get_order_details(int $userId, int $orderId): ?array
     return $orderInfo;
 }
 
-function trader_update_item_status(int $userId, int $orderId, int $productId, string $newStatus): void
-{
-    $shop = trader_shop_for_user($userId);
-    if ($shop === null) throw new RuntimeException('Trader shop not found.');
-    
-    $product = db_fetch_one("SELECT product_id FROM PRODUCT WHERE product_id = :product_id AND shop_id = :shop_id", [
-        'product_id' => $productId,
-        'shop_id' => $shop['SHOP_ID']
-    ]);
-    
-    if (!$product) throw new RuntimeException('Product not found or access denied.');
-    
-    db_execute("UPDATE ORDER_ITEM SET item_status = :status WHERE order_id = :order_id AND product_id = :product_id", [
-        'status' => $newStatus,
-        'order_id' => $orderId,
-        'product_id' => $productId
-    ]);
-    
-    // As per requirement: "once the order is set to ready, it should update the order status in the database to be ready as well"
-    if ($newStatus === 'READY') {
-        trader_update_order_status($userId, $orderId, 'READY');
-    }
-}
+
 
 function trader_update_order_status(int $userId, int $orderId, string $newStatus): void
 {
-    $shop = trader_shop_for_user($userId);
-    if ($shop === null) {
-        throw new RuntimeException('Trader shop not found.');
-    }
-
     if (!in_array($newStatus, ['PAID', 'READY', 'COLLECTED'], true)) {
         throw new RuntimeException('Please select a valid status.');
     }
@@ -677,11 +677,12 @@ function trader_update_order_status(int $userId, int $orderId, string $newStatus
          FROM "ORDER" o
          JOIN ORDER_ITEM oi ON o.order_id = oi.order_id
          JOIN PRODUCT p ON oi.product_id = p.product_id
-         WHERE o.order_id = :order_id AND p.shop_id = :shop_id
+         JOIN SHOP s ON p.shop_id = s.shop_id
+         WHERE o.order_id = :order_id AND s.trader_id = :user_id
          GROUP BY o.order_id',
         [
             'order_id' => $orderId,
-            'shop_id' => (int) $shop['SHOP_ID']
+            'user_id' => $userId
         ]
     );
 
@@ -760,4 +761,49 @@ function trader_create_shop(int $userId, array $payload): array
         db_rollback();
         throw $e;
     }
+}
+
+function trader_update_shop(int $userId, int $shopId, array $payload): void
+{
+    $shopName = trim($payload['shop_name'] ?? '');
+    $shopDesc = trim($payload['shop_description'] ?? '');
+    $shopLogo = trim($payload['shop_logo'] ?? '');
+    $shopLocation = trim($payload['shop_location'] ?? '');
+    $shopPan = trim($payload['shop_pan'] ?? '');
+    $shopProductsType = trim($payload['shop_products_type'] ?? '');
+    
+    if ($shopName === '') {
+        throw new InvalidArgumentException('Shop name is required.');
+    }
+    
+    // Check if user owns the shop
+    $shop = trader_shop_for_user($userId, $shopId);
+    if (!$shop) {
+        throw new RuntimeException('Shop not found or access denied.');
+    }
+    
+    if (db_is_offline()) {
+        return; // Not supported in offline mode
+    }
+    
+    db_execute(
+        'UPDATE SHOP SET 
+            shop_name = :shop_name, 
+            shop_description = :shop_description, 
+            shop_logo = :shop_logo, 
+            shop_location = :shop_location, 
+            shop_pan = :shop_pan, 
+            shop_products_type = :shop_products_type
+         WHERE shop_id = :shop_id AND trader_id = :trader_id',
+        [
+            'shop_name' => $shopName,
+            'shop_description' => $shopDesc,
+            'shop_logo' => $shopLogo === '' ? null : $shopLogo,
+            'shop_location' => $shopLocation,
+            'shop_pan' => $shopPan,
+            'shop_products_type' => $shopProductsType,
+            'shop_id' => $shopId,
+            'trader_id' => $userId
+        ]
+    );
 }

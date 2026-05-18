@@ -4,10 +4,11 @@ require_once __DIR__ . '/lib/trader_helpers.php';
 trader_role_guard();
 
 $userId = (int) current_user_id();
-$shop = trader_shop_for_user($userId);
+$shopId = isset($_GET['shop_id']) ? (int) $_GET['shop_id'] : null;
+$shop = trader_shop_for_user($userId, $shopId);
 
-if ($shop === null) {
-    redirect('trader-dashboard.php');
+if ($shop === null && $shopId) {
+    redirect('trader-shops.php');
 }
 
 $successMessage = get_flash('success');
@@ -26,22 +27,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'updat
     redirect("trader-orders.php?id=$orderId");
 }
 
-// Handle Item Status Update (Ready/Cancel Item)
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'update_status') {
-    $orderId = (int) ($_POST['order_id'] ?? 0);
-    $productId = (int) ($_POST['product_id'] ?? 0);
-    $newStatus = strtoupper(trim((string) ($_POST['new_status'] ?? '')));
-    try {
-        if (!in_array($newStatus, ['READY', 'CANCELLED'])) {
-            throw new Exception('Please select a valid status.');
-        }
-        trader_update_item_status($userId, $orderId, $productId, $newStatus);
-        set_flash('success', "Item status updated to $newStatus successfully.");
-    } catch (Throwable $e) {
-        set_flash('error', $e->getMessage());
-    }
-    redirect("trader-orders.php?id=$orderId");
-}
+
 
 $viewingOrderId = isset($_GET['id']) ? (int) $_GET['id'] : null;
 
@@ -60,37 +46,61 @@ require __DIR__ . '/components/header.php';
         <?php endif; ?>
     </div>
 
-    <section class="trader-intro" aria-labelledby="orders-title">
-        <div class="container trader-intro__inner">
-            <div>
-                <p class="trader-intro__eyebrow">Order Management</p>
-                <h1 id="orders-title"><?php echo e($viewingOrderId ? 'Order Details' : 'Customer Orders'); ?></h1>
-                <p class="trader-intro__sub">
-                    <?php echo e($viewingOrderId ? 'View and prepare items for this specific order.' : 'View all customer orders containing your products.'); ?>
-                </p>
-            </div>
-            <?php if ($viewingOrderId): ?>
-            <div class="trader-intro__meta">
-                <a href="trader-orders.php" class="button button--secondary">Back to Orders</a>
-            </div>
-            <?php endif; ?>
-        </div>
-    </section>
+    <div class="container">
+        <div class="admin-dashboard-layout">
+            <aside class="admin-sidebar">
+                <div class="admin-dashboard-hero">
+                    <h1 class="page-title" style="margin: 0; color: white;">Trader Dashboard</h1>
+                    <p style="margin-top: 0.5rem; opacity: 0.9;"><?php echo $shopId ? 'Manage orders for your shop.' : 'Manage all customer orders.'; ?></p>
+                </div>
 
-    <section class="trader-content">
-        <div class="container trader-layout">
-            <aside class="trader-sidebar" aria-label="Trader navigation">
-                <a class="trader-sidebar__item" href="trader-shops.php">My Shops</a>
-                <a class="trader-sidebar__item" href="trader-dashboard.php">Dashboard</a>
-                <a class="trader-sidebar__item is-active" href="trader-orders.php">Orders</a>
-                <a class="trader-sidebar__item" href="trader-profile.php">Profile Settings</a>
-                <a class="trader-sidebar__item" href="trader-add-product.php">Add Product</a>
-                <a class="trader-sidebar__item" href="logout.php">Sign Out</a>
+                <div class="admin-tabs">
+                    <?php if ($shopId): ?>
+                        <a href="trader-shops.php" class="tab-button">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                            Back to My Shops
+                        </a>
+                        <hr style="border-top: 1px solid rgba(0,0,0,0.1); margin: 0.5rem 0; width: 100%;">
+                        <a href="trader-shop-profile.php?shop_id=<?php echo $shopId; ?>" class="tab-button">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                            Shop Profile
+                        </a>
+                        <a href="trader-dashboard.php?shop_id=<?php echo $shopId; ?>" class="tab-button">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                            Inventory
+                        </a>
+                        <a href="trader-orders.php?shop_id=<?php echo $shopId; ?>" class="tab-button active">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+                            Orders
+                        </a>
+                        <a href="trader-add-product.php?shop_id=<?php echo $shopId; ?>" class="tab-button">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                            Add Products
+                        </a>
+                    <?php else: ?>
+                        <a href="trader-profile.php" class="tab-button">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                            My Profile
+                        </a>
+                        <a href="trader-shops.php" class="tab-button">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                            My Shop
+                        </a>
+                        <a href="trader-orders.php" class="tab-button active">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+                            All Orders
+                        </a>
+                        <a href="logout.php" class="tab-button" style="margin-top: auto; color: var(--color-accent); border-top: 1px solid rgba(0,0,0,0.1); border-radius: 0; padding-top: 1rem;">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                            Sign Out
+                        </a>
+                    <?php endif; ?>
+                </div>
             </aside>
 
-            <div class="trader-main">
+            <div class="admin-content-grid" style="display: block;">
                 <?php if ($viewingOrderId): 
-                    $orderInfo = trader_get_order_details($userId, $viewingOrderId);
+                    $orderInfo = trader_get_order_details($userId, $viewingOrderId, $shopId);
                     if (!$orderInfo):
                 ?>
                     <p class="trader-empty">Order not found or contains no products from your shop.</p>
@@ -99,7 +109,7 @@ require __DIR__ . '/components/header.php';
                         $orderStatus = strtoupper($orderInfo['ORDER_STATUS'] ?? 'PENDING');
                         $orderStatusOptions = ['PAID' => 'Paid', 'READY' => 'Ready', 'COLLECTED' => 'Collected'];
                     ?>
-                    <section class="trader-card">
+                    <section class="admin-section">
                         <div class="trader-card__header">
                             <div>
                                 <p class="trader-card__eyebrow">Order #<?php echo e($orderInfo['ORDER_ID']); ?></p>
@@ -153,13 +163,10 @@ require __DIR__ . '/components/header.php';
                                         <th>Quantity</th>
                                         <th>Unit Price</th>
                                         <th>Total Price</th>
-                                        <th>Item Status</th>
-                                        <th>Action</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <?php foreach ($orderInfo['items'] as $item): 
-                                        $itemStatus = strtoupper($item['ITEM_STATUS'] ?? 'PENDING');
                                         $paymentStatus = strtoupper($orderInfo['PAYMENT_STATUS'] ?? 'PENDING');
                                     ?>
                                         <tr>
@@ -174,33 +181,6 @@ require __DIR__ . '/components/header.php';
                                             <td><?php echo e($item['QUANTITY']); ?></td>
                                             <td>£<?php echo e(number_format($item['UNIT_PRICE'], 2)); ?></td>
                                             <td>£<?php echo e(number_format($item['TOTAL_PRICE'], 2)); ?></td>
-                                            <td>
-                                                <?php
-                                                    $badgeClass = 'badge--default';
-                                                    if ($itemStatus === 'PAID') $badgeClass = 'badge--blue';
-                                                    elseif ($itemStatus === 'READY') $badgeClass = 'badge--orange';
-                                                    elseif ($itemStatus === 'SHIPPED') $badgeClass = 'badge--purple';
-                                                    elseif ($itemStatus === 'DELIVERED') $badgeClass = 'badge--green';
-                                                ?>
-                                                <span class="badge <?php echo $badgeClass; ?>"><?php echo e($itemStatus); ?></span>
-                                            </td>
-                                            <td>
-                                                <?php if (in_array($paymentStatus, ['PAID', 'COMPLETED']) && ($itemStatus === 'PAID' || $itemStatus === 'PENDING')): ?>
-                                                    <form method="post" action="trader-orders.php" style="display: flex; gap: 0.5rem; align-items: center;">
-                                                        <input type="hidden" name="action" value="update_status" />
-                                                        <input type="hidden" name="order_id" value="<?php echo e($orderInfo['ORDER_ID']); ?>" />
-                                                        <input type="hidden" name="product_id" value="<?php echo e($item['PRODUCT_ID']); ?>" />
-                                                        <select name="new_status" style="padding: 0.3rem; font-size: 0.8rem; border-radius: 4px; border: 1px solid #ccc; background-color: #fff;" required>
-                                                            <option value="" disabled selected>Select...</option>
-                                                            <option value="READY">Ready</option>
-                                                            <option value="CANCELLED">Cancel</option>
-                                                        </select>
-                                                        <button type="submit" class="button button--secondary" style="padding: 0.3rem 0.6rem; font-size: 0.8rem;">Update</button>
-                                                    </form>
-                                                <?php else: ?>
-                                                    <span style="color: #888;">-</span>
-                                                <?php endif; ?>
-                                            </td>
                                         </tr>
                                     <?php endforeach; ?>
                                 </tbody>
@@ -219,7 +199,7 @@ require __DIR__ . '/components/header.php';
                     ];
                     $orders = trader_get_orders($userId, $filters);
                 ?>
-                    <section class="trader-card">
+                    <section class="admin-section">
                         <div class="trader-card__header" style="flex-wrap: wrap; gap: 1rem;">
                             <div>
                                 <p class="trader-card__eyebrow">All Orders</p>
@@ -294,7 +274,7 @@ require __DIR__ . '/components/header.php';
                 <?php endif; ?>
             </div>
         </div>
-    </section>
+    </div>
 </main>
 
 <style>

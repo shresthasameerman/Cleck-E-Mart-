@@ -154,7 +154,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     // Route based on role
                     $role = strtoupper((string) $user['ROLE']);
                     if ($role === 'TRADER') {
-                        redirect('trader-shops.php');
+                        redirect('trader-profile.php');
                     } else {
                         redirect('index.php');
                     }

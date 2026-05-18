@@ -109,7 +109,7 @@ CREATE TABLE SHOP (
     shop_location VARCHAR2(500),
     shop_pan VARCHAR2(255),
     shop_products_type VARCHAR2(500),
-    shop_status VARCHAR2(50) DEFAULT 'ACTIVE',
+    shop_status VARCHAR2(50) DEFAULT 'PENDING',
     CONSTRAINT fk_shop_trader FOREIGN KEY (trader_id) REFERENCES TRADER (trader_id),
     -- A single trader cannot have two shops with the exact same name
     CONSTRAINT unique_shop_trader UNIQUE (shop_name, trader_id) 
@@ -128,7 +128,8 @@ CREATE TABLE PRODUCT (
     allergy_information VARCHAR2(500),
     min_order NUMBER(10) DEFAULT 1,
     max_order NUMBER(10),
-    product_image VARCHAR2(500), 
+    product_image VARCHAR2(500),
+    product_verification_status VARCHAR2(50) DEFAULT 'PENDING',
     CONSTRAINT fk_product_shop FOREIGN KEY (shop_id) REFERENCES SHOP (shop_id),
     CONSTRAINT fk_product_category FOREIGN KEY (category_id) REFERENCES CATEGORY (category_id),
     CONSTRAINT fk_product_discount FOREIGN KEY (discount_id) REFERENCES DISCOUNT (discount_id)

@@ -12,25 +12,28 @@ $shopCount = count($shops);
 $successMessage = get_flash('success');
 $errorMessage = get_flash('error');
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'add_shop') {
-    if ($shopCount >= $maxShops) {
-        set_flash('error', 'You have reached the maximum number of shops (2).');
-    } else {
-        try {
-            trader_create_shop($userId, [
-                'shop_name' => (string) ($_POST['shop_name'] ?? ''),
-                'shop_description' => (string) ($_POST['shop_description'] ?? ''),
-                'shop_logo' => (string) ($_POST['shop_logo'] ?? ''),
-                'shop_location' => (string) ($_POST['shop_location'] ?? ''),
-                'shop_pan' => (string) ($_POST['shop_pan'] ?? ''),
-                'shop_products_type' => (string) ($_POST['shop_products_type'] ?? '')
-            ]);
-            set_flash('success', 'Shop added successfully and is pending admin approval.');
-        } catch (Throwable $e) {
-            set_flash('error', $e->getMessage());
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $action = $_POST['action'] ?? '';
+    
+    if ($action === 'add_shop') {
+        if ($shopCount >= $maxShops) {
+            set_flash('error', 'You have reached the maximum number of shops (2).');
+        } else {
+            try {
+                trader_create_shop($userId, [
+                    'shop_name' => (string) ($_POST['shop_name'] ?? ''),
+                    'shop_description' => (string) ($_POST['shop_description'] ?? ''),
+                    'shop_logo' => (string) ($_POST['shop_logo'] ?? ''),
+                    'shop_location' => (string) ($_POST['shop_location'] ?? ''),
+                    'shop_pan' => (string) ($_POST['shop_pan'] ?? ''),
+                    'shop_products_type' => (string) ($_POST['shop_products_type'] ?? '')
+                ]);
+                set_flash('success', 'Shop added successfully and is pending admin approval.');
+            } catch (Throwable $e) {
+                set_flash('error', $e->getMessage());
+            }
         }
     }
-    redirect('trader-shops.php');
 }
 
 $pageTitle = 'My Shops | Cleck E-Mart';
@@ -46,30 +49,37 @@ require __DIR__ . '/components/header.php';
         <?php endif; ?>
     </div>
 
-    <section class="trader-intro">
-        <div class="container trader-intro__inner">
-            <div>
-                <p class="trader-intro__eyebrow">Trader dashboard</p>
-                <h1>My Shops</h1>
-                <p class="trader-intro__sub">Manage your shops or add a new one.</p>
-            </div>
-            <div class="trader-intro__meta">
-                <span>Shops: <?php echo $shopCount; ?>/<?php echo $maxShops; ?></span>
-            </div>
-        </div>
-    </section>
+    <div class="container">
+        <div class="admin-dashboard-layout">
+            <aside class="admin-sidebar">
+                <div class="admin-dashboard-hero">
+                    <h1 class="page-title" style="margin: 0; color: white;">Trader Dashboard</h1>
+                    <p style="margin-top: 0.5rem; opacity: 0.9;">Manage your shops or add a new one.</p>
+                    <p style="margin-top: 1rem; opacity: 0.8; font-size: 0.9rem;">Shops: <?php echo $shopCount; ?>/<?php echo $maxShops; ?></p>
+                </div>
 
-    <section class="trader-content">
-        <div class="container trader-layout">
-            <aside class="trader-sidebar" aria-label="Trader navigation">
-                <a class="trader-sidebar__item is-active" href="trader-shops.php">My Shops</a>
-                <a class="trader-sidebar__item" href="trader-orders.php">Total Orders</a>
-                <a class="trader-sidebar__item" href="trader-profile.php">Profile Settings</a>
-                <a class="trader-sidebar__item" href="logout.php">Sign Out</a>
+                <div class="admin-tabs">
+                    <a href="trader-profile.php" class="tab-button">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                        My Profile
+                    </a>
+                    <a href="trader-shops.php" class="tab-button active">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                        My Shop
+                    </a>
+                    <a href="trader-orders.php" class="tab-button">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+                        All Orders
+                    </a>
+                    <a href="logout.php" class="tab-button" style="margin-top: auto; color: var(--color-accent); border-top: 1px solid rgba(0,0,0,0.1); border-radius: 0; padding-top: 1rem;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                        Sign Out
+                    </a>
+                </div>
             </aside>
 
-            <div class="trader-main">
-                <section class="trader-card" style="margin-bottom: 2rem;">
+            <div class="admin-content-grid" style="display: block;">
+                <section class="admin-section" style="margin-bottom: 2rem;">
                     <div class="trader-card__header">
                         <h2>Your Shops</h2>
                     </div>
@@ -81,15 +91,19 @@ require __DIR__ . '/components/header.php';
                                 <article class="shop-card" style="border: 1px solid #ddd; padding: 1.5rem; border-radius: 8px;">
                                     <h3><?php echo e($shop['SHOP_NAME']); ?></h3>
                                     <p style="color: #666; margin-bottom: 1rem;"><?php echo e($shop['SHOP_DESCRIPTION'] ?? 'No description'); ?></p>
-                                    <p style="margin-bottom: 1rem;">
+                                    <div style="margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
                                         <strong>Status:</strong> 
-                                        <?php if (($shop['SHOP_STATUS'] ?? 'ACTIVE') === 'ACTIVE'): ?>
-                                            <span style="color: green;">Verified</span>
+                                        <?php if (($shop['SHOP_STATUS'] ?? '') === 'PENDING_APPROVAL' || ($shop['SHOP_STATUS'] ?? '') === 'PENDING'): ?>
+                                            <span style="color: orange; font-weight: 500;">Pending Admin Approval</span>
+                                        <?php elseif (($shop['SHOP_STATUS'] ?? '') === 'REJECTED'): ?>
+                                            <span style="color: red; font-weight: 500;">Rejected</span>
+                                        <?php elseif (($shop['SHOP_STATUS'] ?? '') === 'SUSPEND' || ($shop['SHOP_STATUS'] ?? '') === 'SUSPENDED'): ?>
+                                            <span style="color: red; font-weight: 500;">Suspended</span>
                                         <?php else: ?>
-                                            <span style="color: orange;"><?php echo e($shop['SHOP_STATUS']); ?></span>
+                                            <span style="color: green; font-weight: 500;">Active</span>
                                         <?php endif; ?>
-                                    </p>
-                                    <a href="trader-dashboard.php?shop_id=<?php echo e($shop['SHOP_ID']); ?>" class="button">View Shop Dashboard</a>
+                                    </div>
+                                    <a href="trader-dashboard.php?shop_id=<?php echo e($shop['SHOP_ID']); ?>" class="button" style="display: block; text-align: center; width: 100%; box-sizing: border-box;">View Shop Dashboard</a>
                                 </article>
                             <?php endforeach; ?>
                         </div>
@@ -97,7 +111,7 @@ require __DIR__ . '/components/header.php';
                 </section>
 
                 <?php if ($shopCount < $maxShops): ?>
-                <section class="trader-card">
+                <section class="admin-section">
                     <div class="trader-card__header">
                         <h2>Add a New Shop</h2>
                     </div>
@@ -133,12 +147,12 @@ require __DIR__ . '/components/header.php';
                     </form>
                 </section>
                 <?php else: ?>
-                <section class="trader-card">
+                <section class="admin-section">
                     <p style="color: #666; text-align: center; padding: 2rem;">You have reached the maximum limit of <?php echo $maxShops; ?> shops.</p>
                 </section>
                 <?php endif; ?>
             </div>
         </div>
-    </section>
+    </div>
 </main>
 <?php require __DIR__ . '/components/footer.php'; ?>

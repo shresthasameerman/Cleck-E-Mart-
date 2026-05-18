@@ -12,8 +12,8 @@ if ($headerIsAdmin) {
     $headerAccountHref = 'admin-dashboard.php';
     $headerAccountLabel = 'Admin dashboard';
 } elseif ($headerIsTrader) {
-    $headerAccountHref = 'trader-dashboard.php';
-    $headerAccountLabel = 'Trader dashboard';
+    $headerAccountHref = 'trader-profile.php';
+    $headerAccountLabel = 'Trader profile';
 } else {
     $headerAccountHref = $headerIsLoggedIn ? 'profile.php' : 'auth.php?mode=login';
     $headerAccountLabel = $headerIsLoggedIn ? 'Account profile' : 'Login / signup';
@@ -27,6 +27,7 @@ if ($headerIsAdmin) {
     <meta name="description" content="<?php echo htmlspecialchars($metaDescription, ENT_QUOTES, 'UTF-8'); ?>" />
     <title><?php echo htmlspecialchars($pageTitle, ENT_QUOTES, 'UTF-8'); ?></title>
     <link rel="stylesheet" href="assets/css/styles.css" />
+    <link rel="stylesheet" href="assets/css/premium.css" />
     <script defer src="assets/js/script.js"></script>
     <script defer src="assets/js/cart.js"></script>
 </head>
@@ -54,9 +55,9 @@ if ($headerIsAdmin) {
                     <?php if ($headerIsAdmin): ?>
                         <a href="admin-dashboard.php">Admin Dashboard</a>
                     <?php elseif ($headerIsTrader): ?>
-                        <a href="trader-dashboard.php">Dashboard</a>
+                        <a href="trader-profile.php">Dashboard</a>
                         <a href="trader-profile.php">Profile Settings</a>
-                        <a href="trader-add-product.php">Add Product</a>
+                        <a href="trader-shops.php">My Shop</a>
                     <?php else: ?>
                         <a href="index.php#featured-title">Featured</a>
                         <a href="category.php">Browse Category</a>
@@ -80,9 +81,7 @@ if ($headerIsAdmin) {
                         <path d="M6.5 19.2c1.6-3 3.8-4.5 5.5-4.5s3.9 1.5 5.5 4.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
                     </svg>
                 </a>
-                <?php if ($headerIsLoggedIn): ?>
-                    <a class="icon-button" href="logout.php" aria-label="Sign out">Sign out</a>
-                <?php endif; ?>
+
             </div>
         </div>
     </header>
