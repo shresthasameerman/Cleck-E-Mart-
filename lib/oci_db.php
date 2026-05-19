@@ -143,13 +143,9 @@ function db_next_id(string $table, string $column): int
     }
 
     $clean_table = trim($table, '"');
-    if ($clean_table === 'COLLECTION_SLOT') {
-        $seq = 'seq_slot';
-    } else {
-        $seq = 'seq_' . strtolower($clean_table);
-    }
-
-    $sql = 'SELECT ' . $seq . '.NEXTVAL AS NEXT_ID FROM DUAL';
+    
+    // Calculate MAX(id) + 1 directly instead of using sequences
+    $sql = 'SELECT NVL(MAX(' . $column . '), 0) + 1 AS NEXT_ID FROM ' . $table;
     $row = db_fetch_one($sql);
 
     if ($row === null || !isset($row['NEXT_ID'])) {

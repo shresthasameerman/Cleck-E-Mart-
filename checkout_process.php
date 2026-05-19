@@ -33,15 +33,7 @@ function processCheckoutTransaction($conn, $customer_id, $slot_id, $cart_items, 
         // STEP 1: GET ORDER ID FROM SEQUENCE & INSERT ORDER
         // ====================================================================
         
-        $seq_stmt = oci_parse($conn, "SELECT seq_order.NEXTVAL AS new_id FROM dual");
-        oci_execute($seq_stmt);
-        $seq_row = oci_fetch_assoc($seq_stmt);
-        $new_order_id = (int)$seq_row['NEW_ID'];
-        oci_free_statement($seq_stmt);
-
-        if (!$new_order_id) {
-            throw new Exception("Failed to generate order ID from sequence.");
-        }
+        $new_order_id = db_next_id('"ORDER"', 'order_id');
 
         $order_sql = "INSERT INTO \"ORDER\" (order_id, customer_id, slot_id, order_status, order_date) 
                       VALUES (:order_id, :cust_id, :slot_id, :status, SYSDATE)";

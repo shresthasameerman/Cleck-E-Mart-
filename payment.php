@@ -229,15 +229,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'paypa
             
             $couponId = $appliedCoupon ? (string)$appliedCoupon['id'] : null;
             
-            $seqStmt = oci_parse($conn, "SELECT seq_order.NEXTVAL AS new_id FROM dual");
-            oci_execute($seqStmt, OCI_NO_AUTO_COMMIT);
-            $seqRow = oci_fetch_assoc($seqStmt);
-            $newOrderId = (int)$seqRow['NEW_ID'];
-            oci_free_statement($seqStmt);
-
-            if (!$newOrderId) {
-                throw new Exception('Failed to generate order ID from sequence.');
-            }
+            $newOrderId = db_next_id('"ORDER"', 'order_id');
 
             $orderSql = "INSERT INTO \"ORDER\" (order_id, customer_id, slot_id, coupon_id, order_status, order_date) 
                          VALUES (:order_id, :customer_id, :slot_id, :coupon_id, 'PAID', SYSDATE)";
