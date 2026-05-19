@@ -30,12 +30,21 @@ function processCheckoutTransaction($conn, $customer_id, $slot_id, $cart_items, 
 {
     try {
         // ====================================================================
-        // STEP 1: INSERT ORDER & CAPTURE AUTO-GENERATED order_id
+        // STEP 1: GET ORDER ID FROM SEQUENCE & INSERT ORDER
         // ====================================================================
         
-        $order_sql = "INSERT INTO \"ORDER\" (customer_id, slot_id, order_status, order_date) 
-                      VALUES (:cust_id, :slot_id, :status, SYSDATE)
-                      RETURNING order_id INTO :new_order_id";
+        $seq_stmt = oci_parse($conn, "SELECT seq_order.NEXTVAL AS new_id FROM dual");
+        oci_execute($seq_stmt);
+        $seq_row = oci_fetch_assoc($seq_stmt);
+        $new_order_id = (int)$seq_row['NEW_ID'];
+        oci_free_statement($seq_stmt);
+
+        if (!$new_order_id) {
+            throw new Exception("Failed to generate order ID from sequence.");
+        }
+
+        $order_sql = "INSERT INTO \"ORDER\" (order_id, customer_id, slot_id, order_status, order_date) 
+                      VALUES (:order_id, :cust_id, :slot_id, :status, SYSDATE)";
         
         $order_stmt = oci_parse($conn, $order_sql);
         
@@ -44,24 +53,14 @@ function processCheckoutTransaction($conn, $customer_id, $slot_id, $cart_items, 
         }
         
         // Bind input parameters
+        oci_bind_by_name($order_stmt, ':order_id', $new_order_id, -1, SQLT_INT);
         oci_bind_by_name($order_stmt, ':cust_id', $customer_id, -1, SQLT_INT);
         oci_bind_by_name($order_stmt, ':slot_id', $slot_id, -1, SQLT_INT);
         oci_bind_by_name($order_stmt, ':status', $status = 'PAID', -1, SQLT_CHR);
         
-        // CRITICAL: Bind output parameter for RETURNING clause
-        $new_order_id = null;
-        oci_bind_by_name($order_stmt, ':new_order_id', $new_order_id, -1, SQLT_INT);
-        
         // Execute the insert
         if (!oci_execute($order_stmt)) {
             throw new Exception("Failed to insert order: " . oci_error($order_stmt)['message']);
-        }
-        
-        // Fetch the returned order_id from the RETURNING clause
-        oci_fetch($order_stmt);
-        
-        if ($new_order_id === null) {
-            throw new Exception("Order inserted but order_id was not returned by trigger");
         }
         
         oci_free_statement($order_stmt);

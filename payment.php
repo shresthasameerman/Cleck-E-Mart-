@@ -224,35 +224,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'paypa
             }
             
             // ====================================================================
-            // STEP 1: INSERT ORDER
+            // STEP 1: GET ORDER ID FROM SEQUENCE & INSERT ORDER
             // ====================================================================
             
             $couponId = $appliedCoupon ? (string)$appliedCoupon['id'] : null;
             
-            $orderSql = "INSERT INTO \"ORDER\" (customer_id, slot_id, coupon_id, order_status, order_date) 
-                         VALUES (:customer_id, :slot_id, :coupon_id, 'PAID', SYSDATE)
-                         RETURNING order_id INTO :new_order_id";
+            $seqStmt = oci_parse($conn, "SELECT seq_order.NEXTVAL AS new_id FROM dual");
+            oci_execute($seqStmt, OCI_NO_AUTO_COMMIT);
+            $seqRow = oci_fetch_assoc($seqStmt);
+            $newOrderId = (int)$seqRow['NEW_ID'];
+            oci_free_statement($seqStmt);
+
+            if (!$newOrderId) {
+                throw new Exception('Failed to generate order ID from sequence.');
+            }
+
+            $orderSql = "INSERT INTO \"ORDER\" (order_id, customer_id, slot_id, coupon_id, order_status, order_date) 
+                         VALUES (:order_id, :customer_id, :slot_id, :coupon_id, 'PAID', SYSDATE)";
             
             $orderStmt = oci_parse($conn, $orderSql);
             if (!$orderStmt) {
                 throw new Exception('Failed to parse ORDER insert: ' . oci_error($conn)['message']);
             }
             
+            oci_bind_by_name($orderStmt, ':order_id', $newOrderId, -1, SQLT_INT);
             oci_bind_by_name($orderStmt, ':customer_id', $customerId, -1, SQLT_INT);
-            oci_bind_by_name($orderStmt, ':slot_id', $actualSlotId, -1, SQLT_INT); // Uses our dynamic slot!
-            oci_bind_by_name($orderStmt, ':coupon_id', $couponId, -1, SQLT_INT);
+            oci_bind_by_name($orderStmt, ':slot_id', $actualSlotId, -1, SQLT_INT);
             
-            $newOrderId = null;
-            oci_bind_by_name($orderStmt, ':new_order_id', $newOrderId, 32);
+            // Do not use SQLT_INT for nullable fields, as PHP casts null to 0
+            oci_bind_by_name($orderStmt, ':coupon_id', $couponId);
             
             if (!oci_execute($orderStmt, OCI_NO_AUTO_COMMIT)) {
                 throw new Exception('Failed to insert ORDER: ' . oci_error($orderStmt)['message']);
-            }
-            
-            oci_fetch($orderStmt);
-            
-            if ($newOrderId === null) {
-                throw new Exception('ORDER inserted but order_id was not returned by the database.');
             }
             
             oci_free_statement($orderStmt);

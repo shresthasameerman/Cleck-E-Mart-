@@ -29,7 +29,7 @@ function db_connect()
         throw new RuntimeException('OCI8 extension is not loaded in this PHP runtime. Use DB_DRIVER=offline for local mode, or enable php-oci8.');
     }
 
-    $username = getenv('ORACLE_USERNAME') ?: 'ADMIN';
+    $username = getenv('ORACLE_USERNAME') ?: 'CLECK';
     $password = getenv('ORACLE_PASSWORD') ?: 'Oracle123#Apex';
     $connectionString = getenv('ORACLE_CONNECTION_STRING') ?: 'localhost:1521/XEPDB1';
 

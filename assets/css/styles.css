@@ -1856,11 +1856,11 @@ a {
 .auth-card {
     width: min(100%, 54rem);
     margin-inline: auto;
-    padding: 1rem;
-    border-radius: var(--radius-md);
-    background: rgba(217, 197, 178, 0.35);
-    border: 1px solid rgba(26, 26, 26, 0.1);
-    box-shadow: var(--shadow);
+    padding: 2rem;
+    border-radius: var(--radius-lg);
+    background: #ffffff;
+    border: 1px solid rgba(106, 136, 97, 0.25);
+    box-shadow: 0 12px 40px -10px rgba(106, 136, 97, 0.15);
 }
 
 .auth-tabs {

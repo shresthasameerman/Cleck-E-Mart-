@@ -148,6 +148,10 @@ require __DIR__ . '/components/header.php';
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
                         Orders
                     </a>
+                    <a href="trader-sales.php?shop_id=<?php echo (int)$_GET['shop_id']; ?>" class="tab-button">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"></line><line x1="18" y1="20" x2="18" y2="4"></line><line x1="6" y1="20" x2="6" y2="16"></line></svg>
+                        Sales
+                    </a>
                     <a href="trader-add-product.php?shop_id=<?php echo (int)$_GET['shop_id']; ?>" class="tab-button">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                         Add Products
@@ -191,17 +195,8 @@ require __DIR__ . '/components/header.php';
                             </select>
                         </div>
 
-                        <div class="trader-chart" aria-hidden="true">
-                            <?php foreach ($topProducts as $product): ?>
-                                <?php $height = max(20, min(140, ((int) $product['sold_quantity'] + 1) * 18)); ?>
-                                <div class="trader-chart__bar" style="height: <?php echo e($height); ?>px;" title="<?php echo e($product['product_name']); ?>"></div>
-                            <?php endforeach; ?>
-                        </div>
-
-                        <div class="trader-chart__labels">
-                            <?php foreach ($topProducts as $product): ?>
-                                <span><?php echo e($product['product_name']); ?></span>
-                            <?php endforeach; ?>
+                        <div style="position: relative; height: 250px; width: 100%;">
+                            <canvas id="topProductsChart"></canvas>
                         </div>
                     </article>
 
@@ -280,6 +275,7 @@ require __DIR__ . '/components/header.php';
 </main>
 <?php require __DIR__ . '/components/footer.php'; ?>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
     /**
      * Handle timeframe dropdown change
@@ -298,6 +294,41 @@ require __DIR__ . '/components/header.php';
                 
                 // Reload the page with the new parameter
                 window.location.href = url.toString();
+            });
+        }
+        
+        const ctx = document.getElementById('topProductsChart');
+        if (ctx) {
+            const chartData = <?php echo json_encode($topProducts); ?>;
+            const labels = chartData.map(item => item.product_name || item.PRODUCT_NAME);
+            const data = chartData.map(item => item.sold_quantity || 0);
+            
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Units Sold',
+                        data: data,
+                        backgroundColor: 'rgba(36, 73, 34, 0.8)',
+                        borderColor: 'rgba(36, 73, 34, 1)',
+                        borderWidth: 1,
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { stepSize: 1, precision: 0 }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
             });
         }
     });

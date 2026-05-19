@@ -2,7 +2,7 @@
 // db_connect.php
 
 // 1. Enter the exact same Username and Password you just used in the VSCode extension
-$db_user = "ADMIN";
+$db_user = "CLECK";
 $db_pass = "Oracle123#Apex";
 
 // 2. The host string (localhost, port 1521, and your service name)

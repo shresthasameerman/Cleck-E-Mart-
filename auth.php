@@ -286,10 +286,9 @@ require __DIR__ . '/components/header.php';
                 <!-- Login view keeps the same visual rhythm as the sign up form. -->
                 <section class="auth-panel<?php echo $activeMode === 'login' ? ' is-active' : ''; ?>" id="login-panel" role="tabpanel" aria-labelledby="login-tab" data-auth-panel="login"<?php echo $activeMode === 'login' ? '' : ' hidden'; ?>>
                     <div class="auth-login-layout">
-                        <!-- Decorative block from wireframe; no business logic attached. -->
-                        <div class="auth-art" aria-hidden="true">
-                            <span class="auth-art__circle"></span>
-                            <span class="auth-art__triangle"></span>
+                        <!-- Brand logo to replace abstract art -->
+                        <div class="auth-art" aria-hidden="true" style="display: flex; align-items: center; justify-content: center; background: transparent; border: none;">
+                            <img src="assets/images/Primary%20Logo.svg" alt="Cleck E-Mart Logo" style="max-width: 280px; width: 100%; height: auto;" />
                         </div>
 
                         <!--

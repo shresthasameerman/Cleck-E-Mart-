@@ -266,134 +266,80 @@ require __DIR__ . '/components/header.php';
         <?php endif; ?>
     </div>
 
-    <!-- Page intro: mirrors auth-intro / contact-intro pattern -->
-    <section class="profile-intro" aria-labelledby="profile-title">
-        <div class="container profile-intro__inner">
-            <p class="profile-intro__eyebrow">My Account</p>
-            <h1 id="profile-title">Welcome back</h1>
-        </div>
-    </section>
-
-    <!-- User summary banner -->
-    <section class="profile-banner" aria-label="User summary">
-        <div class="container">
-            <div class="profile-banner__card">
-                <div class="profile-avatar" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="8.2" r="3.8"/>
-                        <path d="M5 19.5c2-4 4.5-5.5 7-5.5s5 1.5 7 5.5"/>
-                    </svg>
+    <div class="container">
+        <div class="admin-dashboard-layout">
+            <!-- SIDEBAR -->
+            <aside class="admin-sidebar" aria-label="Profile navigation">
+                <div class="admin-dashboard-hero">
+                    <h1 class="page-title" style="margin: 0; color: white;">My Account</h1>
+                    <p style="margin-top: 0.5rem; opacity: 0.9;">Welcome back, <?php echo e($user['FIRST_NAME']); ?>!</p>
+                    <p style="margin-top: 1rem; opacity: 0.8; font-size: 0.9rem;">
+                        <?php echo e($orderCount); ?> Orders • <?php echo e($reviewCount); ?> Reviews • <?php echo e($savedCount); ?> Saved
+                    </p>
                 </div>
-                <div class="profile-banner__info">
-                    <!--
-                        Backend note: replace these placeholders with session data.
-                        Example: <?= htmlspecialchars($_SESSION['first_name'] . ' ' . $_SESSION['last_name']) ?>
-                    -->
-                    <p class="profile-banner__name"><?php echo e($user['FIRST_NAME'] . ' ' . $user['LAST_NAME']); ?></p>
-                    <p class="profile-banner__email"><?php echo e($user['EMAIL']); ?></p>
-                    <span class="profile-banner__badge"><?php echo e($user['ROLE']); ?></span>
+
+                <div class="admin-tabs" role="tablist" aria-label="Account sections">
+                    <a class="tab-button<?php echo $activeTab === 'orders' ? ' active' : ''; ?>" href="profile.php?tab=orders" data-profile-tab="orders">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="3" width="18" height="18" rx="3"/>
+                            <path d="M8 9h8M8 13h5"/>
+                        </svg>
+                        My Orders
+                    </a>
+                    <a class="tab-button<?php echo $activeTab === 'account' ? ' active' : ''; ?>" href="profile.php?tab=account" data-profile-tab="account">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="8.2" r="3.2"/>
+                            <path d="M6.5 19.2c1.6-3 3.8-4.5 5.5-4.5s3.9 1.5 5.5 4.5"/>
+                        </svg>
+                        Account Details
+                    </a>
+                    <a class="tab-button<?php echo $activeTab === 'history' ? ' active' : ''; ?>" href="profile.php?tab=history" data-profile-tab="history">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="9"/>
+                            <path d="M12 7v5l3 3"/>
+                        </svg>
+                        Collection History
+                    </a>
+                    <a class="tab-button<?php echo $activeTab === 'reviews' ? ' active' : ''; ?>" href="profile.php?tab=reviews" data-profile-tab="reviews">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                        </svg>
+                        My Reviews
+                    </a>
+                    <a class="tab-button<?php echo $activeTab === 'wishlist' ? ' active' : ''; ?>" href="profile.php?tab=wishlist" data-profile-tab="wishlist">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                        </svg>
+                        Wishlist
+                    </a>
+                    <a class="tab-button<?php echo $activeTab === 'password' ? ' active' : ''; ?>" href="profile.php?tab=password" data-profile-tab="password">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="5" y="11" width="14" height="10" rx="2"/>
+                            <path d="M8 11V7a4 4 0 0 1 8 0v4"/>
+                        </svg>
+                        Password
+                    </a>
+                    <a class="tab-button" href="logout.php" style="margin-top: auto; color: var(--color-accent); border-top: 1px solid rgba(0,0,0,0.1); border-radius: 0; padding-top: 1rem;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                            <polyline points="16 17 21 12 16 7"/>
+                            <line x1="21" y1="12" x2="9" y2="12"/>
+                        </svg>
+                        Sign Out
+                    </a>
                 </div>
-                <div class="profile-banner__stats">
-                    <div class="profile-stat">
-                        <span class="profile-stat__value"><?php echo e($orderCount); ?></span>
-                        <span class="profile-stat__label">Orders</span>
-                    </div>
-                    <div class="profile-stat">
-                        <span class="profile-stat__value"><?php echo e($reviewCount); ?></span>
-                        <span class="profile-stat__label">Reviews</span>
-                    </div>
-                    <div class="profile-stat">
-                        <span class="profile-stat__value"><?php echo e($savedCount); ?></span>
-                        <span class="profile-stat__label">Saved</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
+            </aside>
 
-    <!-- Two-column layout: sidebar nav left, content right -->
-    <section class="profile" aria-label="Profile sections">
-        <div class="container">
-            <div class="profile-grid">
-
-                <!-- SIDEBAR -->
-                <aside class="profile-sidebar" aria-label="Profile navigation">
-                    <nav class="profile-nav" aria-label="Account sections">
-                        <a class="profile-nav__item<?php echo $activeTab === 'orders' ? ' is-active' : ''; ?>" href="profile.php?tab=orders" data-profile-tab="orders">
-                            <span class="profile-nav__icon" aria-hidden="true">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-                                    <rect x="3" y="3" width="18" height="18" rx="3"/>
-                                    <path d="M8 9h8M8 13h5"/>
-                                </svg>
-                            </span>
-                            My Orders
-                        </a>
-                        <a class="profile-nav__item<?php echo $activeTab === 'account' ? ' is-active' : ''; ?>" href="profile.php?tab=account" data-profile-tab="account">
-                            <span class="profile-nav__icon" aria-hidden="true">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-                                    <circle cx="12" cy="8.2" r="3.2"/>
-                                    <path d="M6.5 19.2c1.6-3 3.8-4.5 5.5-4.5s3.9 1.5 5.5 4.5"/>
-                                </svg>
-                            </span>
-                            Account Details
-                        </a>
-                        <a class="profile-nav__item<?php echo $activeTab === 'history' ? ' is-active' : ''; ?>" href="profile.php?tab=history" data-profile-tab="history">
-                            <span class="profile-nav__icon" aria-hidden="true">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-                                    <circle cx="12" cy="12" r="9"/>
-                                    <path d="M12 7v5l3 3"/>
-                                </svg>
-                            </span>
-                            Collection History
-                        </a>
-                        <a class="profile-nav__item<?php echo $activeTab === 'reviews' ? ' is-active' : ''; ?>" href="profile.php?tab=reviews" data-profile-tab="reviews">
-                            <span class="profile-nav__icon" aria-hidden="true">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                                </svg>
-                            </span>
-                            My Reviews
-                        </a>
-                        <a class="profile-nav__item<?php echo $activeTab === 'wishlist' ? ' is-active' : ''; ?>" href="profile.php?tab=wishlist" data-profile-tab="wishlist">
-                            <span class="profile-nav__icon" aria-hidden="true">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
-                                </svg>
-                            </span>
-                            Wishlist
-                        </a>
-                        <a class="profile-nav__item<?php echo $activeTab === 'password' ? ' is-active' : ''; ?>" href="profile.php?tab=password" data-profile-tab="password">
-                            <span class="profile-nav__icon" aria-hidden="true">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-                                    <rect x="5" y="11" width="14" height="10" rx="2"/>
-                                    <path d="M8 11V7a4 4 0 0 1 8 0v4"/>
-                                </svg>
-                            </span>
-                            Password
-                        </a>
-                        <!--
-                            Backend note: sign-out should POST to a logout endpoint to
-                            destroy the session. Example: action="logout.php" method="post"
-                        -->
-                        <a class="profile-nav__item profile-nav__item--danger" href="logout.php">
-                            <span class="profile-nav__icon" aria-hidden="true">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-                                    <polyline points="16 17 21 12 16 7"/>
-                                    <line x1="21" y1="12" x2="9" y2="12"/>
-                                </svg>
-                            </span>
-                            Sign Out
-                        </a>
-                    </nav>
-                </aside>
-
-                <!-- MAIN CONTENT PANELS -->
-                <div class="profile-content">
+            <!-- MAIN CONTENT PANELS -->
+            <div class="admin-content-grid" style="display: block;">
 
                     <!-- MY ORDERS -->
-                    <section class="profile-panel<?php echo $activeTab === 'orders' ? ' is-active' : ''; ?>" id="orders" data-profile-panel="orders" aria-labelledby="orders-title" <?php echo $activeTab !== 'orders' ? 'hidden' : ''; ?>>
-                        <h2 id="orders-title" class="profile-panel__title">My Recent Orders</h2>
+                    <section class="admin-section<?php echo $activeTab === 'orders' ? ' is-active' : ''; ?>" id="orders" data-profile-panel="orders" aria-labelledby="orders-title" <?php echo $activeTab !== 'orders' ? 'hidden' : ''; ?>>
+                        <div class="trader-card__header">
+                            <div>
+                                <h2 id="orders-title">My Recent Orders</h2>
+                            </div>
+                        </div>
 
                         <!--
                             Backend note: loop over orders from DB.
@@ -433,15 +379,19 @@ require __DIR__ . '/components/header.php';
                     </section>
 
                     <!-- ACCOUNT DETAILS -->
-                    <section class="profile-panel<?php echo $activeTab === 'account' ? ' is-active' : ''; ?>" id="account" data-profile-panel="account" aria-labelledby="account-title" <?php echo $activeTab !== 'account' ? 'hidden' : ''; ?>>
-                        <h2 id="account-title" class="profile-panel__title">Account Details</h2>
+                    <section class="admin-section<?php echo $activeTab === 'account' ? ' is-active' : ''; ?>" id="account" data-profile-panel="account" aria-labelledby="account-title" <?php echo $activeTab !== 'account' ? 'hidden' : ''; ?>>
+                        <div class="trader-card__header">
+                            <div>
+                                <h2 id="account-title">Account Details</h2>
+                            </div>
+                        </div>
                         <!--
                             Backend note: set action to your update endpoint (example: update-profile.php).
                             Pre-fill values from session or DB query.
                         -->
-                        <form class="profile-form" action="profile.php?tab=account" method="post" novalidate>
+                        <form class="trader-form" action="profile.php?tab=account" method="post" novalidate>
                             <input type="hidden" name="profile_action" value="update_account" />
-                            <div class="profile-form__grid">
+                            <div class="trader-form__grid">
                                 <label>
                                     <span>First Name*</span>
                                     <input type="text" name="first_name" required autocomplete="given-name" placeholder="Enter first name" value="<?php echo e($user['FIRST_NAME']); ?>" />
@@ -459,18 +409,17 @@ require __DIR__ . '/components/header.php';
                                 <span>Phone</span>
                                 <input type="tel" name="phone" autocomplete="tel" placeholder="+977 98XXXXXXXX" value="<?php echo e((string) ($user['PHONE_NUMBER'] ?? '')); ?>" />
                             </label>
-                            <button class="profile-submit" type="submit">
-                                Save Changes
-                                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M5 12h14M13 6l6 6-6 6"/>
-                                </svg>
-                            </button>
+                            <button class="trader-submit" type="submit">Save Changes</button>
                         </form>
                     </section>
 
                     <!-- COLLECTION HISTORY -->
-                    <section class="profile-panel<?php echo $activeTab === 'history' ? ' is-active' : ''; ?>" id="history" data-profile-panel="history" aria-labelledby="history-title" <?php echo $activeTab !== 'history' ? 'hidden' : ''; ?>>
-                                                <h2 id="history-title" class="profile-panel__title">Collection History</h2>
+                    <section class="admin-section<?php echo $activeTab === 'history' ? ' is-active' : ''; ?>" id="history" data-profile-panel="history" aria-labelledby="history-title" <?php echo $activeTab !== 'history' ? 'hidden' : ''; ?>>
+                        <div class="trader-card__header">
+                            <div>
+                                <h2 id="history-title">Collection History</h2>
+                            </div>
+                        </div>
                                                 <div class="order-list">
                                                     <?php if ($historyOrders === []): ?>
                                                         <div class="order-card">
@@ -501,8 +450,12 @@ require __DIR__ . '/components/header.php';
                                             </section>
 
                     <!-- MY REVIEWS -->
-                    <section class="profile-panel<?php echo $activeTab === 'reviews' ? ' is-active' : ''; ?>" id="reviews" data-profile-panel="reviews" aria-labelledby="reviews-title" <?php echo $activeTab !== 'reviews' ? 'hidden' : ''; ?>>
-                        <h2 id="reviews-title" class="profile-panel__title">My Reviews</h2>
+                    <section class="admin-section<?php echo $activeTab === 'reviews' ? ' is-active' : ''; ?>" id="reviews" data-profile-panel="reviews" aria-labelledby="reviews-title" <?php echo $activeTab !== 'reviews' ? 'hidden' : ''; ?>>
+                        <div class="trader-card__header">
+                            <div>
+                                <h2 id="reviews-title">My Reviews</h2>
+                            </div>
+                        </div>
                         <div class="order-list">
                             <?php if ($reviews === []): ?>
                                 <div class="order-card">
@@ -530,12 +483,16 @@ require __DIR__ . '/components/header.php';
                     </section>
 
                     <!-- PASSWORD -->
-                    <section class="profile-panel<?php echo $activeTab === 'password' ? ' is-active' : ''; ?>" id="password" data-profile-panel="password" aria-labelledby="password-title" <?php echo $activeTab !== 'password' ? 'hidden' : ''; ?>>
-                        <h2 id="password-title" class="profile-panel__title">Change Password</h2>
+                    <section class="admin-section<?php echo $activeTab === 'password' ? ' is-active' : ''; ?>" id="password" data-profile-panel="password" aria-labelledby="password-title" <?php echo $activeTab !== 'password' ? 'hidden' : ''; ?>>
+                        <div class="trader-card__header">
+                            <div>
+                                <h2 id="password-title">Change Password</h2>
+                            </div>
+                        </div>
                         <!--
                             Backend note: verify current_password before hashing and saving new_password.
                         -->
-                        <form class="profile-form" action="profile.php?tab=password" method="post" novalidate>
+                        <form class="trader-form" action="profile.php?tab=password" method="post" novalidate>
                             <input type="hidden" name="profile_action" value="change_password" />
                             <label>
                                 <span>Current Password*</span>
@@ -558,18 +515,17 @@ require __DIR__ . '/components/header.php';
                                     <button type="button" class="password-toggle" aria-label="Toggle password visibility">Show</button>
                                 </div>
                             </label>
-                            <button class="profile-submit" type="submit">
-                                Update Password
-                                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M5 12h14M13 6l6 6-6 6"/>
-                                </svg>
-                            </button>
+                            <button class="trader-submit" type="submit">Update Password</button>
                         </form>
                     </section>
 
                     <!-- WISHLIST -->
-                    <section class="profile-panel<?php echo $activeTab === 'wishlist' ? ' is-active' : ''; ?>" id="wishlist" data-profile-panel="wishlist" aria-labelledby="wishlist-title" <?php echo $activeTab !== 'wishlist' ? 'hidden' : ''; ?>>
-                        <h2 id="wishlist-title" class="profile-panel__title">My Wishlist</h2>
+                    <section class="admin-section<?php echo $activeTab === 'wishlist' ? ' is-active' : ''; ?>" id="wishlist" data-profile-panel="wishlist" aria-labelledby="wishlist-title" <?php echo $activeTab !== 'wishlist' ? 'hidden' : ''; ?>>
+                        <div class="trader-card__header">
+                            <div>
+                                <h2 id="wishlist-title">My Wishlist</h2>
+                            </div>
+                        </div>
                         <div class="orders-grid">
                             <?php if (empty($wishlistItems)): ?>
                                 <p class="profile-empty">Your wishlist is empty. Browse products and click "Add to Wishlist" to save them here.</p>
@@ -602,7 +558,7 @@ require __DIR__ . '/components/header.php';
                             var panels = document.querySelectorAll('[data-profile-panel]');
 
                             function activateTab(name, push) {
-                                navItems.forEach(function (a) { a.classList.toggle('is-active', a.getAttribute('data-profile-tab') === name); });
+                                navItems.forEach(function (a) { a.classList.toggle('active', a.getAttribute('data-profile-tab') === name); });
                                 panels.forEach(function (p) {
                                     var match = p.getAttribute('data-profile-panel') === name;
                                     p.classList.toggle('is-active', match);

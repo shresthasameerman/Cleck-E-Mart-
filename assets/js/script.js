@@ -160,6 +160,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Stores active filters so all controls can compose together.
     const activeFilters = {
+        category: 'all',
         trader: 'all',
         price: 'all'
     };
@@ -181,16 +182,18 @@ document.addEventListener('DOMContentLoaded', () => {
         let visibleCount = 0;
 
         productCards.forEach((card) => {
+            const categoryType = card.getAttribute('data-category-type') || '';
             const traderType = card.getAttribute('data-trader-type') || '';
             const priceTier = card.getAttribute('data-price-tier') || '';
             const name = (card.getAttribute('data-name') || '').toLowerCase();
             const trader = (card.getAttribute('data-trader') || '').toLowerCase();
 
+            const matchesCategory = activeFilters.category === 'all' || categoryType === activeFilters.category;
             const matchesTrader = activeFilters.trader === 'all' || traderType === activeFilters.trader;
             const matchesPrice = activeFilters.price === 'all' || priceTier === activeFilters.price;
             const matchesSearch = query.length === 0 || name.includes(query) || trader.includes(query);
 
-            const isVisible = matchesTrader && matchesPrice && matchesSearch;
+            const isVisible = matchesCategory && matchesTrader && matchesPrice && matchesSearch;
 
             card.classList.toggle('is-hidden', !isVisible);
             card.setAttribute('aria-hidden', String(!isVisible));
@@ -221,6 +224,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Initialize active button state for both groups before first filter pass.
+    setActiveButton('category', activeFilters.category);
     setActiveButton('trader', activeFilters.trader);
     setActiveButton('price', activeFilters.price);
     searchInput?.addEventListener('input', applyFilters);

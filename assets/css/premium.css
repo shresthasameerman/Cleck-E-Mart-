@@ -19,7 +19,7 @@
 }
 
 body {
-    background: #faf9f6;
+    background: #eef2ed;
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
     color: var(--color-text);
 }
@@ -172,8 +172,8 @@ h1, h2, h3, h4, h5, h6, .brand {
 
 /* Inputs */
 .search__input, .category-search__input {
-    background: #f4f4f4 !important;
-    border: 1px solid transparent !important;
+    background: #ffffff !important;
+    border: 1px solid rgba(0, 0, 0, 0.1) !important;
     border-radius: var(--radius-sm) !important;
     transition: border-color 0.3s, background 0.3s, box-shadow 0.3s;
     font-family: 'Inter', sans-serif;
@@ -246,4 +246,69 @@ h1, h2, h3, h4, h5, h6, .brand {
     background: var(--color-brand-green) !important;
     color: #ffffff !important;
     box-shadow: var(--shadow) !important;
+}
+
+/* Trader Dashboard Stat Cards */
+.trader-stat-card {
+    background: #ffffff !important;
+    border: none !important;
+    border-radius: var(--radius-lg) !important;
+    padding: 1.5rem !important;
+    box-shadow: var(--shadow-soft) !important;
+    transition: transform 0.3s ease, box-shadow 0.3s ease !important;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+.trader-stat-card:hover {
+    transform: translateY(-4px) !important;
+    box-shadow: var(--shadow) !important;
+}
+.trader-stat-card__label {
+    font-family: 'Inter', sans-serif !important;
+    font-size: 0.85rem !important;
+    color: var(--color-muted) !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+    margin-bottom: 0.5rem !important;
+}
+.trader-stat-card__value {
+    font-family: 'Playfair Display', serif !important;
+    color: var(--color-brand-green) !important;
+    font-size: 2.25rem !important;
+    font-weight: 700 !important;
+}
+
+/* Trader Dashboard Tables */
+.trader-table {
+    background: #ffffff !important;
+    border-radius: var(--radius-md) !important;
+    overflow: hidden !important;
+    border: none !important;
+    box-shadow: var(--shadow-soft) !important;
+    border-collapse: collapse !important;
+}
+.trader-table th {
+    background: #f7f9f6 !important;
+    color: var(--color-brand-green) !important;
+    font-weight: 600 !important;
+    font-size: 0.85rem !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+    padding: 1rem 1.25rem !important;
+    border: none !important;
+    border-bottom: 1px solid rgba(0,0,0,0.05) !important;
+}
+.trader-table td {
+    padding: 1rem 1.25rem !important;
+    border: none !important;
+    border-bottom: 1px solid rgba(0,0,0,0.05) !important;
+    font-size: 0.95rem !important;
+    vertical-align: middle !important;
+}
+.trader-table tbody tr {
+    transition: background-color 0.2s ease !important;
+}
+.trader-table tbody tr:hover {
+    background-color: #fafbf9 !important;
 }

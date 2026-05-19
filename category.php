@@ -112,6 +112,23 @@ require __DIR__ . '/components/header.php';
     <section class="category-content" aria-label="Fresh produce listing">
         <div class="container category-layout">
             <aside class="filter-panel" aria-label="Product filters">
+                <!-- Category filter group -->
+                <div class="filter-group">
+                    <h2 class="filter-group__title">Categories</h2>
+                    <button class="filter-btn is-active" type="button" data-filter-type="category" data-filter-value="all">All Categories</button>
+                    <?php
+                    $catNames = [];
+                    foreach ($products as $product) {
+                        if (!empty($product['CATEGORY_NAME'])) {
+                            $catNames[(string) $product['CATEGORY_NAME']] = true;
+                        }
+                    }
+                    foreach (array_keys($catNames) as $catName):
+                    ?>
+                        <button class="filter-btn" type="button" data-filter-type="category" data-filter-value="<?php echo e($buildTraderType($catName)); ?>"><?php echo e($catName); ?></button>
+                    <?php endforeach; ?>
+                </div>
+
                 <!-- Trader filter group controls which trader segment is visible. -->
                 <div class="filter-group">
                     <h2 class="filter-group__title">Traders</h2>
@@ -147,7 +164,7 @@ require __DIR__ . '/components/header.php';
                         $priceTier = $price <= 10 ? '0-10' : '10-20';
                         $traderName = (string) $product['TRADER_NAME'];
                         ?>
-                        <article class="category-card" data-product-card data-trader-type="<?php echo e($buildTraderType($traderName)); ?>" data-price-tier="<?php echo e($priceTier); ?>" data-name="<?php echo e($product['PRODUCT_NAME']); ?>" data-trader="<?php echo e($traderName); ?>">
+                        <article class="category-card" data-product-card data-category-type="<?php echo e($buildTraderType($product['CATEGORY_NAME'])); ?>" data-trader-type="<?php echo e($buildTraderType($traderName)); ?>" data-price-tier="<?php echo e($priceTier); ?>" data-name="<?php echo e($product['PRODUCT_NAME']); ?>" data-trader="<?php echo e($traderName); ?>">
                             <div class="category-card__media">
                                 <img src="<?php echo e($resolveImage($product['PRODUCT_IMAGE'] ?? null)); ?>" alt="<?php echo e($product['PRODUCT_NAME']); ?>" />
                             </div>
