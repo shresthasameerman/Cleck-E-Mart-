@@ -74,7 +74,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             'shop_name' => $defaultShopName,
                             'shop_description' => 'Welcome to our shop!',
                             'shop_logo' => null,
-                            'shop_status' => 'ACTIVE',
+                            'shop_status' => 'PENDING',
                         ]
                     );
                 } else {

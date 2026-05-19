@@ -5,6 +5,10 @@ require_once __DIR__ . '/lib/oci_db.php';
 require_once __DIR__ . '/lib/auth_helpers.php';
 
 $selectedCategoryId = filter_input(INPUT_GET, 'category_id', FILTER_VALIDATE_INT);
+$sortOrder = filter_input(INPUT_GET, 'sort', FILTER_SANITIZE_STRING) ?? 'name_asc';
+$minPrice = filter_input(INPUT_GET, 'min_price', FILTER_VALIDATE_FLOAT);
+$maxPrice = filter_input(INPUT_GET, 'max_price', FILTER_VALIDATE_FLOAT);
+
 $categoryTitle = 'All Categories';
 $products = [];
 $dbError = null;
@@ -67,14 +71,39 @@ try {
 
         $binds = [];
         if ($selectedCategoryId !== false && $selectedCategoryId !== null) {
-            $sql .= ' WHERE p.category_id = :category_id AND p.product_verification_status = :verification_status';
+            $sql .= ' WHERE p.category_id = :category_id AND p.product_verification_status = :verification_status AND s.shop_status = \'ACTIVE\'';
             $binds['category_id'] = $selectedCategoryId;
         } else {
-            $sql .= ' WHERE p.product_verification_status = :verification_status';
+            $sql .= ' WHERE p.product_verification_status = :verification_status AND s.shop_status = \'ACTIVE\'';
         }
         $binds['verification_status'] = 'APPROVED';
 
-        $sql .= ' ORDER BY p.product_name';
+        if ($minPrice !== false && $minPrice !== null) {
+            $sql .= ' AND p.price >= :min_price';
+            $binds['min_price'] = $minPrice;
+        }
+        
+        if ($maxPrice !== false && $maxPrice !== null) {
+            $sql .= ' AND p.price <= :max_price';
+            $binds['max_price'] = $maxPrice;
+        }
+
+        switch ($sortOrder) {
+            case 'price_asc':
+                $sql .= ' ORDER BY p.price ASC';
+                break;
+            case 'price_desc':
+                $sql .= ' ORDER BY p.price DESC';
+                break;
+            case 'name_desc':
+                $sql .= ' ORDER BY p.product_name DESC';
+                break;
+            case 'name_asc':
+            default:
+                $sql .= ' ORDER BY p.product_name ASC';
+                break;
+        }
+        
         $products = db_fetch_all($sql, $binds);
     }
 } catch (Throwable $exception) {
@@ -97,7 +126,7 @@ require __DIR__ . '/components/header.php';
     <!-- Search field for client-side filtering across product names and trader names. -->
     <section class="category-search" aria-label="Product search in category">
         <div class="container">
-            <label class="sr-only" for="category-search-input">Search products in Fresh Produce</label>
+            <label class="sr-only" for="category-search-input">Search products</label>
             <input
                 id="category-search-input"
                 class="category-search__input"
@@ -105,6 +134,19 @@ require __DIR__ . '/components/header.php';
                 placeholder="Search products..."
                 data-category-search
             />
+            
+            <form method="get" action="category.php" style="display: flex; gap: 0.5rem; align-items: center;">
+                <?php if ($selectedCategoryId): ?>
+                    <input type="hidden" name="category_id" value="<?php echo $selectedCategoryId; ?>" />
+                <?php endif; ?>
+                <label for="sort-dropdown" style="font-weight: 600;">Sort By:</label>
+                <select id="sort-dropdown" name="sort" onchange="this.form.submit()" style="padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 4px; font-size: 1rem;">
+                    <option value="name_asc" <?php echo $sortOrder === 'name_asc' ? 'selected' : ''; ?>>Name (A-Z)</option>
+                    <option value="name_desc" <?php echo $sortOrder === 'name_desc' ? 'selected' : ''; ?>>Name (Z-A)</option>
+                    <option value="price_asc" <?php echo $sortOrder === 'price_asc' ? 'selected' : ''; ?>>Price (Low to High)</option>
+                    <option value="price_desc" <?php echo $sortOrder === 'price_desc' ? 'selected' : ''; ?>>Price (High to Low)</option>
+                </select>
+            </form>
         </div>
     </section>
 
@@ -175,9 +217,10 @@ require __DIR__ . '/components/header.php';
                                 <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.5rem;">
                                     <a class="category-card__button" href="product.php?product_id=<?php echo e($product['PRODUCT_ID']); ?>" style="margin-top:0;">View Product</a>
                                     <?php if (is_logged_in() && current_role() === 'CUSTOMER'): ?>
-                                        <form method="post" action="product.php" style="display:inline; margin-left: 0.5rem;">
-                                            <input type="hidden" name="action" value="add_to_wishlist" />
+                                        <form method="post" action="wishlist_action.php" style="display:inline; margin-left: 0.5rem;">
+                                            <input type="hidden" name="action" value="add" />
                                             <input type="hidden" name="product_id" value="<?php echo e($product['PRODUCT_ID']); ?>" />
+                                            <input type="hidden" name="return_url" value="category.php<?php echo isset($_GET['category_id']) ? '?category_id=' . (int)$_GET['category_id'] : ''; ?>" />
                                             <button type="submit" style="background:none; border:none; color:var(--color-primary); cursor:pointer; font-size:1.5rem;" aria-label="Add to Wishlist" title="Add to Wishlist">♥</button>
                                         </form>
                                     <?php endif; ?>

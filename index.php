@@ -90,8 +90,9 @@ try {
             $categoryBind = (int) $selectedCategoryId;
         }
 
-        // Only show approved products to customers
+        // Only show approved products to customers and from active shops
         $conditions[] = "p.product_verification_status = 'APPROVED'";
+        $conditions[] = "s.shop_status = 'ACTIVE'";
 
         if ($conditions !== []) {
             $sql .= ' WHERE ' . implode(' AND ', $conditions);

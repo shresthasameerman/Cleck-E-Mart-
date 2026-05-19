@@ -126,6 +126,7 @@ $payment_date = $payment && $payment['PAYMENT_DATE'] ? date('d M Y, H:i', strtot
                                 <th>Quantity</th>
                                 <th>Unit Price</th>
                                 <th>Total</th>
+                                <th>Action</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -135,6 +136,11 @@ $payment_date = $payment && $payment['PAYMENT_DATE'] ? date('d M Y, H:i', strtot
                                     <td><?php echo (int)$item['QUANTITY']; ?></td>
                                     <td>£<?php echo number_format($item['UNIT_PRICE'], 2); ?></td>
                                     <td>£<?php echo number_format($item['LINE_TOTAL'], 2); ?></td>
+                                    <td>
+                                        <?php if (in_array(strtoupper($order['ORDER_STATUS']), ['PAID', 'COLLECTED'], true)): ?>
+                                            <a href="product-review.php?product_id=<?php echo (int)$item['PRODUCT_ID']; ?>" class="button button--small button--secondary" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">Write Review</a>
+                                        <?php endif; ?>
+                                    </td>
                                 </tr>
                             <?php endforeach; ?>
                         </tbody>

@@ -43,7 +43,7 @@ function add_product_to_cart(int $customerId, int $productId, int $quantity): vo
     $cartId = ensure_active_cart($customerId);
 
     $product = db_fetch_one(
-        'SELECT product_id, price, stock_quantity FROM PRODUCT WHERE product_id = :product_id',
+        'SELECT product_id, price, stock_quantity, min_order, max_order FROM PRODUCT WHERE product_id = :product_id',
         ['product_id' => $productId]
     );
 
@@ -52,6 +52,9 @@ function add_product_to_cart(int $customerId, int $productId, int $quantity): vo
     }
 
     $unitPrice = (float) $product['PRICE'];
+    $stockQuantity = (int) $product['STOCK_QUANTITY'];
+    $minOrder = (int) ($product['MIN_ORDER'] ?? 1);
+    $maxOrder = isset($product['MAX_ORDER']) ? (int) $product['MAX_ORDER'] : null;
 
     $existing = db_fetch_one(
         'SELECT quantity FROM CART_ITEM WHERE cart_id = :cart_id AND product_id = :product_id',
@@ -61,8 +64,32 @@ function add_product_to_cart(int $customerId, int $productId, int $quantity): vo
         ]
     );
 
+    $currentQty = $existing ? (int) $existing['QUANTITY'] : 0;
+    $nextQty = $currentQty + $quantity;
+
+    if ($nextQty < $minOrder) {
+        $nextQty = $minOrder;
+    }
+    
+    if ($maxOrder !== null && $nextQty > $maxOrder) {
+        throw new RuntimeException('You cannot order more than ' . $maxOrder . ' of this item.');
+    }
+    
+    if ($nextQty > $stockQuantity) {
+        throw new RuntimeException('Not enough stock available. Only ' . $stockQuantity . ' left.');
+    }
+
+    $cartTotals = db_fetch_one(
+        'SELECT NVL(SUM(quantity), 0) as total_qty FROM CART_ITEM WHERE cart_id = :cart_id',
+        ['cart_id' => $cartId]
+    );
+    $totalQty = (int) $cartTotals['TOTAL_QTY'];
+    
+    if ($totalQty - $currentQty + $nextQty > 20) {
+        throw new RuntimeException('You can only have a maximum of 20 items in your basket.');
+    }
+
     if ($existing !== null) {
-        $nextQty = (int) $existing['QUANTITY'] + $quantity;
         db_execute(
             'UPDATE CART_ITEM SET quantity = :quantity, unit_price = :unit_price WHERE cart_id = :cart_id AND product_id = :product_id',
             [
@@ -72,7 +99,6 @@ function add_product_to_cart(int $customerId, int $productId, int $quantity): vo
                 'product_id' => $productId,
             ]
         );
-
         return;
     }
 
@@ -81,7 +107,7 @@ function add_product_to_cart(int $customerId, int $productId, int $quantity): vo
         [
             'cart_id' => $cartId,
             'product_id' => $productId,
-            'quantity' => $quantity,
+            'quantity' => $nextQty,
             'unit_price' => $unitPrice,
         ]
     );
@@ -129,6 +155,47 @@ function update_cart_item_quantity(int $customerId, int $productId, int $quantit
             ]
         );
         return;
+    }
+
+    $product = db_fetch_one(
+        'SELECT stock_quantity, min_order, max_order FROM PRODUCT WHERE product_id = :product_id',
+        ['product_id' => $productId]
+    );
+
+    if ($product === null) {
+        throw new RuntimeException('Product not found.');
+    }
+
+    $stockQuantity = (int) $product['STOCK_QUANTITY'];
+    $minOrder = (int) ($product['MIN_ORDER'] ?? 1);
+    $maxOrder = isset($product['MAX_ORDER']) ? (int) $product['MAX_ORDER'] : null;
+
+    if ($quantity < $minOrder) {
+        $quantity = $minOrder;
+    }
+    
+    if ($maxOrder !== null && $quantity > $maxOrder) {
+        throw new RuntimeException('You cannot order more than ' . $maxOrder . ' of this item.');
+    }
+    
+    if ($quantity > $stockQuantity) {
+        throw new RuntimeException('Not enough stock available. Only ' . $stockQuantity . ' left.');
+    }
+
+    $existing = db_fetch_one(
+        'SELECT quantity FROM CART_ITEM WHERE cart_id = :cart_id AND product_id = :product_id',
+        ['cart_id' => $cartId, 'product_id' => $productId]
+    );
+    $currentQty = $existing ? (int) $existing['QUANTITY'] : 0;
+
+    $cartTotals = db_fetch_one(
+        'SELECT NVL(SUM(quantity), 0) as total_qty FROM CART_ITEM WHERE cart_id = :cart_id',
+        ['cart_id' => $cartId]
+    );
+    $totalQty = (int) $cartTotals['TOTAL_QTY'];
+    
+    if ($totalQty - $currentQty + $quantity > 20) {
+        throw new RuntimeException('You can only have a maximum of 20 items in your basket.');
     }
 
     db_execute(

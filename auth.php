@@ -317,7 +317,7 @@ require __DIR__ . '/components/header.php';
                                     <input type="checkbox" name="remember" />
                                     <span>Remember me</span>
                                 </label>
-                                <a href="#">Forgot Password?</a>
+                                <a href="forgot-password.php">Forgot Password?</a>
                             </div>
 
                             <button class="auth-submit" type="submit">Sign in</button>

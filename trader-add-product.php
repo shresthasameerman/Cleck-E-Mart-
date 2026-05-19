@@ -14,14 +14,19 @@ $metrics = trader_dashboard_metrics($userId);
 // Check trader verification status
 $traderStatus = trader_verification_status($userId);
 $isVerified = trader_is_verified($userId);
+$isShopActive = isset($shop['SHOP_STATUS']) && strtoupper($shop['SHOP_STATUS']) === 'ACTIVE';
 
 if (!$isVerified) {
     $errors[] = 'Your trader account is pending admin verification. You will be able to add products once your account has been verified.';
+} elseif (!$isShopActive) {
+    $errors[] = 'Your shop is pending verification. You will be able to add products once this shop is ACTIVE.';
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['product_action'] ?? '') === 'save_product') {
     if (!$isVerified) {
         $errors[] = 'Cannot add products. Please wait for admin verification of your trader account.';
+    } elseif (!$isShopActive) {
+        $errors[] = 'Cannot add products. Please wait for admin verification of your shop.';
     } else {
         try {
             // Handle image upload
@@ -118,10 +123,10 @@ require __DIR__ . '/components/header.php';
                         <span class="trader-card__badge">Draft ready</span>
                     </div>
 
-                    <?php if (!$isVerified): ?>
+                    <?php if (!$isVerified || !$isShopActive): ?>
                         <div style="padding: 2rem; text-align: center;">
-                            <p style="font-size: 1.1rem; margin-bottom: 1rem;">Your trader account is currently pending admin verification.</p>
-                            <p style="color: #666;">Once your account has been verified by an administrator, you will be able to add products to the platform.</p>
+                            <p style="font-size: 1.1rem; margin-bottom: 1rem;"><?php echo !$isVerified ? 'Your trader account is currently pending admin verification.' : 'This shop is currently pending verification.'; ?></p>
+                            <p style="color: #666;">Once <?php echo !$isVerified ? 'your account' : 'your shop'; ?> has been verified by an administrator, you will be able to add products to the platform.</p>
                             <p style="margin-top: 1.5rem; color: #999; font-size: 0.9rem;">Check back soon, or contact support for more information.</p>
                         </div>
                     <?php else: ?>
@@ -153,6 +158,10 @@ require __DIR__ . '/components/header.php';
                             <label>
                                 <span>Stock available</span>
                                 <input type="number" name="stock_quantity" min="0" step="1" required />
+                            </label>
+                            <label>
+                                <span>Min per order</span>
+                                <input type="number" name="min_order" min="1" step="1" value="1" />
                             </label>
                             <label>
                                 <span>Max per order</span>

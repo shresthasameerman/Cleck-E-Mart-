@@ -297,6 +297,10 @@ function trader_create_product(int $userId, array $payload): array
     if ($shop === null) {
         throw new RuntimeException('Trader shop could not be found.');
     }
+    
+    if (strtoupper($shop['SHOP_STATUS']) !== 'ACTIVE') {
+        throw new RuntimeException('Your shop must be ACTIVE before you can add products. Current status: ' . $shop['SHOP_STATUS']);
+    }
 
     $productName = trim((string) ($payload['product_name'] ?? ''));
     $productDescription = trim((string) ($payload['product_description'] ?? ''));
@@ -305,6 +309,7 @@ function trader_create_product(int $userId, array $payload): array
     $categoryId = (int) ($payload['category_id'] ?? 0);
     $productImage = trim((string) ($payload['product_image'] ?? ''));
     $maxOrderRaw = trim((string) ($payload['max_order'] ?? ''));
+    $minOrderRaw = trim((string) ($payload['min_order'] ?? ''));
     $allergyInformation = trim((string) ($payload['allergy_information'] ?? ''));
     $visibility = strtoupper((string) ($payload['visibility'] ?? 'PUBLISH'));
     $productStatus = $stockQuantity <= 10 ? 'LOW_STOCK' : 'IN_STOCK';
@@ -314,6 +319,12 @@ function trader_create_product(int $userId, array $payload): array
     }
 
     $maxOrder = $maxOrderRaw === '' ? null : max(1, (int) $maxOrderRaw);
+    $minOrder = $minOrderRaw === '' ? 1 : max(1, (int) $minOrderRaw);
+    
+    if ($maxOrder !== null && $minOrder > $maxOrder) {
+        throw new InvalidArgumentException('Minimum order quantity cannot be greater than maximum order quantity.');
+    }
+    
     if ($visibility === 'DRAFT') {
         $productStatus = 'DRAFT';
     } elseif ($stockQuantity === 0) {
@@ -346,7 +357,7 @@ function trader_create_product(int $userId, array $payload): array
             'product_status' => $productStatus,
             'product_verification_status' => $verificationStatus,
             'allergy_information' => $allergyInformation === '' ? null : $allergyInformation,
-            'min_order' => 1,
+            'min_order' => $minOrder,
             'max_order' => $maxOrder,
             'product_image' => $productImage === '' ? null : $productImage,
         ]);
@@ -399,7 +410,7 @@ function trader_create_product(int $userId, array $payload): array
                 'product_status' => $productStatus,
                 'product_verification_status' => $verificationStatus,
                 'allergy_information' => $allergyInformation === '' ? null : $allergyInformation,
-                'min_order' => 1,
+                'min_order' => $minOrder,
                 'max_order' => $maxOrder,
                 'product_image' => $productImage === '' ? null : $productImage,
             ]
