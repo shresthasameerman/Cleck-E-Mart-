@@ -1,8 +1,8 @@
 <?php
-require_once __DIR__ . '/lib/oci_db.php';
-$conn = db_connect();
-$stmt = oci_parse($conn, "SELECT column_name FROM user_tab_cols WHERE table_name = 'SHOP'");
-oci_execute($stmt);
-while ($row = oci_fetch_assoc($stmt)) {
-    echo $row['COLUMN_NAME'] . "\n";
-}
+$_SERVER['REQUEST_METHOD'] = 'GET';
+$_GET['action'] = 'scan';
+$_GET['uid'] = 'F3FAA12A';
+session_start();
+$_SESSION['user_id'] = 1;
+$_SESSION['role'] = 'ADMIN';
+require 'd:\Cleck-E-Mart-\lib\rfid_api.php';

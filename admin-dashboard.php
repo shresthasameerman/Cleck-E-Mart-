@@ -635,10 +635,51 @@ require __DIR__ . '/components/header.php';
         </section>
 
         <section id="collection" class="tab-content" style="display: none;">
-            <div class="admin-panel">
-                <h3>Collection Verification</h3>
-                <div class="empty-state" style="padding: 3rem; text-align: center;">
-                    <p>RFID and Arduino collection verification features coming soon.</p>
+            <div class="admin-panel" style="max-width: 800px; margin: 0 auto;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                    <div>
+                        <h3 style="margin: 0;">Collection Verification</h3>
+                        <p style="margin: 0.25rem 0 0; color: var(--color-muted); font-size: 0.9rem;">Scan a customer's RFID card to pull up their orders.</p>
+                    </div>
+                    <button id="rfidConnectBtn" class="button" style="display: inline-flex; align-items: center; gap: 0.5rem; background: var(--color-primary-dark); color: white;">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+                        Connect Scanner
+                    </button>
+                </div>
+
+                <div id="rfidStatus" style="padding: 1rem; margin-bottom: 1.5rem; border-radius: var(--radius-sm); background: #f3f4f6; color: #4b5563; font-size: 0.95rem; border: 1px solid #e5e7eb; display: flex; align-items: center; gap: 0.5rem;">
+                    <div style="width: 8px; height: 8px; border-radius: 50%; background: #9ca3af;"></div>
+                    Scanner disconnected. Click 'Connect Scanner' to start.
+                </div>
+
+                <div id="rfidLoading" style="display: none; padding: 3rem; text-align: center; color: var(--color-muted);">
+                    <svg class="spinner" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="animation: spin 1s linear infinite;"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg>
+                    <p style="margin-top: 1rem;">Looking up customer...</p>
+                </div>
+
+                <div id="rfidResults" style="display: none;">
+                    <div style="background: white; border: 1px solid rgba(0,0,0,0.1); border-radius: var(--radius-md); padding: 1.5rem; margin-bottom: 1.5rem;">
+                        <h4 style="margin: 0 0 1rem 0; font-size: 1.1rem; border-bottom: 1px solid rgba(0,0,0,0.05); padding-bottom: 0.5rem;">Customer Details</h4>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                            <div>
+                                <span style="font-size: 0.8rem; color: var(--color-muted); text-transform: uppercase;">Name</span>
+                                <div id="rfidCustName" style="font-weight: 600; font-size: 1.1rem;">-</div>
+                            </div>
+                            <div>
+                                <span style="font-size: 0.8rem; color: var(--color-muted); text-transform: uppercase;">Email</span>
+                                <div id="rfidCustEmail">-</div>
+                            </div>
+                            <div>
+                                <span style="font-size: 0.8rem; color: var(--color-muted); text-transform: uppercase;">Phone</span>
+                                <div id="rfidCustPhone">-</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h4 style="margin: 0 0 1rem 0; font-size: 1.1rem;">Ready for Collection</h4>
+                    <div id="rfidOrdersList">
+                        <!-- Populated by JS -->
+                    </div>
                 </div>
             </div>
         </section>
@@ -862,6 +903,218 @@ function sortOrders() {
 
     rows.forEach(row => tbody.appendChild(row));
 }
+</script>
+
+<style>
+    @keyframes spin { 100% { transform: rotate(360deg); } }
+    .order-card { background: white; border: 1px solid rgba(0,0,0,0.1); border-radius: var(--radius-md); padding: 1.25rem; margin-bottom: 1rem; }
+    .order-card-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(0,0,0,0.05); padding-bottom: 0.75rem; margin-bottom: 0.75rem; }
+    .order-item-row { display: flex; justify-content: space-between; font-size: 0.95rem; margin-bottom: 0.5rem; }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // ---- RFID Web Serial Logic ----
+    const connectBtn = document.getElementById('rfidConnectBtn');
+    const statusEl = document.getElementById('rfidStatus');
+    const loadingEl = document.getElementById('rfidLoading');
+    const resultsEl = document.getElementById('rfidResults');
+    const custNameEl = document.getElementById('rfidCustName');
+    const custEmailEl = document.getElementById('rfidCustEmail');
+    const custPhoneEl = document.getElementById('rfidCustPhone');
+    const ordersListEl = document.getElementById('rfidOrdersList');
+
+    if (!connectBtn) return; // If we aren't rendering the collection tab for some reason
+
+    let port;
+    let reader;
+    let isConnected = false;
+
+    async function connectSerial() {
+        if (!('serial' in navigator)) {
+            alert("Your browser doesn't support the Web Serial API. Please use Google Chrome or Microsoft Edge.");
+            return;
+        }
+
+        try {
+            port = await navigator.serial.requestPort();
+            await port.open({ baudRate: 9600 });
+            isConnected = true;
+            connectBtn.textContent = 'Disconnect';
+            connectBtn.style.background = '#ef4444';
+            setStatus('Connected to Arduino. Ready to scan.', '#10b981');
+            readLoop();
+        } catch (err) {
+            console.error("Serial connection error:", err);
+            setStatus('Connection failed or cancelled.', '#ef4444');
+        }
+    }
+
+    async function disconnectSerial() {
+        if (reader) {
+            await reader.cancel();
+        }
+        if (port) {
+            await port.close();
+        }
+        isConnected = false;
+        connectBtn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg> Connect Scanner`;
+        connectBtn.style.background = 'var(--color-primary-dark)';
+        setStatus('Scanner disconnected.', '#9ca3af');
+        resultsEl.style.display = 'none';
+    }
+
+    connectBtn.addEventListener('click', async () => {
+        if (isConnected) {
+            await disconnectSerial();
+        } else {
+            await connectSerial();
+        }
+    });
+
+    function setStatus(text, color) {
+        statusEl.innerHTML = `<div style="width: 8px; height: 8px; border-radius: 50%; background: ${color};"></div> ${text}`;
+    }
+
+    async function readLoop() {
+        const textDecoder = new TextDecoderStream();
+        const readableStreamClosed = port.readable.pipeTo(textDecoder.writable);
+        reader = textDecoder.readable.getReader();
+        
+        let buffer = '';
+        
+        try {
+            while (true) {
+                const { value, done } = await reader.read();
+                if (done) break;
+                
+                buffer += value;
+                const lines = buffer.split('\n');
+                
+                // Keep the last incomplete line in the buffer
+                buffer = lines.pop(); 
+                
+                for (const line of lines) {
+                    const trimmedLine = line.trim();
+                    if (trimmedLine.startsWith('Card UID:')) {
+                        // Extract "F3 DA 84 1A" -> "F3DA841A"
+                        let uidRaw = trimmedLine.replace('Card UID:', '').trim();
+                        let uid = uidRaw.replace(/\s+/g, '');
+                        
+                        if (uid) {
+                            handleCardScan(uid);
+                        }
+                    }
+                }
+            }
+        } catch (error) {
+            console.error("Read error:", error);
+        } finally {
+            reader.releaseLock();
+        }
+    }
+
+    async function handleCardScan(uid) {
+        setStatus(`Card scanned (UID: ${uid}). Fetching data...`, '#3b82f6');
+        resultsEl.style.display = 'none';
+        loadingEl.style.display = 'block';
+
+        try {
+            const response = await fetch(`lib/rfid_api.php?action=scan&uid=${encodeURIComponent(uid)}`);
+            const data = await response.json();
+            
+            loadingEl.style.display = 'none';
+
+            if (data.status === 'success') {
+                setStatus('Data loaded successfully.', '#10b981');
+                
+                // Populate customer info
+                custNameEl.textContent = data.customer.name;
+                custEmailEl.textContent = data.customer.email;
+                custPhoneEl.textContent = data.customer.phone || 'N/A';
+
+                // Populate orders
+                ordersListEl.innerHTML = '';
+                if (data.orders.length === 0) {
+                    ordersListEl.innerHTML = '<div style="padding: 2rem; text-align: center; color: var(--color-muted); border: 1px dashed rgba(0,0,0,0.2); border-radius: var(--radius-sm);">No active orders found for this customer.</div>';
+                } else {
+                    data.orders.forEach(order => {
+                        let itemsHtml = '';
+                        if (order.items && order.items.length > 0) {
+                            order.items.forEach(item => {
+                                itemsHtml += `
+                                    <div class="order-item-row">
+                                        <span>${item.QUANTITY ?? item.quantity}x ${item.PRODUCT_NAME ?? item.product_name}</span>
+                                        <span>£${parseFloat(item.UNIT_PRICE ?? item.unit_price).toFixed(2)}</span>
+                                    </div>
+                                `;
+                            });
+                        }
+
+                        const orderId = order.ORDER_ID ?? order.order_id;
+                        const totalAmount = parseFloat(order.TOTAL_AMOUNT ?? order.total_amount).toFixed(2);
+                        const orderDate = new Date(order.ORDER_DATE ?? order.order_date).toLocaleDateString();
+                        const status = order.ORDER_STATUS ?? order.order_status;
+
+                        ordersListEl.innerHTML += `
+                            <div class="order-card" id="rfid-order-${orderId}">
+                                <div class="order-card-header">
+                                    <div>
+                                        <div style="font-weight: 700;">Order #EM-${orderId}</div>
+                                        <div style="font-size: 0.8rem; color: var(--color-muted);">${orderDate} • Status: ${status}</div>
+                                    </div>
+                                    <button onclick="markOrderCollected(${orderId})" class="button button--small" style="background: #10b981; color: white;">Mark Collected</button>
+                                </div>
+                                <div>
+                                    ${itemsHtml}
+                                    <div style="border-top: 1px dashed rgba(0,0,0,0.1); margin-top: 0.5rem; padding-top: 0.5rem; text-align: right; font-weight: 700;">
+                                        Total: £${totalAmount}
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                }
+                resultsEl.style.display = 'block';
+
+            } else {
+                setStatus(`Error: ${data.message}`, '#ef4444');
+            }
+        } catch (err) {
+            console.error(err);
+            loadingEl.style.display = 'none';
+            setStatus('Network error fetching customer data.', '#ef4444');
+        }
+    }
+
+    window.markOrderCollected = async function(orderId) {
+        if (!confirm('Mark this order as collected and complete?')) return;
+        
+        try {
+            const formData = new FormData();
+            formData.append('action', 'mark_collected');
+            formData.append('order_id', orderId);
+
+            const response = await fetch('lib/rfid_api.php', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const data = await response.json();
+            if (data.status === 'success') {
+                const card = document.getElementById(`rfid-order-${orderId}`);
+                if (card) {
+                    card.innerHTML = `<div style="padding: 1rem; text-align: center; color: #10b981; font-weight: 600;">✓ Order Marked as Collected</div>`;
+                    setTimeout(() => card.remove(), 2000);
+                }
+            } else {
+                alert('Error: ' + data.message);
+            }
+        } catch (err) {
+            alert('Network error updating order.');
+        }
+    };
+});
 </script>
 
 <?php require __DIR__ . '/components/footer.php'; ?>
