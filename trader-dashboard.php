@@ -18,6 +18,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'updat
     redirect('trader-dashboard.php');
 }
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'edit_product') {
+    $productId = (int) ($_POST['product_id'] ?? 0);
+    $shopIdPost = isset($_POST['shop_id']) && $_POST['shop_id'] ? (int) $_POST['shop_id'] : null;
+    try {
+        $productImage = null;
+        if (isset($_FILES['product_image']) && $_FILES['product_image']['name'] !== '') {
+            $productImage = trader_handle_product_image_upload($_FILES['product_image']);
+        }
+
+        trader_update_product($userId, $productId, [
+            'product_name' => (string) ($_POST['product_name'] ?? ''),
+            'product_description' => (string) ($_POST['product_description'] ?? ''),
+            'price' => (float) ($_POST['price'] ?? 0),
+            'stock_quantity' => (int) ($_POST['stock_quantity'] ?? 0),
+            'product_image' => $productImage ?? '',
+            'shop_id' => $shopIdPost,
+        ]);
+
+        set_flash('success', 'Product updated successfully.');
+    } catch (Throwable $exception) {
+        set_flash('error', 'Failed to update product: ' . $exception->getMessage());
+    }
+    redirect('trader-dashboard.php' . ($shopIdPost ? '?shop_id=' . $shopIdPost : ''));
+}
+
 $shopId = isset($_GET['shop_id']) ? (int) $_GET['shop_id'] : null;
 $metrics = trader_dashboard_metrics($userId, $shopId);
 $shop = $metrics['shop'];
@@ -160,7 +185,7 @@ require __DIR__ . '/components/header.php';
             </aside>
 
             <div class="admin-content-grid" style="display: block;">
-                <section class="trader-stats" aria-label="Trader performance summary">
+                <section class="trader-stats" aria-label="Trader performance summary" style="margin-bottom: 3rem;">
                     <article class="trader-stat-card">
                         <span class="trader-stat-card__label">Products sold</span>
                         <strong class="trader-stat-card__value"><?php echo e($metrics['sold_total']); ?></strong>
@@ -242,7 +267,17 @@ require __DIR__ . '/components/header.php';
                             <tbody>
                                 <?php foreach ($inventoryProducts as $product): ?>
                                     <tr>
-                                        <td><?php echo e($product['product_name']); ?></td>
+                                        <td>
+                                            <a href="#" class="edit-product-link trader-link" 
+                                               data-id="<?php echo e($product['product_id']); ?>"
+                                               data-name="<?php echo e($product['product_name']); ?>"
+                                               data-desc="<?php echo e($product['product_description'] ?? ''); ?>"
+                                               data-price="<?php echo e($product['price'] ?? 0); ?>"
+                                               data-stock="<?php echo e($product['stock_quantity']); ?>"
+                                               style="font-weight: 600; text-decoration: none;">
+                                                <?php echo e($product['product_name']); ?>
+                                            </a>
+                                        </td>
                                         <td><?php echo e($product['sold_quantity']); ?></td>
                                         <td><?php echo e($product['stock_quantity']); ?></td>
                                         <td><?php echo e($product['product_status']); ?></td>
@@ -272,6 +307,54 @@ require __DIR__ . '/components/header.php';
             </div>
         </div>
     </div>
+    <!-- Edit Product Modal -->
+    <div id="editProductModal" class="trader-modal">
+        <div class="trader-modal__content">
+            <button id="closeEditModal" class="trader-modal__close" aria-label="Close modal">&times;</button>
+            <h2 class="brand" style="margin-bottom: 1.5rem; font-size: 2rem;">Edit Product</h2>
+            
+            <form id="editProductForm" class="trader-form" method="post" action="trader-dashboard.php<?php echo isset($_GET['shop_id']) ? '?shop_id=' . (int)$_GET['shop_id'] : ''; ?>" enctype="multipart/form-data">
+                <input type="hidden" name="action" value="edit_product" />
+                <input type="hidden" name="product_id" id="edit_product_id" value="" />
+                <input type="hidden" name="shop_id" value="<?php echo isset($_GET['shop_id']) ? (int)$_GET['shop_id'] : ''; ?>" />
+                
+                <div class="trader-form__grid" style="grid-template-columns: 1fr;">
+                    <label class="trader-form__full">
+                        <span>Product name</span>
+                        <input type="text" name="product_name" id="edit_product_name" required />
+                    </label>
+                    <label class="trader-form__full">
+                        <span>Description</span>
+                        <textarea name="product_description" id="edit_product_desc" rows="3" required></textarea>
+                    </label>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                        <label>
+                            <span>Price</span>
+                            <input type="number" name="price" id="edit_product_price" min="0" step="0.01" required />
+                        </label>
+                        <label>
+                            <span>Stock available</span>
+                            <input type="number" name="stock_quantity" id="edit_product_stock" min="0" step="1" required />
+                        </label>
+                    </div>
+                    <label class="trader-form__full">
+                        <span>Product image</span>
+                        <div class="file-upload-wrapper">
+                            <button type="button" class="button file-upload-btn" onclick="document.getElementById('edit_product_image').click();">Browse files</button>
+                            <span id="edit_file_name" class="file-upload-name">No file selected</span>
+                            <input type="file" id="edit_product_image" name="product_image" accept="image/jpeg,image/png,image/webp,image/gif" onchange="document.getElementById('edit_file_name').textContent = this.files[0] ? this.files[0].name : 'No file selected';" />
+                        </div>
+                        <small style="display: block; margin-top: 0.5rem; color: #666;">Leave blank to keep existing image. Supported: JPG, PNG, WebP, GIF. Max: 5MB</small>
+                    </label>
+                </div>
+                
+                <div class="trader-form__actions" style="margin-top: 2rem;">
+                    <button class="button" type="submit" style="width: 100%;">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
 </main>
 <?php require __DIR__ . '/components/footer.php'; ?>
 
@@ -331,6 +414,44 @@ require __DIR__ . '/components/header.php';
                 }
             });
         }
+    });
+
+    // Edit Modal Logic
+    document.addEventListener('DOMContentLoaded', function() {
+        const editLinks = document.querySelectorAll('.edit-product-link');
+        const modal = document.getElementById('editProductModal');
+        const closeBtn = document.getElementById('closeEditModal');
+        
+        editLinks.forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                // Populate form
+                document.getElementById('edit_product_id').value = this.getAttribute('data-id');
+                document.getElementById('edit_product_name').value = this.getAttribute('data-name');
+                document.getElementById('edit_product_desc').value = this.getAttribute('data-desc');
+                document.getElementById('edit_product_price').value = this.getAttribute('data-price');
+                document.getElementById('edit_product_stock').value = this.getAttribute('data-stock');
+                
+                // Reset file input
+                document.getElementById('edit_product_image').value = '';
+                document.getElementById('edit_file_name').textContent = 'No file selected';
+                
+                // Show modal
+                modal.classList.add('is-active');
+            });
+        });
+        
+        closeBtn.addEventListener('click', function() {
+            modal.classList.remove('is-active');
+        });
+        
+        // Close when clicking outside content
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                modal.classList.remove('is-active');
+            }
+        });
     });
 </script>
 

@@ -1055,21 +1055,18 @@ function offline_get_trader_shops(int $traderId): array
     return $shops;
 }
 
-function offline_create_shop_for_trader(int $traderId, string $shopName, string $shopDesc, ?string $shopLogo, string $shopLocation = '', string $shopPan = '', string $shopProductsType = ''): array
+function offline_create_shop_for_trader(int $traderId, string $shopName, string $shopDesc, ?string $shopLogo): array
 {
     $data = offline_load();
-    $shopId = offline_next_id($data['shops'], 'shop_id');
+    $shopId = offline_next_id($data['shops'] ?? [], 'shop_id');
     $shopStatus = 'PENDING_APPROVAL';
-    
+
     $newShop = [
         'shop_id' => $shopId,
         'trader_id' => $traderId,
         'shop_name' => $shopName,
         'shop_description' => $shopDesc,
         'shop_logo' => $shopLogo,
-        'shop_location' => $shopLocation,
-        'shop_pan' => $shopPan,
-        'shop_products_type' => $shopProductsType,
         'shop_status' => $shopStatus,
     ];
     $data['shops'][] = $newShop;
@@ -1081,9 +1078,6 @@ function offline_create_shop_for_trader(int $traderId, string $shopName, string 
         'SHOP_NAME' => $shopName,
         'SHOP_DESCRIPTION' => $shopDesc,
         'SHOP_LOGO' => $shopLogo,
-        'SHOP_LOCATION' => $shopLocation,
-        'SHOP_PAN' => $shopPan,
-        'SHOP_PRODUCTS_TYPE' => $shopProductsType,
         'SHOP_STATUS' => $shopStatus,
     ];
 }
@@ -1114,4 +1108,114 @@ function offline_update_shop_status(int $shopId, string $status): void
             return;
         }
     }
+}
+
+function offline_get_pending_reviews_for_customer(int $customerId): array
+{
+    $data = offline_load();
+    
+    // Find all products purchased by this customer in PAID or COLLECTED orders
+    $purchasedProductIds = [];
+    foreach ($data['orders'] as $order) {
+        if ((int)$order['customer_id'] === $customerId && in_array(strtoupper((string)$order['order_status']), ['PAID', 'COLLECTED'], true)) {
+            foreach ($data['order_items'] as $item) {
+                if ((int)$item['order_id'] === (int)$order['order_id']) {
+                    $purchasedProductIds[] = (int)$item['product_id'];
+                }
+            }
+        }
+    }
+    $purchasedProductIds = array_unique($purchasedProductIds);
+
+    // Find all products already reviewed by this customer
+    $reviewedProductIds = [];
+    foreach ($data['reviews'] as $review) {
+        if ((int)$review['customer_id'] === $customerId) {
+            $reviewedProductIds[] = (int)$review['product_id'];
+        }
+    }
+
+    $pendingProductIds = array_diff($purchasedProductIds, $reviewedProductIds);
+
+    $rows = [];
+    foreach ($data['products'] as $product) {
+        if (in_array((int)$product['product_id'], $pendingProductIds, true)) {
+            $shopName = 'Shop';
+            foreach ($data['shops'] as $shop) {
+                if ((int)$shop['shop_id'] === (int)$product['shop_id']) {
+                    $shopName = (string)$shop['shop_name'];
+                    break;
+                }
+            }
+            $rows[] = [
+                'PRODUCT_ID' => (int)$product['product_id'],
+                'PRODUCT_NAME' => (string)$product['product_name'],
+                'PRODUCT_IMAGE' => $product['product_image'],
+                'SHOP_NAME' => $shopName,
+            ];
+        }
+    }
+
+    return $rows;
+}
+
+function offline_submit_review(int $customerId, int $productId, float $rating, string $comment): void
+{
+    $data = offline_load();
+
+    // Check unique constraint: a customer can only leave one review per product
+    foreach ($data['reviews'] as $review) {
+        if ((int)$review['customer_id'] === $customerId && (int)$review['product_id'] === $productId) {
+            throw new RuntimeException('unique constraint violated: You have already reviewed this product.');
+        }
+    }
+
+    // Verify they purchased and collected/paid for it
+    $hasPurchased = false;
+    foreach ($data['orders'] as $order) {
+        if ((int)$order['customer_id'] === $customerId && in_array(strtoupper((string)$order['order_status']), ['PAID', 'COLLECTED'], true)) {
+            foreach ($data['order_items'] as $item) {
+                if ((int)$item['order_id'] === (int)$order['order_id'] && (int)$item['product_id'] === $productId) {
+                    $hasPurchased = true;
+                    break 2;
+                }
+            }
+        }
+    }
+
+    if (!$hasPurchased) {
+        throw new RuntimeException('ORA-20009: You can only review products you have purchased and collected/paid for.');
+    }
+
+    $reviewId = offline_next_id($data['reviews'], 'review_id');
+    $data['reviews'][] = [
+        'review_id' => $reviewId,
+        'customer_id' => $customerId,
+        'product_id' => $productId,
+        'rating' => $rating,
+        'comment' => $comment === '' ? null : $comment,
+        'review_date' => date('Y-m-d'),
+    ];
+
+    offline_save($data);
+}
+
+function offline_update_product(int $shopId, int $productId, array $payload): void
+{
+    $data = offline_load();
+    foreach ($data['products'] as &$product) {
+        if ((int)$product['product_id'] === $productId && (int)$product['shop_id'] === $shopId) {
+            $product['product_name'] = $payload['product_name'];
+            $product['product_description'] = $payload['product_description'];
+            $product['price'] = $payload['price'];
+            $product['stock_quantity'] = $payload['stock_quantity'];
+            $product['product_status'] = $payload['product_status'];
+            if ($payload['product_image'] !== null) {
+                $product['product_image'] = $payload['product_image'];
+            }
+            offline_save($data);
+            return;
+        }
+    }
+    throw new RuntimeException('Product not found in offline store.');
 }

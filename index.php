@@ -168,7 +168,7 @@ require __DIR__ . '/components/header.php';
             <h2 id="category-strip-title" class="section-heading__title-sm">Categories</h2>
             <div class="category-strip__grid">
                 <?php foreach ($homeCategories as $category): ?>
-                    <a class="category-pill" href="?category_id=<?php echo (int) $category['id']; ?>"><?php echo htmlspecialchars((string) $category['label'], ENT_QUOTES, 'UTF-8'); ?></a>
+                    <a class="category-pill" href="category.php?category_id=<?php echo (int) $category['id']; ?>"><?php echo htmlspecialchars((string) $category['label'], ENT_QUOTES, 'UTF-8'); ?></a>
                 <?php endforeach; ?>
             </div>
         </div>

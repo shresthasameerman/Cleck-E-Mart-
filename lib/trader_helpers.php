@@ -268,6 +268,9 @@ function trader_dashboard_metrics(int $userId, ?int $shopId = null): array
         $topProducts[] = [
             'product_id' => (int) $product['PRODUCT_ID'],
             'product_name' => (string) $product['PRODUCT_NAME'],
+            'product_description' => is_object($product['PRODUCT_DESCRIPTION'] ?? '') ? $product['PRODUCT_DESCRIPTION']->load() : (string)($product['PRODUCT_DESCRIPTION'] ?? ''),
+            'price' => (float) ($product['PRICE'] ?? 0),
+            'product_image' => (string) ($product['PRODUCT_IMAGE'] ?? ''),
             'sold_quantity' => $soldQuantity,
             'stock_quantity' => $stockQuantity,
             'needs_refill' => $needsRefill,
@@ -734,24 +737,21 @@ function trader_create_shop(int $userId, array $payload): array
     }
     
     if (db_is_offline()) {
-        return offline_create_shop_for_trader($userId, $shopName, $shopDesc, $shopLogo === '' ? null : $shopLogo, $shopLocation, $shopPan, $shopProductsType);
+        return offline_create_shop_for_trader($userId, $shopName, $shopDesc, $shopLogo === '' ? null : $shopLogo);
     }
     
     db_begin();
     try {
         $shopId = db_next_id('SHOP', 'shop_id');
         db_execute(
-            'INSERT INTO SHOP (shop_id, trader_id, shop_name, shop_description, shop_logo, shop_location, shop_pan, shop_products_type, shop_status)
-             VALUES (:shop_id, :trader_id, :shop_name, :shop_description, :shop_logo, :shop_location, :shop_pan, :shop_products_type, :shop_status)',
+            'INSERT INTO SHOP (shop_id, trader_id, shop_name, shop_description, shop_logo, shop_status)
+             VALUES (:shop_id, :trader_id, :shop_name, :shop_description, :shop_logo, :shop_status)',
             [
                 'shop_id' => $shopId,
                 'trader_id' => $userId,
                 'shop_name' => $shopName,
                 'shop_description' => $shopDesc,
                 'shop_logo' => $shopLogo === '' ? null : $shopLogo,
-                'shop_location' => $shopLocation,
-                'shop_pan' => $shopPan,
-                'shop_products_type' => $shopProductsType,
                 'shop_status' => 'PENDING_APPROVAL'
             ]
         );
@@ -763,9 +763,6 @@ function trader_create_shop(int $userId, array $payload): array
             'SHOP_NAME' => $shopName,
             'SHOP_DESCRIPTION' => $shopDesc,
             'SHOP_LOGO' => $shopLogo === '' ? null : $shopLogo,
-            'SHOP_LOCATION' => $shopLocation,
-            'SHOP_PAN' => $shopPan,
-            'SHOP_PRODUCTS_TYPE' => $shopProductsType,
             'SHOP_STATUS' => 'PENDING_APPROVAL'
         ];
     } catch (Throwable $e) {
@@ -779,9 +776,6 @@ function trader_update_shop(int $userId, int $shopId, array $payload): void
     $shopName = trim($payload['shop_name'] ?? '');
     $shopDesc = trim($payload['shop_description'] ?? '');
     $shopLogo = trim($payload['shop_logo'] ?? '');
-    $shopLocation = trim($payload['shop_location'] ?? '');
-    $shopPan = trim($payload['shop_pan'] ?? '');
-    $shopProductsType = trim($payload['shop_products_type'] ?? '');
     
     if ($shopName === '') {
         throw new InvalidArgumentException('Shop name is required.');
@@ -801,20 +795,73 @@ function trader_update_shop(int $userId, int $shopId, array $payload): void
         'UPDATE SHOP SET 
             shop_name = :shop_name, 
             shop_description = :shop_description, 
-            shop_logo = :shop_logo, 
-            shop_location = :shop_location, 
-            shop_pan = :shop_pan, 
-            shop_products_type = :shop_products_type
+            shop_logo = :shop_logo
          WHERE shop_id = :shop_id AND trader_id = :trader_id',
         [
             'shop_name' => $shopName,
             'shop_description' => $shopDesc,
             'shop_logo' => $shopLogo === '' ? null : $shopLogo,
-            'shop_location' => $shopLocation,
-            'shop_pan' => $shopPan,
-            'shop_products_type' => $shopProductsType,
             'shop_id' => $shopId,
             'trader_id' => $userId
         ]
+    );
+}
+
+function trader_update_product(int $userId, int $productId, array $payload): void
+{
+    $shopId = isset($payload['shop_id']) ? (int) $payload['shop_id'] : null;
+    $shop = trader_shop_for_user($userId, $shopId);
+    if ($shop === null) {
+        throw new RuntimeException('Trader shop could not be found.');
+    }
+
+    $productName = trim((string) ($payload['product_name'] ?? ''));
+    $productDescription = trim((string) ($payload['product_description'] ?? ''));
+    $price = (float) ($payload['price'] ?? 0);
+    $stockQuantity = max(0, (int) ($payload['stock_quantity'] ?? 0));
+    $productImage = trim((string) ($payload['product_image'] ?? ''));
+
+    if ($productName === '' || $productDescription === '') {
+        throw new InvalidArgumentException('Product name and description are required.');
+    }
+
+    if (db_is_offline()) {
+        offline_update_product((int) $shop['SHOP_ID'], $productId, [
+            'product_name' => $productName,
+            'product_description' => $productDescription,
+            'price' => $price,
+            'stock_quantity' => $stockQuantity,
+            'product_image' => $productImage === '' ? null : $productImage,
+            'product_status' => $stockQuantity <= 10 ? 'LOW_STOCK' : 'IN_STOCK'
+        ]);
+        return;
+    }
+
+    $imageSql = "";
+    $params = [
+        'product_name' => $productName,
+        'product_description' => $productDescription,
+        'price' => $price,
+        'stock_quantity' => $stockQuantity,
+        'product_status' => $stockQuantity <= 10 ? 'LOW_STOCK' : 'IN_STOCK',
+        'product_id' => $productId,
+        'shop_id' => (int) $shop['SHOP_ID']
+    ];
+
+    if ($productImage !== '') {
+        $imageSql = ", product_image = :product_image";
+        $params['product_image'] = $productImage;
+    }
+
+    db_execute(
+        "UPDATE PRODUCT 
+         SET product_name = :product_name,
+             product_description = :product_description,
+             price = :price,
+             stock_quantity = :stock_quantity,
+             product_status = :product_status
+             {$imageSql}
+         WHERE product_id = :product_id AND shop_id = :shop_id",
+        $params
     );
 }

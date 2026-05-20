@@ -2990,6 +2990,31 @@ a {
     letter-spacing: 0.05em;
 }
 
+.star-rating {
+    display: inline-flex;
+    flex-direction: row-reverse;
+    font-size: 1.75rem;
+    justify-content: flex-end;
+}
+.star-rating input {
+    display: none;
+}
+.star-rating label {
+    color: #d1d5db;
+    cursor: pointer;
+    transition: color 0.15s ease-in-out, transform 0.1s ease;
+    padding: 0 0.1rem;
+    margin: 0;
+}
+.star-rating label:hover,
+.star-rating label:hover ~ label,
+.star-rating input:checked ~ label {
+    color: #fbbf24;
+}
+.star-rating label:active {
+    transform: scale(0.9);
+}
+
 /* ── Profile form (mirrors contact-form / auth-form) ─────────── */
 .profile-form {
     display: grid;

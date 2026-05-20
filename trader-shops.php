@@ -8,6 +8,7 @@ $userId = (int) current_user_id();
 $shops = trader_get_shops($userId);
 $maxShops = 2;
 $shopCount = count($shops);
+$categories = trader_categories();
 
 $successMessage = get_flash('success');
 $errorMessage = get_flash('error');
@@ -20,13 +21,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             set_flash('error', 'You have reached the maximum number of shops (2).');
         } else {
             try {
+                $logoFilename = '';
+                if (isset($_FILES['shop_logo']) && $_FILES['shop_logo']['error'] === UPLOAD_ERR_OK) {
+                    $tmpName = $_FILES['shop_logo']['tmp_name'];
+                    $name = basename($_FILES['shop_logo']['name']);
+                    $logoFilename = time() . '_' . preg_replace('/[^a-zA-Z0-9.-]/', '_', $name);
+                    $targetDir = __DIR__ . '/assets/Shop Logos/';
+                    if (!is_dir($targetDir)) {
+                        mkdir($targetDir, 0777, true);
+                    }
+                    if (!move_uploaded_file($tmpName, $targetDir . $logoFilename)) {
+                        throw new Exception("Failed to upload shop logo.");
+                    }
+                }
+
                 trader_create_shop($userId, [
                     'shop_name' => (string) ($_POST['shop_name'] ?? ''),
                     'shop_description' => (string) ($_POST['shop_description'] ?? ''),
-                    'shop_logo' => (string) ($_POST['shop_logo'] ?? ''),
-                    'shop_location' => (string) ($_POST['shop_location'] ?? ''),
-                    'shop_pan' => (string) ($_POST['shop_pan'] ?? ''),
-                    'shop_products_type' => (string) ($_POST['shop_products_type'] ?? '')
+                    'shop_logo' => $logoFilename
                 ]);
                 set_flash('success', 'Shop added successfully and is pending admin approval.');
             } catch (Throwable $e) {
@@ -119,7 +131,7 @@ require __DIR__ . '/components/header.php';
                     <div class="trader-card__header">
                         <h2>Add a New Shop</h2>
                     </div>
-                    <form method="post" action="trader-shops.php" class="trader-form">
+                    <form method="post" action="trader-shops.php" class="trader-form" enctype="multipart/form-data">
                         <input type="hidden" name="action" value="add_shop" />
                         <div class="trader-form__grid">
                             <label class="trader-form__full">
@@ -130,21 +142,15 @@ require __DIR__ . '/components/header.php';
                                 <span>Shop Description</span>
                                 <textarea name="shop_description" rows="3" required></textarea>
                             </label>
+
                             <label class="trader-form__full">
-                                <span>Shop Location</span>
-                                <input type="text" name="shop_location" required />
-                            </label>
-                            <label class="trader-form__full">
-                                <span>Shop PAN Number</span>
-                                <input type="text" name="shop_pan" required />
-                            </label>
-                            <label class="trader-form__full">
-                                <span>Types of Products to Sell</span>
-                                <input type="text" name="shop_products_type" placeholder="e.g. Electronics, Clothing" required />
-                            </label>
-                            <label class="trader-form__full">
-                                <span>Shop Logo Filename (Optional)</span>
-                                <input type="text" name="shop_logo" placeholder="logo.png" />
+                                <span>Shop Logo</span>
+                                <div class="file-upload-wrapper">
+                                    <button type="button" class="button file-upload-btn" onclick="document.getElementById('shop_logo_upload').click();">Browse files</button>
+                                    <span id="shop_logo_name" class="file-upload-name">No file selected</span>
+                                    <input type="file" id="shop_logo_upload" name="shop_logo" accept="image/jpeg,image/png,image/webp,image/gif" onchange="document.getElementById('shop_logo_name').textContent = this.files[0] ? this.files[0].name : 'No file selected';" />
+                                </div>
+                                <small style="display: block; margin-top: 0.5rem; color: #666;">Supported formats: JPG, PNG, WebP, GIF. Max size: 5MB</small>
                             </label>
                         </div>
                         <button type="submit" class="button" style="margin-top: 1rem;">Register Shop</button>

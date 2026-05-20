@@ -22,7 +22,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         try {
             if (db_is_offline()) {
-                $error = 'Reviews are not supported in offline mode.';
+                offline_submit_review($customerId, $productId, $rating, $comment);
             } else {
                 $reviewId = db_next_id('REVIEW', 'review_id');
                 db_execute(
@@ -36,15 +36,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         'comment' => $comment === '' ? null : $comment
                     ]
                 );
-                
-                set_flash('success', 'Your review has been submitted successfully.');
-                redirect("product.php?product_id={$productId}");
             }
+            
+            set_flash('success', 'Your review has been submitted successfully.');
+            redirect("product.php?product_id={$productId}");
         } catch (Throwable $e) {
             $msg = $e->getMessage();
             if (str_contains($msg, 'unique constraint')) {
                 $error = 'You have already reviewed this product.';
-            } elseif (str_contains($msg, 'ORA-20009')) {
+            } elseif (str_contains($msg, 'ORA-20009') || str_contains($msg, 'collected/paid for')) {
                 $error = 'You can only review products you have purchased and collected/paid for.';
             } else {
                 $error = 'Failed to submit review: ' . $msg;
@@ -55,7 +55,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $product = null;
 if ($productId !== false && $productId !== null) {
-    if (!db_is_offline()) {
+    if (db_is_offline()) {
+        $product = offline_get_product_detail((int) $productId);
+    } else {
         $product = db_fetch_one(
             'SELECT product_id, product_name, product_image FROM PRODUCT WHERE product_id = :product_id',
             ['product_id' => $productId]

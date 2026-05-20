@@ -19,13 +19,24 @@ if ($shop === null) {
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'update_shop') {
     try {
+        $logoFilename = (string) ($_POST['current_shop_logo'] ?? ''); // keep current logo by default
+        if (isset($_FILES['shop_logo']) && $_FILES['shop_logo']['error'] === UPLOAD_ERR_OK) {
+            $tmpName = $_FILES['shop_logo']['tmp_name'];
+            $name = basename($_FILES['shop_logo']['name']);
+            $logoFilename = time() . '_' . preg_replace('/[^a-zA-Z0-9.-]/', '_', $name);
+            $targetDir = __DIR__ . '/assets/Shop Logos/';
+            if (!is_dir($targetDir)) {
+                mkdir($targetDir, 0777, true);
+            }
+            if (!move_uploaded_file($tmpName, $targetDir . $logoFilename)) {
+                throw new Exception("Failed to upload shop logo.");
+            }
+        }
+
         trader_update_shop($userId, $shopId, [
             'shop_name' => (string) ($_POST['shop_name'] ?? ''),
             'shop_description' => (string) ($_POST['shop_description'] ?? ''),
-            'shop_location' => (string) ($_POST['shop_location'] ?? ''),
-            'shop_pan' => (string) ($_POST['shop_pan'] ?? ''),
-            'shop_products_type' => (string) ($_POST['shop_products_type'] ?? ''),
-            'shop_logo' => (string) ($_POST['shop_logo'] ?? ''),
+            'shop_logo' => $logoFilename
         ]);
         set_flash('success', 'Shop details updated successfully.');
         redirect("trader-shop-profile.php?shop_id=$shopId");
@@ -96,8 +107,9 @@ require __DIR__ . '/components/header.php';
                         </div>
                     </div>
                     
-                    <form method="post" action="trader-shop-profile.php?shop_id=<?php echo $shopId; ?>" class="trader-form">
+                    <form method="post" action="trader-shop-profile.php?shop_id=<?php echo $shopId; ?>" class="trader-form" enctype="multipart/form-data">
                         <input type="hidden" name="action" value="update_shop" />
+                        <input type="hidden" name="current_shop_logo" value="<?php echo e($shop['SHOP_LOGO'] ?? ''); ?>" />
                         <div class="trader-form__grid">
                             <label class="trader-form__full">
                                 <span>Shop Name</span>
@@ -108,20 +120,19 @@ require __DIR__ . '/components/header.php';
                                 <textarea name="shop_description" rows="3" required><?php echo e($shop['SHOP_DESCRIPTION'] ?? ''); ?></textarea>
                             </label>
                             <label class="trader-form__full">
-                                <span>Shop Location</span>
-                                <input type="text" name="shop_location" value="<?php echo e($shop['SHOP_LOCATION'] ?? ''); ?>" required />
-                            </label>
-                            <label class="trader-form__full">
-                                <span>Shop PAN Number</span>
-                                <input type="text" name="shop_pan" value="<?php echo e($shop['SHOP_PAN'] ?? ''); ?>" required />
-                            </label>
-                            <label class="trader-form__full">
-                                <span>Types of Products to Sell</span>
-                                <input type="text" name="shop_products_type" value="<?php echo e($shop['SHOP_PRODUCTS_TYPE'] ?? ''); ?>" required />
-                            </label>
-                            <label class="trader-form__full">
-                                <span>Shop Logo Filename (Optional)</span>
-                                <input type="text" name="shop_logo" value="<?php echo e($shop['SHOP_LOGO'] ?? ''); ?>" placeholder="logo.png" />
+                                <span>Shop Logo</span>
+                                <?php if (!empty($shop['SHOP_LOGO'])): ?>
+                                    <div style="margin-bottom: 1rem;">
+                                        <p style="font-size: 0.85rem; color: #666; margin-bottom: 0.5rem;">Current Logo:</p>
+                                        <img src="assets/Shop Logos/<?php echo e($shop['SHOP_LOGO']); ?>" alt="Current Shop Logo" style="max-height: 100px; border-radius: var(--radius-sm);" />
+                                    </div>
+                                <?php endif; ?>
+                                <div class="file-upload-wrapper">
+                                    <button type="button" class="button file-upload-btn" onclick="document.getElementById('shop_logo_upload').click();">Browse files</button>
+                                    <span id="shop_logo_name" class="file-upload-name">No file selected (Leave empty to keep current)</span>
+                                    <input type="file" id="shop_logo_upload" name="shop_logo" accept="image/jpeg,image/png,image/webp,image/gif" onchange="document.getElementById('shop_logo_name').textContent = this.files[0] ? this.files[0].name : 'No file selected (Leave empty to keep current)';" />
+                                </div>
+                                <small style="display: block; margin-top: 0.5rem; color: #666;">Supported formats: JPG, PNG, WebP, GIF. Max size: 5MB</small>
                             </label>
                         </div>
                         <div class="trader-form__actions">

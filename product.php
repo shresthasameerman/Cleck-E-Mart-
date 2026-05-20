@@ -150,7 +150,7 @@ require __DIR__ . '/components/header.php';
     -->
     <section class="product-content" aria-labelledby="product-name-title">
         <div class="container product-layout">
-            <div class="product-media" aria-label="Product image panel">
+            <div class="product-media product-card" aria-label="Product image panel">
                 <?php
                 $productImage = trim((string) ($product['PRODUCT_IMAGE'] ?? ''));
                 if ($productImage === '') {
@@ -168,65 +168,69 @@ require __DIR__ . '/components/header.php';
                 <img src="<?php echo e($productImage); ?>" alt="<?php echo e($product['PRODUCT_NAME']); ?>" />
             </div>
 
-            <article class="product-details" aria-label="Product information">
-                <p class="product-box product-trader">Trader: <?php echo e($product['TRADER_NAME']); ?></p>
+            <article class="product-details-premium" aria-label="Product information">
+                <div class="product-header">
+                    <span class="product-trader-premium">Trader: <?php echo e($product['TRADER_NAME']); ?></span>
+                    <h1 id="product-name-title" class="brand product-title-premium"><?php echo e($product['PRODUCT_NAME']); ?></h1>
+                </div>
 
-                <h1 id="product-name-title" class="product-box product-name">Product Name: <?php echo e($product['PRODUCT_NAME']); ?></h1>
-
-                <p class="product-box product-rating" aria-label="Rating <?php echo e($product['avg_rating'] ?? 0); ?> out of 5 from <?php echo e($product['review_count'] ?? 0); ?> reviews">
+                <div class="product-rating-premium" aria-label="Rating <?php echo e($product['avg_rating'] ?? 0); ?> out of 5 from <?php echo e($product['review_count'] ?? 0); ?> reviews">
                     <span class="product-stars" aria-hidden="true">
                         <?php
                         $stars = (int) round($product['avg_rating'] ?? 0);
                         for ($i = 1; $i <= 5; $i++) {
-                            echo '<span class="product-star" style="color: ' . ($i <= $stars ? '#fbbf24' : '#d1d5db') . ';">&#9733;</span>';
+                            echo '<span style="color: ' . ($i <= $stars ? '#fbbf24' : '#e5e7eb') . ';">&#9733;</span>';
                         }
                         ?>
-                        <span style="font-size: 0.9rem; color: #666; margin-left: 0.5rem;">(<?php echo e($product['review_count'] ?? 0); ?> reviews)</span>
+                        <span class="review-count-premium">(<?php echo e($product['review_count'] ?? 0); ?> reviews)</span>
                     </span>
-                        <span class="product-price">
-                            <?php 
-                            $rawPrice = (float) $product['PRICE'];
-                            $discount = isset($product['DISCOUNT_PERCENTAGE']) ? (float) $product['DISCOUNT_PERCENTAGE'] : 0;
-                            if ($discount > 0) {
-                                $discounted = $rawPrice * (1 - $discount / 100);
-                                echo '<s>$' . number_format($rawPrice, 2) . '</s> $' . number_format($discounted, 2);
-                            } else {
-                                echo '$' . number_format($rawPrice, 2);
-                            }
-                            ?>
-                        </span>
+                </div>
+
+                <div class="product-price-premium">
+                    <?php 
+                    $rawPrice = (float) $product['PRICE'];
+                    $discount = isset($product['DISCOUNT_PERCENTAGE']) ? (float) $product['DISCOUNT_PERCENTAGE'] : 0;
+                    if ($discount > 0) {
+                        $discounted = $rawPrice * (1 - $discount / 100);
+                        echo '<s>$' . number_format($rawPrice, 2) . '</s> $' . number_format($discounted, 2);
+                    } else {
+                        echo '$' . number_format($rawPrice, 2);
+                    }
+                    ?>
+                </div>
+
+                <p class="product-description-premium">
+                    <?php echo e(is_object($product['PRODUCT_DESCRIPTION']) ? $product['PRODUCT_DESCRIPTION']->load() : (string)($product['PRODUCT_DESCRIPTION'] ?? '')); ?>
                 </p>
 
-                <p class="product-box product-description">
-                    Product Description: <?php echo e(is_object($product['PRODUCT_DESCRIPTION']) ? $product['PRODUCT_DESCRIPTION']->load() : (string)($product['PRODUCT_DESCRIPTION'] ?? '')); ?>
-                </p>
-
-                <form class="product-form" method="post" action="product.php?product_id=<?php echo e($product['PRODUCT_ID']); ?>">
+                <form class="product-form-premium" method="post" action="product.php?product_id=<?php echo e($product['PRODUCT_ID']); ?>">
                     <input type="hidden" name="product_id" value="<?php echo e($product['PRODUCT_ID']); ?>" />
-                    <div class="product-box product-quantity" aria-label="Quantity selector">
-                        <p class="product-quantity__label">Quantity:</p>
-                        <div class="product-qty-controls">
-                            <input class="product-qty-value" type="number" min="1" name="quantity" value="1" aria-label="Quantity" />
-                        </div>
+                    
+                    <div class="product-qty-premium">
+                        <label for="qty">QTY:</label>
+                        <input id="qty" type="number" min="1" name="quantity" value="1" aria-label="Quantity" />
                     </div>
 
-                    <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
-                        <button class="product-add-button" type="submit" name="action" value="add_to_cart" style="flex: 1; font-size: 1.1rem; padding: 0.75rem;">
-                            Add to Basket
-                        </button>
-                    </div>
+                    <button class="button product-add-btn-premium" type="submit" name="action" value="add_to_cart">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+                            <line x1="3" y1="6" x2="21" y2="6"></line>
+                            <path d="M16 10a4 4 0 0 1-8 0"></path>
+                        </svg>
+                        Add to Basket
+                    </button>
                 </form>
                 
                 <?php if (is_logged_in() && current_role() === 'CUSTOMER'): ?>
-                <form class="product-form" method="post" action="wishlist_action.php" style="margin-top: 1rem;">
+                <form method="post" action="wishlist_action.php" class="product-wishlist-premium">
                     <input type="hidden" name="action" value="add" />
                     <input type="hidden" name="product_id" value="<?php echo e($product['PRODUCT_ID']); ?>" />
                     <input type="hidden" name="return_url" value="product.php?product_id=<?php echo e($product['PRODUCT_ID']); ?>" />
-                    <button class="product-add-button" type="submit" style="width: 100%; font-size: 1.1rem; padding: 0.75rem; background: transparent; color: #1a1a1a; border: 1px solid #1a1a1a; display: flex; align-items: center; justify-content: center; gap: 0.5rem;" title="Save to Wishlist">
-                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <button class="filter-btn" type="submit" title="Save to Wishlist">
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
                         </svg>
-                        Add to Wishlist
+                        Save to Wishlist
                     </button>
                 </form>
                 <?php endif; ?>
@@ -234,32 +238,32 @@ require __DIR__ . '/components/header.php';
         </div>
     </section>
     
-    <section class="product-reviews" aria-labelledby="reviews-title" style="margin-top: 3rem;">
-        <div class="container" style="max-width: 800px; margin: 0 auto; background: rgba(249, 248, 243, 0.6); padding: 2rem; border-radius: 1rem; border: 1px solid rgba(26, 26, 26, 0.08);">
-            <h2 id="reviews-title" style="margin-bottom: 1.5rem;">Customer Reviews</h2>
+    <section class="product-reviews-premium" aria-labelledby="reviews-title">
+        <div class="container reviews-container-premium">
+            <h2 id="reviews-title" class="brand">Customer Reviews</h2>
             
             <?php if (empty($product['reviews'])): ?>
-                <p>No reviews yet. Buy this product to leave a review!</p>
+                <p class="no-reviews-premium">No reviews yet. Be the first to review this product!</p>
             <?php else: ?>
-                <div class="reviews-list" style="display: flex; flex-direction: column; gap: 1.5rem;">
+                <div class="reviews-list-premium">
                     <?php foreach ($product['reviews'] as $review): ?>
-                        <article class="review-item" style="border-bottom: 1px solid rgba(26, 26, 26, 0.1); padding-bottom: 1.5rem;">
-                            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
+                        <article class="review-item-premium">
+                            <div class="review-header-premium">
                                 <div>
-                                    <h3 style="font-size: 1.1rem; margin: 0;"><?php echo e($review['CUSTOMER_NAME']); ?></h3>
-                                    <div style="color: #fbbf24; font-size: 1.1rem;">
+                                    <h3><?php echo e($review['CUSTOMER_NAME']); ?></h3>
+                                    <div class="review-stars-premium">
                                         <?php
                                         $rStars = (int) $review['RATING'];
                                         for ($i = 1; $i <= 5; $i++) {
-                                            echo '<span style="color: ' . ($i <= $rStars ? '#fbbf24' : '#d1d5db') . ';">&#9733;</span>';
+                                            echo '<span style="color: ' . ($i <= $rStars ? '#fbbf24' : '#e5e7eb') . ';">&#9733;</span>';
                                         }
                                         ?>
                                     </div>
                                 </div>
-                                <span style="font-size: 0.9rem; color: #666;"><?php echo e(date('M d, Y', strtotime($review['REVIEW_DATE']))); ?></span>
+                                <span class="review-date-premium"><?php echo e(date('M d, Y', strtotime($review['REVIEW_DATE']))); ?></span>
                             </div>
                             <?php if (!empty($review['REVIEW_COMMENT'])): ?>
-                                <p style="margin: 0.5rem 0 0; color: #333; line-height: 1.5;">
+                                <p class="review-body-premium">
                                     <?php echo e(is_object($review['REVIEW_COMMENT']) ? $review['REVIEW_COMMENT']->load() : (string)$review['REVIEW_COMMENT']); ?>
                                 </p>
                             <?php endif; ?>

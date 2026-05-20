@@ -1,8 +1,8 @@
 <?php
 require_once __DIR__ . '/lib/oci_db.php';
 $conn = db_connect();
-$sql = "SELECT product_name, product_image FROM PRODUCT";
-$products = db_fetch_all($sql);
-foreach ($products as $p) {
-    echo $p['PRODUCT_NAME'] . " | " . $p['PRODUCT_IMAGE'] . "\n";
+$stmt = oci_parse($conn, "SELECT column_name FROM user_tab_cols WHERE table_name = 'SHOP'");
+oci_execute($stmt);
+while ($row = oci_fetch_assoc($stmt)) {
+    echo $row['COLUMN_NAME'] . "\n";
 }

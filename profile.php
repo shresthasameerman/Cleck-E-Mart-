@@ -6,6 +6,7 @@ require_login();
 $errors = [];
 $flashSuccess = get_flash('success');
 $userId = (int) current_user_id();
+$customerId = $userId;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $profileAction = (string) ($_POST['profile_action'] ?? '');
@@ -139,6 +140,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
     }
+
+    if ($profileAction === 'submit_review') {
+        $productId = filter_input(INPUT_POST, 'product_id', FILTER_VALIDATE_INT);
+        $rating = filter_input(INPUT_POST, 'rating', FILTER_VALIDATE_FLOAT);
+        $comment = trim($_POST['comment'] ?? '');
+
+        if ($productId === false || $productId === null || $rating === false || $rating === null || $rating < 1 || $rating > 5) {
+            $errors[] = 'Please provide a valid rating between 1 and 5 stars.';
+        } else {
+            try {
+                if (db_is_offline()) {
+                    offline_submit_review($customerId, $productId, $rating, $comment);
+                } else {
+                    $reviewId = db_next_id('REVIEW', 'review_id');
+                    db_execute(
+                        'INSERT INTO REVIEW (review_id, customer_id, product_id, rating, "COMMENT", review_date) 
+                         VALUES (:review_id, :customer_id, :product_id, :rating, :review_comment, SYSDATE)',
+                        [
+                            'review_id' => $reviewId,
+                            'customer_id' => $customerId,
+                            'product_id' => $productId,
+                            'rating' => $rating,
+                            'review_comment' => $comment === '' ? null : $comment
+                        ]
+                    );
+                }
+                set_flash('success', 'Your review has been submitted successfully.');
+                redirect('profile.php?tab=reviews');
+            } catch (Throwable $exception) {
+                $msg = $exception->getMessage();
+                if (str_contains($msg, 'unique constraint')) {
+                    $errors[] = 'You have already reviewed this product.';
+                } elseif (str_contains($msg, 'ORA-20009') || str_contains($msg, 'collected/paid for')) {
+                    $errors[] = 'You can only review products you have purchased and collected/paid for.';
+                } else {
+                    $errors[] = 'Failed to submit review: ' . $msg;
+                }
+            }
+        }
+    }
 }
 
 $user = db_is_offline()
@@ -158,20 +199,19 @@ if ($user === null) {
 $orders = [];
 $historyOrders = [];
 $reviews = [];
+$pendingReviews = [];
 $orderCount = 0;
 $reviewCount = 0;
 $savedCount = 0;
 
 $activeTab = (string) ($_GET['tab'] ?? 'orders');
 
-// Use the logged-in user id as the customer id per requirements
-$customerId = $userId;
-
 if (current_role() === 'CUSTOMER' && $customerId > 0) {
     if (db_is_offline()) {
         $orders = offline_get_orders_for_customer($customerId, 5);
         $historyOrders = offline_get_orders_for_customer($customerId, 5);
         $reviews = offline_get_reviews_for_customer($customerId, 5);
+        $pendingReviews = offline_get_pending_reviews_for_customer($customerId);
         $orderCount = offline_count_orders($customerId);
         $reviewCount = offline_count_reviews($customerId);
         $savedCount = offline_count_saved($customerId);
@@ -217,6 +257,23 @@ if (current_role() === 'CUSTOMER' && $customerId > 0) {
              WHERE r.customer_id = :customer_id
              ORDER BY r.review_date DESC
              FETCH FIRST 5 ROWS ONLY',
+            ['customer_id' => $customerId]
+        );
+
+        $pendingReviews = db_fetch_all(
+            "SELECT DISTINCT p.product_id, p.product_name, p.product_image, s.shop_name
+             FROM PRODUCT p
+             JOIN ORDER_ITEM oi ON oi.product_id = p.product_id
+             JOIN \"ORDER\" o ON o.order_id = oi.order_id
+             JOIN SHOP s ON s.shop_id = p.shop_id
+             WHERE o.customer_id = :customer_id
+               AND o.order_status IN ('PAID', 'COLLECTED')
+               AND p.product_id NOT IN (
+                   SELECT r.product_id 
+                   FROM REVIEW r 
+                   WHERE r.customer_id = :customer_id
+               )
+             ORDER BY p.product_name ASC",
             ['customer_id' => $customerId]
         );
 
@@ -479,6 +536,80 @@ require __DIR__ . '/components/header.php';
                                     <p class="order-card__summary"><?php echo e((string) ($review['REVIEW_COMMENT'] ?? '')); ?></p>
                                 </div>
                             <?php endforeach; ?>
+                        </div>
+
+                        <hr style="margin: 2.5rem 0 2rem; border: 0; border-top: 1px solid rgba(26,26,26,0.1);" />
+
+                        <div class="trader-card__header" style="margin-bottom: 1.5rem;">
+                            <div>
+                                <h2 id="pending-reviews-title">Pending Reviews</h2>
+                                <p style="margin-top: 0.25rem; font-size: 0.9rem; color: var(--color-muted);">
+                                    Products you have purchased that are waiting for your review.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="order-list">
+                            <?php if (empty($pendingReviews)): ?>
+                                <div class="order-card" style="padding: 1.5rem; text-align: center;">
+                                    <p class="order-card__summary" style="margin: 0;">You have no pending reviews. Thank you for your feedback!</p>
+                                </div>
+                            <?php else: ?>
+                                <?php foreach ($pendingReviews as $prod): ?>
+                                    <?php 
+                                    $prodId = (int)$prod['PRODUCT_ID']; 
+                                    $productImage = trim((string) ($prod['PRODUCT_IMAGE'] ?? ''));
+                                    if ($productImage === '') {
+                                        $productImage = 'assets/images/product-placeholder.svg';
+                                    } elseif (!str_starts_with($productImage, 'http://') && !str_starts_with($productImage, 'https://') && !str_starts_with($productImage, 'assets/')) {
+                                        $productImage = 'assets/images/products/' . ltrim($productImage, '/');
+                                    }
+                                    ?>
+                                    <div class="order-card" style="display: flex; flex-direction: column; gap: 1.25rem; padding: 1.25rem;">
+                                        <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+                                            <img src="<?php echo e($productImage); ?>" alt="<?php echo e($prod['PRODUCT_NAME']); ?>" style="width: 60px; height: 60px; object-fit: cover; border-radius: var(--radius-sm); border: 1px solid rgba(0,0,0,0.08);" onerror="this.src='assets/images/product-placeholder.svg'; this.onerror=null;" />
+                                            <div style="flex: 1; min-width: 200px;">
+                                                <h3 style="margin: 0; font-size: 1.05rem; font-weight: 700;"><?php echo e($prod['PRODUCT_NAME']); ?></h3>
+                                                <p style="margin: 0.2rem 0 0; font-size: 0.85rem; color: var(--color-muted);">From <?php echo e($prod['SHOP_NAME'] ?? 'Cleck E-Mart'); ?></p>
+                                            </div>
+                                        </div>
+                                        
+                                        <form class="trader-form" action="profile.php?tab=reviews" method="post" style="gap: 1rem; border-top: 1px dashed rgba(26,26,26,0.1); padding-top: 1rem;">
+                                            <input type="hidden" name="profile_action" value="submit_review" />
+                                            <input type="hidden" name="product_id" value="<?php echo $prodId; ?>" />
+                                            
+                                            <div style="display: flex; flex-direction: column; gap: 0.35rem;">
+                                                <span style="font-weight: 700; font-size: 0.9rem;">Your Rating*</span>
+                                                <div class="star-rating">
+                                                    <input type="radio" id="star5-<?php echo $prodId; ?>" name="rating" value="5" required />
+                                                    <label for="star5-<?php echo $prodId; ?>" title="5 stars">★</label>
+                                                    
+                                                    <input type="radio" id="star4-<?php echo $prodId; ?>" name="rating" value="4" />
+                                                    <label for="star4-<?php echo $prodId; ?>" title="4 stars">★</label>
+                                                    
+                                                    <input type="radio" id="star3-<?php echo $prodId; ?>" name="rating" value="3" />
+                                                    <label for="star3-<?php echo $prodId; ?>" title="3 stars">★</label>
+                                                    
+                                                    <input type="radio" id="star2-<?php echo $prodId; ?>" name="rating" value="2" />
+                                                    <label for="star2-<?php echo $prodId; ?>" title="2 stars">★</label>
+                                                    
+                                                    <input type="radio" id="star1-<?php echo $prodId; ?>" name="rating" value="1" />
+                                                    <label for="star1-<?php echo $prodId; ?>" title="1 star">★</label>
+                                                </div>
+                                            </div>
+                                            
+                                            <div style="display: flex; flex-direction: column; gap: 0.35rem;">
+                                                <label for="comment-<?php echo $prodId; ?>" style="font-weight: 700; font-size: 0.9rem;">Write your review (Optional)</label>
+                                                <textarea id="comment-<?php echo $prodId; ?>" name="comment" rows="3" placeholder="Share your experience with this product..." style="width: 100%; border: 1px solid rgba(26,26,26,0.15); border-radius: var(--radius-sm); padding: 0.65rem 0.8rem; font-family: inherit; font-size: 0.9rem; resize: vertical; background: var(--color-primary); color: var(--color-text);"></textarea>
+                                            </div>
+                                            
+                                            <button type="submit" class="profile-submit" style="width: auto; align-self: flex-start; padding: 0.65rem 1.25rem; font-size: 0.9rem; border-radius: var(--radius-sm);">
+                                                Submit Review
+                                            </button>
+                                        </form>
+                                    </div>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
                         </div>
                     </section>
 

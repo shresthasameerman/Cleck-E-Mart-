@@ -173,7 +173,11 @@ require __DIR__ . '/components/header.php';
                             </label>
                             <label class="trader-form__full">
                                 <span>Product image</span>
-                                <input type="file" name="product_image" accept="image/jpeg,image/png,image/webp,image/gif" />
+                                <div class="file-upload-wrapper">
+                                    <button type="button" class="button file-upload-btn" onclick="document.getElementById('add_product_image').click();">Browse files</button>
+                                    <span id="add_file_name" class="file-upload-name">No file selected</span>
+                                    <input type="file" id="add_product_image" name="product_image" accept="image/jpeg,image/png,image/webp,image/gif" onchange="document.getElementById('add_file_name').textContent = this.files[0] ? this.files[0].name : 'No file selected';" />
+                                </div>
                                 <small style="display: block; margin-top: 0.5rem; color: #666;">Supported formats: JPG, PNG, WebP, GIF. Max size: 5MB</small>
                             </label>
                             <label>
