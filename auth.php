@@ -155,6 +155,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $role = strtoupper((string) $user['ROLE']);
                     if ($role === 'TRADER') {
                         redirect('trader-profile.php');
+                    } elseif ($role === 'ADMIN') {
+                        redirect('admin-dashboard.php');
                     } else {
                         redirect('index.php');
                     }

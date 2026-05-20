@@ -171,20 +171,7 @@ require __DIR__ . '/components/header.php';
                     <?php endforeach; ?>
                 </div>
 
-                <!-- Trader filter group controls which trader segment is visible. -->
-                <div class="filter-group">
-                    <h2 class="filter-group__title">Traders</h2>
-                    <button class="filter-btn is-active" type="button" data-filter-type="trader" data-filter-value="all">All Traders</button>
-                    <?php
-                    $traders = [];
-                    foreach ($products as $product) {
-                        $traders[(string) $product['TRADER_NAME']] = true;
-                    }
-                    foreach (array_keys($traders) as $traderName):
-                    ?>
-                        <button class="filter-btn" type="button" data-filter-type="trader" data-filter-value="<?php echo e($buildTraderType($traderName)); ?>"><?php echo e($traderName); ?></button>
-                    <?php endforeach; ?>
-                </div>
+
 
                 <!-- Price tier filter group follows the wireframe pricing options. -->
                 <div class="filter-group">
@@ -206,22 +193,31 @@ require __DIR__ . '/components/header.php';
                         $priceTier = $price <= 10 ? '0-10' : '10-20';
                         $traderName = (string) $product['TRADER_NAME'];
                         ?>
-                        <article class="category-card" data-product-card data-category-type="<?php echo e($buildTraderType($product['CATEGORY_NAME'])); ?>" data-trader-type="<?php echo e($buildTraderType($traderName)); ?>" data-price-tier="<?php echo e($priceTier); ?>" data-name="<?php echo e($product['PRODUCT_NAME']); ?>" data-trader="<?php echo e($traderName); ?>">
+                        <article class="category-card" style="display: flex; flex-direction: column; height: 100%;" data-product-card data-category-type="<?php echo e($buildTraderType($product['CATEGORY_NAME'])); ?>" data-trader-type="<?php echo e($buildTraderType($traderName)); ?>" data-price-tier="<?php echo e($priceTier); ?>" data-name="<?php echo e($product['PRODUCT_NAME']); ?>" data-trader="<?php echo e($traderName); ?>">
                             <div class="category-card__media">
                                 <img src="<?php echo e($resolveImage($product['PRODUCT_IMAGE'] ?? null)); ?>" alt="<?php echo e($product['PRODUCT_NAME']); ?>" />
                             </div>
-                            <div class="category-card__body">
-                                <p class="category-card__trader">Trader: <?php echo e($traderName); ?></p>
-                                <h3><?php echo e($product['PRODUCT_NAME']); ?></h3>
-                                <p class="category-card__rating" aria-label="Price for <?php echo e($product['PRODUCT_NAME']); ?>">$<?php echo e(number_format($price, 2)); ?></p>
-                                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.5rem;">
-                                    <a class="category-card__button" href="product.php?product_id=<?php echo e($product['PRODUCT_ID']); ?>" style="margin-top:0;">View Product</a>
+                            <div class="category-card__body" style="display: flex; flex-direction: column; flex-grow: 1;">
+                                <p class="category-card__trader" style="margin-bottom: 0.25rem;">Trader: <?php echo e($traderName); ?></p>
+                                <h3 style="margin: 0 0 0.5rem 0; font-size: 1.1rem; line-height: 1.4; flex-grow: 1;"><?php echo e($product['PRODUCT_NAME']); ?></h3>
+                                <p class="category-card__rating" aria-label="Price for <?php echo e($product['PRODUCT_NAME']); ?>" style="margin-bottom: 1rem; font-weight: 700; font-size: 1.1rem;">$<?php echo e(number_format($price, 2)); ?></p>
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-top: auto; gap: 0.5rem;">
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; flex: 1;">
+                                        <a class="category-card__button" href="product.php?product_id=<?php echo e($product['PRODUCT_ID']); ?>" style="display: flex; align-items: center; justify-content: center; height: 100%; text-align: center; margin: 0; padding: 0.6rem 0.5rem; font-size: 0.85rem; text-transform: uppercase; font-weight: 600; letter-spacing: 0.05em; box-sizing: border-box;">View</a>
+                                        
+                                        <form method="post" action="product.php" style="margin: 0; display: flex; height: 100%;">
+                                            <input type="hidden" name="action" value="add_to_cart" />
+                                            <input type="hidden" name="product_id" value="<?php echo e($product['PRODUCT_ID']); ?>" />
+                                            <input type="hidden" name="quantity" value="1" />
+                                            <button type="submit" class="category-card__button" style="display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; margin: 0; border: none; cursor: pointer; padding: 0.6rem 0.5rem; text-align: center; font-size: 0.85rem; font-family: inherit; text-transform: uppercase; font-weight: 600; letter-spacing: 0.05em; box-sizing: border-box;">Add</button>
+                                        </form>
+                                    </div>
                                     <?php if (is_logged_in() && current_role() === 'CUSTOMER'): ?>
-                                        <form method="post" action="wishlist_action.php" style="display:inline; margin-left: 0.5rem;">
+                                        <form method="post" action="wishlist_action.php" style="display:inline; flex-shrink: 0;">
                                             <input type="hidden" name="action" value="add" />
                                             <input type="hidden" name="product_id" value="<?php echo e($product['PRODUCT_ID']); ?>" />
                                             <input type="hidden" name="return_url" value="category.php<?php echo isset($_GET['category_id']) ? '?category_id=' . (int)$_GET['category_id'] : ''; ?>" />
-                                            <button type="submit" style="background:none; border:none; color:var(--color-primary); cursor:pointer; font-size:1.5rem;" aria-label="Add to Wishlist" title="Add to Wishlist">♥</button>
+                                            <button type="submit" style="background:none; border:none; color:var(--color-primary); cursor:pointer; font-size:1.5rem; padding: 0;" aria-label="Add to Wishlist" title="Add to Wishlist">♥</button>
                                         </form>
                                     <?php endif; ?>
                                 </div>
