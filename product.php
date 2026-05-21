@@ -112,10 +112,12 @@ if ($productId !== false && $productId !== null) {
                 $relatedProducts = db_fetch_all(
                     "SELECT p.product_id, p.product_name, p.price, p.product_image, d.discount_percentage
                      FROM PRODUCT p
+                     JOIN SHOP s ON s.shop_id = p.shop_id
                      LEFT JOIN DISCOUNT d ON p.discount_id = d.discount_id AND d.end_date >= SYSDATE
                      WHERE p.category_id = (SELECT category_id FROM PRODUCT WHERE product_id = :product_id)
                        AND p.product_id != :product_id
                        AND p.product_verification_status = 'APPROVED'
+                       AND s.shop_status = 'ACTIVE'
                      FETCH FIRST 4 ROWS ONLY",
                     ['product_id' => $productId]
                 );

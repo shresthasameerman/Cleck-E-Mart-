@@ -19,14 +19,14 @@ $isShopActive = isset($shop['SHOP_STATUS']) && strtoupper($shop['SHOP_STATUS']) 
 if (!$isVerified) {
     $errors[] = 'Your trader account is pending admin verification. You will be able to add products once your account has been verified.';
 } elseif (!$isShopActive) {
-    $errors[] = 'Your shop is pending verification. You will be able to add products once this shop is ACTIVE.';
+    $errors[] = 'Your shop is not active (pending or suspended). You cannot add products at this time.';
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['product_action'] ?? '') === 'save_product') {
     if (!$isVerified) {
         $errors[] = 'Cannot add products. Please wait for admin verification of your trader account.';
     } elseif (!$isShopActive) {
-        $errors[] = 'Cannot add products. Please wait for admin verification of your shop.';
+        $errors[] = 'Cannot add products. Your shop is not active.';
     } else {
         try {
             // Handle image upload
@@ -125,8 +125,8 @@ require __DIR__ . '/components/header.php';
 
                     <?php if (!$isVerified || !$isShopActive): ?>
                         <div style="padding: 2rem; text-align: center;">
-                            <p style="font-size: 1.1rem; margin-bottom: 1rem;"><?php echo !$isVerified ? 'Your trader account is currently pending admin verification.' : 'This shop is currently pending verification.'; ?></p>
-                            <p style="color: #666;">Once <?php echo !$isVerified ? 'your account' : 'your shop'; ?> has been verified by an administrator, you will be able to add products to the platform.</p>
+                            <p style="font-size: 1.1rem; margin-bottom: 1rem;"><?php echo !$isVerified ? 'Your trader account is currently pending admin verification.' : 'This shop is not active (pending or suspended).'; ?></p>
+                            <p style="color: #666;">Once <?php echo !$isVerified ? 'your account' : 'your shop'; ?> has been verified and set to ACTIVE by an administrator, you will be able to add products to the platform.</p>
                             <p style="margin-top: 1.5rem; color: #999; font-size: 0.9rem;">Check back soon, or contact support for more information.</p>
                         </div>
                     <?php else: ?>
