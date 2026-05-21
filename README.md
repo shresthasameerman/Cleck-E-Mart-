@@ -160,7 +160,7 @@ php -S localhost:8000
 
 Then open `http://localhost:8000/`.
 
-### Important Schema Notes
+### Important Schema Note
 
 - Your SQL uses a supertype/subtype model where `CUSTOMER.customer_id` and `TRADER.trader_id` match `USER.user_id`. This is fully respected by the integration.
 - IDs are currently generated with `MAX(id) + 1` in PHP helper code. For production, replace this with Oracle sequences + triggers (or identity strategy) to avoid race conditions under concurrent traffic.
