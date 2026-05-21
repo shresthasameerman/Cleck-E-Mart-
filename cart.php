@@ -196,6 +196,7 @@ require __DIR__ . '/components/header.php';
 
                 <?php if ($items !== []): ?>
                     <a class="cart-summary__button button" href="collection.php">Choose Your Collection Slot</a>
+                    <a class="cart-summary__button button cart-summary__button--outline" href="category.php">Continue Shopping</a>
                 <?php endif; ?>
             </aside>
             </div>
