@@ -124,17 +124,15 @@ if (!db_is_offline()) {
 
         $revenueByTrader = db_fetch_all("
             SELECT u.first_name || ' ' || u.last_name AS trader_name,
-                   SUM(oi.quantity * oi.unit_price) AS total_revenue
-            FROM ORDER_ITEM oi
-            JOIN PRODUCT p ON oi.product_id = p.product_id
-            JOIN SHOP s ON p.shop_id = s.shop_id
-            JOIN TRADER t ON s.trader_id = t.trader_id
-            JOIN \"USER\" u ON t.trader_id = u.user_id
-            JOIN \"ORDER\" o ON oi.order_id = o.order_id
-            WHERE o.order_status IN ('PAID', 'COLLECTED', 'DELIVERED')
+                   NVL(SUM(CASE WHEN o.order_status IN ('COLLECTED', 'PAID', 'READY') THEN (oi.quantity * oi.unit_price) ELSE 0 END), 0) AS total_revenue
+            FROM \"USER\" u
+            JOIN TRADER t ON u.user_id = t.trader_id
+            LEFT JOIN SHOP s ON t.trader_id = s.trader_id
+            LEFT JOIN PRODUCT p ON s.shop_id = p.shop_id
+            LEFT JOIN ORDER_ITEM oi ON p.product_id = oi.product_id
+            LEFT JOIN \"ORDER\" o ON oi.order_id = o.order_id
             GROUP BY u.first_name, u.last_name
             ORDER BY total_revenue DESC
-            FETCH FIRST 5 ROWS ONLY
         ");
 
         $weeklyRevenueData = db_fetch_all("
@@ -435,7 +433,7 @@ require __DIR__ . '/components/header.php';
                 </div>
                 
                 <div class="admin-panel">
-                    <h3>Top Traders by Revenue</h3>
+                    <h3>All Traders by Revenue</h3>
                     <?php if (empty($revenueByTrader)): ?>
                         <p style="color: var(--color-muted);">No revenue data available yet.</p>
                     <?php else: ?>
