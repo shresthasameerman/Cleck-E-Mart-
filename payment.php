@@ -311,7 +311,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'paypa
             }
             
             $paymentSql = "INSERT INTO PAYMENT (order_id, amount_paid, payment_method, payment_status, payment_date, transaction_reference) 
-                           VALUES (:order_id, :amount, 'PAYPAL', 'COMPLETED', SYSDATE, :transaction_reference)";
+                           VALUES (:order_id, :amount, 'PAYPAL', 'PAID', SYSDATE, :transaction_reference)";
             
             $paymentStmt = oci_parse($conn, $paymentSql);
             if (!$paymentStmt) {
@@ -353,52 +353,64 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'paypa
                 <head>
                 <title>Invoice for Order #{$newOrderId}</title>
                 <style>
-                    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-                    .invoice-box { max-width: 800px; margin: auto; padding: 30px; border: 1px solid #eee; box-shadow: 0 0 10px rgba(0, 0, 0, 0.15); }
-                    .header { text-align: center; margin-bottom: 20px; }
-                    .table { width: 100%; border-collapse: collapse; }
-                    .table th, .table td { padding: 10px; border-bottom: 1px solid #ddd; text-align: left; }
-                    .total { font-weight: bold; font-size: 1.2em; text-align: right; }
+                    body { font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333; background-color: #f9f9f9; padding: 20px; }
+                    .invoice-box { max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 8px 24px rgba(0,0,0,0.05); }
+                    .header { background-color: #1a3018; color: #ffffff; padding: 40px 30px; text-align: center; }
+                    .header h2 { margin: 0 0 10px; font-size: 28px; letter-spacing: 1px; }
+                    .header p { margin: 0; opacity: 0.9; font-size: 16px; }
+                    .content { padding: 40px 30px; }
+                    .greeting { font-size: 18px; margin-top: 0; color: #1a3018; font-weight: 600; }
+                    .table { width: 100%; border-collapse: separate; border-spacing: 0; margin: 30px 0; }
+                    .table th { background: #f4f6f4; color: #1a3018; padding: 15px; text-align: left; font-weight: 600; border-bottom: 2px solid #e0e4e0; }
+                    .table td { padding: 15px; border-bottom: 1px solid #eee; color: #555; }
+                    .table tr:last-child td { border-bottom: none; }
+                    .total-row { background: #1a3018; color: #fff; border-radius: 8px; }
+                    .total-row td { color: #fff; font-weight: bold; font-size: 18px; border: none; padding: 20px 15px; }
+                    .footer { text-align: center; padding: 30px; color: #888; font-size: 14px; background: #fafafa; border-top: 1px solid #eee; }
                 </style>
                 </head>
                 <body>
                     <div class='invoice-box'>
                         <div class='header'>
-                            <h2>Cleck E-Mart</h2>
-                            <p>Invoice for Order #{$newOrderId}</p>
+                            <h2>CLECK E-MART</h2>
+                            <p>Official Invoice &bull; Order #{$newOrderId}</p>
                         </div>
-                        <p>Dear {$customerName},</p>
-                        <p>Thank you for your purchase! Here are the details of your order:</p>
-                        <table class='table'>
-                            <thead>
-                                <tr>
-                                    <th>Item</th>
-                                    <th>Quantity</th>
-                                    <th>Unit Price</th>
-                                    <th>Line Total</th>
-                                </tr>
-                            </thead>
-                            <tbody>";
+                        <div class='content'>
+                            <p class='greeting'>Dear {$customerName},</p>
+                            <p>Thank you for your purchase! Your payment has been successfully processed. Here is the invoice for your order:</p>
+                            <table class='table'>
+                                <thead>
+                                    <tr>
+                                        <th>Item Description</th>
+                                        <th style='text-align: center;'>Qty</th>
+                                        <th style='text-align: right;'>Amount</th>
+                                    </tr>
+                                </thead>
+                                <tbody>";
                             
                 foreach ($normalizedItems as $line) {
                     $itemTotal = number_format($line['line_total'], 2);
-                    $unitPrice = number_format($line['unit_price'], 2);
                     $message .= "
-                                <tr>
-                                    <td>{$line['name']}</td>
-                                    <td>{$line['quantity']}</td>
-                                    <td>£{$unitPrice}</td>
-                                    <td>£{$itemTotal}</td>
-                                </tr>";
+                                    <tr>
+                                        <td>{$line['name']}</td>
+                                        <td style='text-align: center;'>{$line['quantity']}</td>
+                                        <td style='text-align: right;'>£{$itemTotal}</td>
+                                    </tr>";
                 }
                 
                 $formattedTotal = number_format($total, 2);
                 $message .= "
-                            </tbody>
-                        </table>
-                        <p class='total'>Total Amount: £{$formattedTotal}</p>
-                        <p>We hope to see you again soon!</p>
-                        <p>Regards,<br>The Cleck E-Mart Team</p>
+                                    <tr class='total-row'>
+                                        <td colspan='2' style='text-align: right; border-radius: 8px 0 0 8px;'><strong>Total Paid:</strong></td>
+                                        <td style='text-align: right; border-radius: 0 8px 8px 0;'><strong>£{$formattedTotal}</strong></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            <p>If you have any questions regarding this invoice, simply reply to this email.</p>
+                        </div>
+                        <div class='footer'>
+                            <p>Cleck E-Mart &copy; " . date('Y') . "<br>Bringing fresh goods to your doorstep.</p>
+                        </div>
                     </div>
                 </body>
                 </html>
