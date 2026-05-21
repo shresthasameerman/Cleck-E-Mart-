@@ -379,6 +379,25 @@ INSERT INTO COLLECTION_SLOT (slot_id, slot_time, slot_date, max_orders, slot_sta
 INSERT INTO COLLECTION_SLOT (slot_id, slot_time, slot_date, max_orders, slot_status) VALUES (516, '10:00-13:00', DATE '2026-05-22', 20, 'AVAILABLE');
 INSERT INTO COLLECTION_SLOT (slot_id, slot_time, slot_date, max_orders, slot_status) VALUES (517, '13:00-16:00', DATE '2026-05-22', 20, 'AVAILABLE');
 INSERT INTO COLLECTION_SLOT (slot_id, slot_time, slot_date, max_orders, slot_status) VALUES (518, '16:00-19:00', DATE '2026-05-22', 20, 'AVAILABLE');
+INSERT INTO COLLECTION_SLOT (slot_id, slot_time, slot_date, max_orders, slot_status) VALUES (519, '16:00-19:00', DATE '2026-05-27', 20, 'AVAILABLE');
+INSERT INTO COLLECTION_SLOT (slot_id, slot_time, slot_date, max_orders, slot_status) VALUES (520, '16:00-19:00', DATE '2026-05-28', 20, 'AVAILABLE');
+INSERT INTO COLLECTION_SLOT (slot_id, slot_time, slot_date, max_orders, slot_status) VALUES (521, '16:00-19:00', DATE '2026-05-29', 20, 'AVAILABLE');
+
+INSERT INTO COLLECTION_SLOT (slot_id, slot_time, slot_date, max_orders, slot_status) VALUES (522, '16:00-19:00', DATE '2026-06-03', 20, 'AVAILABLE');
+INSERT INTO COLLECTION_SLOT (slot_id, slot_time, slot_date, max_orders, slot_status) VALUES (523, '16:00-19:00', DATE '2026-06-04', 20, 'AVAILABLE');
+INSERT INTO COLLECTION_SLOT (slot_id, slot_time, slot_date, max_orders, slot_status) VALUES (524, '16:00-19:00', DATE '2026-06-05', 20, 'AVAILABLE');
+
+INSERT INTO COLLECTION_SLOT (slot_id, slot_time, slot_date, max_orders, slot_status) VALUES (525, '16:00-19:00', DATE '2026-06-10', 20, 'AVAILABLE');
+INSERT INTO COLLECTION_SLOT (slot_id, slot_time, slot_date, max_orders, slot_status) VALUES (526, '16:00-19:00', DATE '2026-06-11', 20, 'AVAILABLE');
+INSERT INTO COLLECTION_SLOT (slot_id, slot_time, slot_date, max_orders, slot_status) VALUES (527, '16:00-19:00', DATE '2026-06-12', 20, 'AVAILABLE');
+
+INSERT INTO COLLECTION_SLOT (slot_id, slot_time, slot_date, max_orders, slot_status) VALUES (528, '16:00-19:00', DATE '2026-06-17', 20, 'AVAILABLE');
+INSERT INTO COLLECTION_SLOT (slot_id, slot_time, slot_date, max_orders, slot_status) VALUES (529, '16:00-19:00', DATE '2026-06-18', 20, 'AVAILABLE');
+INSERT INTO COLLECTION_SLOT (slot_id, slot_time, slot_date, max_orders, slot_status) VALUES (530, '16:00-19:00', DATE '2026-06-19', 20, 'AVAILABLE');
+
+INSERT INTO COLLECTION_SLOT (slot_id, slot_time, slot_date, max_orders, slot_status) VALUES (531, '16:00-19:00', DATE '2026-06-24', 20, 'AVAILABLE');
+INSERT INTO COLLECTION_SLOT (slot_id, slot_time, slot_date, max_orders, slot_status) VALUES (532, '16:00-19:00', DATE '2026-06-25', 20, 'AVAILABLE');
+INSERT INTO COLLECTION_SLOT (slot_id, slot_time, slot_date, max_orders, slot_status) VALUES (533, '16:00-19:00', DATE '2026-06-26', 20, 'AVAILABLE');
 
 -- ============================================================
 -- 10. COUPON

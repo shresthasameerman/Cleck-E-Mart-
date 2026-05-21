@@ -232,7 +232,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'paypa
             $newOrderId = db_next_id('"ORDER"', 'order_id');
 
             $orderSql = "INSERT INTO \"ORDER\" (order_id, customer_id, slot_id, coupon_id, order_status, order_date) 
-                         VALUES (:order_id, :customer_id, :slot_id, :coupon_id, 'PAID', SYSDATE)";
+                         VALUES (:order_id, :customer_id, :slot_id, :coupon_id, 'PENDING', SYSDATE)";
             
             $orderStmt = oci_parse($conn, $orderSql);
             if (!$orderStmt) {
@@ -285,6 +285,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'paypa
             }
             
             oci_free_statement($itemStmt);
+            
+            // ====================================================================
+            // STEP 2.5: UPDATE ORDER TO PAID (Triggers stock deduction)
+            // ====================================================================
+            
+            $updateOrderSql = "UPDATE \"ORDER\" SET order_status = 'PAID' WHERE order_id = :order_id";
+            $updateOrderStmt = oci_parse($conn, $updateOrderSql);
+            if (!$updateOrderStmt) {
+                throw new Exception('Failed to parse ORDER update: ' . oci_error($conn)['message']);
+            }
+            oci_bind_by_name($updateOrderStmt, ':order_id', $newOrderId, -1, SQLT_INT);
+            if (!oci_execute($updateOrderStmt, OCI_NO_AUTO_COMMIT)) {
+                throw new Exception('Failed to update ORDER to PAID: ' . oci_error($updateOrderStmt)['message']);
+            }
+            oci_free_statement($updateOrderStmt);
 
             // ====================================================================
             // STEP 3: INSERT PAYMENT RECORD
