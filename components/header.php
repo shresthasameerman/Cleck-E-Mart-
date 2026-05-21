@@ -41,11 +41,46 @@ if ($headerIsAdmin) {
     <!-- Accessibility: allows keyboard users to skip repeated navigation quickly. -->
     <a class="skip-link" href="#main-content">Skip to content</a>
 
+    <!-- Premium Announcement Bar -->
+    <?php
+    $currentPage = basename($_SERVER['PHP_SELF']);
+    if ($currentPage === 'index.php'):
+        $coupons = [];
+        try {
+            if (function_exists('db_is_offline') && !db_is_offline()) {
+                $sql = "SELECT coupon_code, discount_amount, minimum_order_amount FROM COUPON";
+                $coupons = db_fetch_all($sql);
+            }
+        } catch (Throwable $e) {
+            // ignore
+        }
+        if (!empty($coupons)):
+    ?>
+    <div class="promo-marquee">
+        <div class="promo-marquee__content">
+            <!-- First set -->
+            <?php foreach ($coupons as $coupon): ?>
+                <div class="promo-item">✨ Use code <span class="promo-code"><?php echo htmlspecialchars($coupon['COUPON_CODE'], ENT_QUOTES, 'UTF-8'); ?></span> for $<?php echo htmlspecialchars($coupon['DISCOUNT_AMOUNT'], ENT_QUOTES, 'UTF-8'); ?> off on orders over $<?php echo htmlspecialchars($coupon['MINIMUM_ORDER_AMOUNT'], ENT_QUOTES, 'UTF-8'); ?>!</div>
+                <span class="promo-divider">•</span>
+            <?php endforeach; ?>
+            
+            <!-- Duplicated set for seamless loop -->
+            <?php foreach ($coupons as $coupon): ?>
+                <div class="promo-item">✨ Use code <span class="promo-code"><?php echo htmlspecialchars($coupon['COUPON_CODE'], ENT_QUOTES, 'UTF-8'); ?></span> for $<?php echo htmlspecialchars($coupon['DISCOUNT_AMOUNT'], ENT_QUOTES, 'UTF-8'); ?> off on orders over $<?php echo htmlspecialchars($coupon['MINIMUM_ORDER_AMOUNT'], ENT_QUOTES, 'UTF-8'); ?>!</div>
+                <span class="promo-divider">•</span>
+            <?php endforeach; ?>
+        </div>
+    </div>
+    <?php 
+        endif;
+    endif;
+    ?>
+
     <!-- Site header / navigation -->
     <header class="site-header">
         <div class="container site-header__bar">
             <a class="brand" href="index.php" aria-label="Cleck E-Mart home">
-                <img class="brand__logo" src="assets/images/Primary_Logo.png" alt="Cleck E-Mart" />
+                <img class="brand__logo" src="assets/images/logos/Favicon%20Logo.svg" alt="Cleck E-Mart" />
             </a>
 
             <nav class="site-nav" aria-label="Primary navigation" data-nav>

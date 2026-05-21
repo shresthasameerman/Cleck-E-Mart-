@@ -51,6 +51,7 @@ try {
                 'product_id' => $productId,
                 'product_name' => (string) ($row['PRODUCT_NAME'] ?? ''),
                 'product_description' => (string) ($row['PRODUCT_DESCRIPTION'] ?? ''),
+                'allergy_information' => (string) ($row['ALLERGY_INFORMATION'] ?? 'None'),
                 'price' => (float) ($row['PRICE'] ?? 0),
                 'product_image' => default_product_image($productId, $uploadedImage, 400),
                 'discount_percentage' => null,
@@ -65,6 +66,7 @@ try {
         $sql = "SELECT p.product_id,
                        p.product_name,
                        p.product_description,
+                       p.allergy_information,
                        p.price,
                        p.product_image,
                        p.product_status,
@@ -129,6 +131,7 @@ try {
                 'product_id' => $productId,
                 'product_name' => (string) ($row['PRODUCT_NAME'] ?? ''),
                 'product_description' => is_object($row['PRODUCT_DESCRIPTION']) ? $row['PRODUCT_DESCRIPTION']->load() : (string) ($row['PRODUCT_DESCRIPTION'] ?? ''),
+                'allergy_information' => (string) ($row['ALLERGY_INFORMATION'] ?? 'None'),
                 'price' => (float) ($row['PRICE'] ?? 0),
                 'product_image' => default_product_image($productId, $uploadedImage, 400),
                 'discount_percentage' => isset($row['DISCOUNT_PERCENTAGE']) ? (float) $row['DISCOUNT_PERCENTAGE'] : null,
@@ -158,7 +161,7 @@ require __DIR__ . '/components/header.php';
         <div class="container">
             <div class="welcome-hero__banner">
                 <h1 id="welcome-title" class="sr-only">Welcome back to Cleck E-Mart</h1>
-                <img src="assets/images/banner.png" alt="Cleck E-Mart Farmers Market" style="width: 100%; height: auto; border-radius: var(--radius-lg); object-fit: cover; max-height: 400px;" />
+                <img src="assets/images/banners/banner.png" alt="Cleck E-Mart Farmers Market" style="width: 100%; height: auto; border-radius: var(--radius-lg); object-fit: cover; max-height: 400px;" />
             </div>
         </div>
     </section>
@@ -191,27 +194,38 @@ require __DIR__ . '/components/header.php';
             <?php else: ?>
                 <div class="card-grid card-grid--four">
                     <?php foreach ($displayProducts as $product): ?>
-                        <article class="product-card">
-                            <div class="product-card__media">
-                                <img src="<?php echo htmlspecialchars((string) $product['product_image'], ENT_QUOTES, 'UTF-8'); ?>" alt="<?php echo htmlspecialchars((string) $product['product_name'], ENT_QUOTES, 'UTF-8'); ?>" />
-                            </div>
-                            <div class="product-card__content">
-                                <h3><?php echo htmlspecialchars((string) $product['product_name'], ENT_QUOTES, 'UTF-8'); ?></h3>
-                                <p><?php echo htmlspecialchars((string) $product['product_description'], ENT_QUOTES, 'UTF-8'); ?></p>
-                                <p class="product-card__shop">Shop: <?php echo htmlspecialchars((string) $product['shop_name'], ENT_QUOTES, 'UTF-8'); ?></p>
-                                <p class="product-card__category">Category: <?php echo htmlspecialchars((string) $product['category_name'], ENT_QUOTES, 'UTF-8'); ?></p>
-                                <p class="product-card__price"><?php echo format_product_price($product); ?></p>
-                                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.5rem;">
-                                    <a class="product-card__link" href="product.php?product_id=<?php echo (int) $product['product_id']; ?>">View details</a>
-                                    <?php if (is_logged_in() && current_role() === 'CUSTOMER'): ?>
-                                        <form method="post" action="product.php" style="display:inline;">
-                                            <input type="hidden" name="action" value="add_to_wishlist" />
-                                            <input type="hidden" name="product_id" value="<?php echo (int) $product['product_id']; ?>" />
-                                            <button type="submit" style="background:none; border:none; color:var(--color-primary); cursor:pointer; font-size:1.5rem;" aria-label="Add to Wishlist" title="Add to Wishlist">♥</button>
-                                        </form>
+                        <article class="product-card" style="background: #ffffff; border-radius: var(--radius-lg); box-shadow: 0 4px 12px rgba(0,0,0,0.04); display: flex; flex-direction: column; overflow: hidden; transition: transform 0.2s ease, box-shadow 0.2s ease; height: 100%;">
+                            <a href="product.php?product_id=<?php echo (int) $product['product_id']; ?>" style="text-decoration: none; color: inherit; display: flex; flex-direction: column; flex: 1;">
+                                <div class="product-card__media" style="position: relative; height: 220px; background: #ffffff; display: flex; align-items: center; justify-content: center; padding: 2rem; border-bottom: 1px solid rgba(0,0,0,0.03);">
+                                    <?php 
+                                        $discount = isset($product['discount_percentage']) ? (float) $product['discount_percentage'] : 0;
+                                        if ($discount > 0): 
+                                    ?>
+                                        <span style="position: absolute; top: 1rem; right: 1rem; background: #e8f5e9; color: var(--color-brand-green); font-size: 0.75rem; font-weight: 700; padding: 0.3rem 0.6rem; border-radius: 4px; z-index: 1;">-<?php echo $discount; ?>%</span>
                                     <?php endif; ?>
+                                    <img src="<?php echo htmlspecialchars((string) $product['product_image'], ENT_QUOTES, 'UTF-8'); ?>" alt="<?php echo htmlspecialchars((string) $product['product_name'], ENT_QUOTES, 'UTF-8'); ?>" style="max-height: 100%; max-width: 100%; object-fit: contain; border-radius: 4px;" />
                                 </div>
-                            </div>
+                                <div class="product-card__content" style="padding: 1.5rem; display: flex; flex-direction: column; flex: 1;">
+                                    <span style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-muted); margin-bottom: 0.5rem; display: block;"><?php echo htmlspecialchars((string) $product['category_name'], ENT_QUOTES, 'UTF-8'); ?></span>
+                                    <h3 style="font-family: 'Playfair Display', serif; font-size: 1.25rem; color: var(--color-brand-green); margin: 0 0 0.5rem 0; font-weight: 700; line-height: 1.3;"><?php echo htmlspecialchars((string) $product['product_name'], ENT_QUOTES, 'UTF-8'); ?></h3>
+                                    <span style="font-size: 0.85rem; color: var(--color-muted); margin-bottom: 1.5rem; display: block;">By <?php echo htmlspecialchars((string) $product['shop_name'], ENT_QUOTES, 'UTF-8'); ?></span>
+                                    
+                                    <div style="margin-top: auto; display: flex; justify-content: space-between; align-items: flex-end;">
+                                        <div>
+                                            <?php 
+                                                $rawPrice = (float) $product['price'];
+                                                if ($discount > 0) {
+                                                    $discounted = $rawPrice * (1 - $discount / 100);
+                                                    echo '<span style="color: var(--color-muted); font-size: 0.95rem; text-decoration: line-through; margin-right: 0.5rem;">&pound;' . number_format($rawPrice, 2) . '</span>';
+                                                    echo '<span style="color: var(--color-brand-green); font-size: 1.3rem; font-weight: 700;">&pound;' . number_format($discounted, 2) . '</span>';
+                                                } else {
+                                                    echo '<span style="color: var(--color-brand-green); font-size: 1.3rem; font-weight: 700;">&pound;' . number_format($rawPrice, 2) . '</span>';
+                                                }
+                                            ?>
+                                        </div>
+                                    </div>
+                                </div>
+                            </a>
                         </article>
                     <?php endforeach; ?>
                 </div>
@@ -224,14 +238,14 @@ require __DIR__ . '/components/header.php';
             <h2 class="section-heading__title-sm" style="margin-bottom: 1.5rem;">Special Offers</h2>
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem;">
                 <a href="category.php?category_id=6104" style="position: relative; display: block; border-radius: var(--radius-lg); overflow: hidden; text-decoration: none;">
-                    <img src="assets/images/promo_bakery.png" alt="Bakery Discount" style="width: 100%; height: 250px; object-fit: cover; display: block; transition: transform 0.3s ease;" />
+                    <img src="assets/images/banners/promo_bakery.png" alt="Bakery Discount" style="width: 100%; height: 250px; object-fit: cover; display: block; transition: transform 0.3s ease;" />
                     <div style="position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.8), rgba(0,0,0,0.1)); display: flex; flex-direction: column; justify-content: flex-end; padding: 2rem;">
                         <span style="color: white; font-weight: bold; font-size: 1.5rem; margin-bottom: 0.5rem;">15% OFF Bakery</span>
                         <span style="color: rgba(255,255,255,0.9); font-size: 1rem;">Fresh sourdough, croissants & more</span>
                     </div>
                 </a>
                 <a href="category.php?category_id=6102" style="position: relative; display: block; border-radius: var(--radius-lg); overflow: hidden; text-decoration: none;">
-                    <img src="assets/images/promo_produce.png" alt="Produce Discount" style="width: 100%; height: 250px; object-fit: cover; display: block; transition: transform 0.3s ease;" />
+                    <img src="assets/images/banners/promo_produce.png" alt="Produce Discount" style="width: 100%; height: 250px; object-fit: cover; display: block; transition: transform 0.3s ease;" />
                     <div style="position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.8), rgba(0,0,0,0.1)); display: flex; flex-direction: column; justify-content: flex-end; padding: 2rem;">
                         <span style="color: white; font-weight: bold; font-size: 1.5rem; margin-bottom: 0.5rem;">10% OFF Fresh Produce</span>
                         <span style="color: rgba(255,255,255,0.9); font-size: 1rem;">Organic vegetables straight from the farm</span>
@@ -286,24 +300,29 @@ require __DIR__ . '/components/header.php';
             <?php else: ?>
                 <div class="card-grid">
                     <?php foreach ($displayProducts as $product): ?>
-                        <article class="product-card">
-                            <div class="product-card__media">
-                                <img src="<?php echo htmlspecialchars((string) $product['product_image'], ENT_QUOTES, 'UTF-8'); ?>" alt="<?php echo htmlspecialchars((string) $product['product_name'], ENT_QUOTES, 'UTF-8'); ?>" />
-                            </div>
-                            <div class="product-card__content">
-                                <h3><?php echo htmlspecialchars((string) $product['product_name'], ENT_QUOTES, 'UTF-8'); ?></h3>
-                                <p><?php echo htmlspecialchars((string) $product['product_description'], ENT_QUOTES, 'UTF-8'); ?></p>
-                                <div class="product-card__meta">
-                                    <span class="product-card__price"><?php echo format_product_price($product); ?></span>
-                                    <a class="product-card__link" href="product.php?product_id=<?php echo (int) $product['product_id']; ?>">View details</a>
-                                    <?php if (is_logged_in() && current_role() === 'CUSTOMER'): ?>
-                                        <form method="post" action="product.php" style="display:inline; margin-left: 0.5rem;">
-                                            <input type="hidden" name="action" value="add_to_wishlist" />
-                                            <input type="hidden" name="product_id" value="<?php echo (int) $product['product_id']; ?>" />
-                                            <button type="submit" style="background:none; border:none; color:var(--color-primary); cursor:pointer; font-size:1.5rem;" aria-label="Add to Wishlist" title="Add to Wishlist">♥</button>
-                                        </form>
-                                    <?php endif; ?>
+                        <article class="product-card" style="background: #ffffff; padding: 1.5rem; border-radius: var(--radius-lg); box-shadow: 0 4px 12px rgba(0,0,0,0.03); display: flex; flex-direction: column;">
+                            <a href="product.php?product_id=<?php echo (int) $product['product_id']; ?>" style="text-decoration: none; color: inherit; display: block; flex: 1;">
+                                <div class="product-card__media" style="text-align: center; margin-bottom: 1rem; height: 160px; display: flex; align-items: center; justify-content: center; background: #f9f9f9; border-radius: var(--radius-md);">
+                                    <img src="<?php echo htmlspecialchars((string) $product['product_image'], ENT_QUOTES, 'UTF-8'); ?>" alt="<?php echo htmlspecialchars((string) $product['product_name'], ENT_QUOTES, 'UTF-8'); ?>" style="max-height: 100%; max-width: 100%; object-fit: contain; border-radius: 8px;" />
                                 </div>
+                                <div class="product-card__content">
+                                    <h3 style="font-family: 'Playfair Display', serif; font-size: 1.1rem; color: var(--color-brand-green); margin-bottom: 0.75rem; font-weight: 700;"><?php echo htmlspecialchars((string) $product['product_name'], ENT_QUOTES, 'UTF-8'); ?></h3>
+                                    <?php 
+                                        $desc = htmlspecialchars((string) $product['product_description'], ENT_QUOTES, 'UTF-8');
+                                        $shortDesc = explode('.', $desc, 2)[0] . '.';
+                                    ?>
+                                    <p style="font-size: 0.85rem; color: var(--color-muted); line-height: 1.4; margin-bottom: 0.5rem;"><?php echo $shortDesc; ?></p>
+                                </div>
+                            </a>
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-top: auto;">
+                                <p class="product-card__price" style="font-weight: 700; color: var(--color-text); font-size: 1.05rem; margin: 0;"><?php echo format_product_price($product); ?></p>
+                                <?php if (is_logged_in() && current_role() === 'CUSTOMER'): ?>
+                                    <form method="post" action="product.php" style="display:inline; margin: 0;">
+                                        <input type="hidden" name="action" value="add_to_wishlist" />
+                                        <input type="hidden" name="product_id" value="<?php echo (int) $product['product_id']; ?>" />
+                                        <button type="submit" style="background:none; border:none; color:var(--color-primary); cursor:pointer; font-size:1.5rem;" aria-label="Add to Wishlist" title="Add to Wishlist">♥</button>
+                                    </form>
+                                <?php endif; ?>
                             </div>
                         </article>
                     <?php endforeach; ?>

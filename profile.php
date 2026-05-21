@@ -560,14 +560,14 @@ require __DIR__ . '/components/header.php';
                                     $prodId = (int)$prod['PRODUCT_ID']; 
                                     $productImage = trim((string) ($prod['PRODUCT_IMAGE'] ?? ''));
                                     if ($productImage === '') {
-                                        $productImage = 'assets/images/product-placeholder.svg';
+                                        $productImage = 'assets/images/icons/product-placeholder.svg';
                                     } elseif (!str_starts_with($productImage, 'http://') && !str_starts_with($productImage, 'https://') && !str_starts_with($productImage, 'assets/')) {
                                         $productImage = 'assets/images/products/' . ltrim($productImage, '/');
                                     }
                                     ?>
                                     <div class="order-card" style="display: flex; flex-direction: column; gap: 1.25rem; padding: 1.25rem;">
                                         <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
-                                            <img src="<?php echo e($productImage); ?>" alt="<?php echo e($prod['PRODUCT_NAME']); ?>" style="width: 60px; height: 60px; object-fit: cover; border-radius: var(--radius-sm); border: 1px solid rgba(0,0,0,0.08);" onerror="this.src='assets/images/product-placeholder.svg'; this.onerror=null;" />
+                                            <img src="<?php echo e($productImage); ?>" alt="<?php echo e($prod['PRODUCT_NAME']); ?>" style="width: 60px; height: 60px; object-fit: cover; border-radius: var(--radius-sm); border: 1px solid rgba(0,0,0,0.08);" onerror="this.src='assets/images/icons/product-placeholder.svg'; this.onerror=null;" />
                                             <div style="flex: 1; min-width: 200px;">
                                                 <h3 style="margin: 0; font-size: 1.05rem; font-weight: 700;"><?php echo e($prod['PRODUCT_NAME']); ?></h3>
                                                 <p style="margin: 0.2rem 0 0; font-size: 0.85rem; color: var(--color-muted);">From <?php echo e($prod['SHOP_NAME'] ?? 'Cleck E-Mart'); ?></p>

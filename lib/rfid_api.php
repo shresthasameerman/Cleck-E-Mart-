@@ -28,7 +28,7 @@ try {
                 exit;
             }
 
-            // Hardcode mapping for demo purposes as requested by user
+            // Hardcode mapping 
             $customerId = null;
             if ($uid === 'F3DA841A' || $uid === 'F3FAA12A') {
                 $customerId = 1001; // Map these specific RFID tags to customer 1001

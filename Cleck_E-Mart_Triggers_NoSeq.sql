@@ -325,29 +325,28 @@ CREATE OR REPLACE TRIGGER trg_slot_capacity_check
 BEFORE INSERT ON "ORDER"
 FOR EACH ROW
 DECLARE
-    v_order_count NUMBER;
-    v_max_orders  NUMBER;
+    v_current_orders NUMBER;
 BEGIN
-    -- Get the configured max for this slot
+    -- Get the current order count for this slot (stored in max_orders)
     SELECT max_orders
-    INTO v_max_orders
+    INTO v_current_orders
     FROM COLLECTION_SLOT
-    WHERE slot_id = :NEW.slot_id;
- 
-    -- Count only active (non-cancelled) orders already in the slot
-    SELECT COUNT(*)
-    INTO v_order_count
-    FROM "ORDER"
     WHERE slot_id = :NEW.slot_id
-      AND order_status != 'CANCELLED';
+    FOR UPDATE;
  
-    IF v_order_count >= v_max_orders THEN
+    -- Hard limit of 20 orders per slot
+    IF v_current_orders >= 20 THEN
         RAISE_APPLICATION_ERROR(
             -20001,
-            'Booking failed: This collection slot is fully booked (' ||
-            v_max_orders || ' orders maximum). Please select a different slot.'
+            'Booking failed: This collection slot is fully booked (20 orders maximum). Please select a different slot.'
         );
     END IF;
+    
+    -- Increment the current count and check if it reaches 20 to mark as UNAVAILABLE
+    UPDATE COLLECTION_SLOT
+    SET max_orders = max_orders + 1,
+        slot_status = CASE WHEN (max_orders + 1) >= 20 THEN 'UNAVAILABLE' ELSE slot_status END
+    WHERE slot_id = :NEW.slot_id;
 END;
 /
  

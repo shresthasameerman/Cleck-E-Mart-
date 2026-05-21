@@ -347,15 +347,12 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const readCapacities = () => {
-        try {
-            return JSON.parse(window.localStorage.getItem(STORAGE_KEY) || '{}');
-        } catch {
-            return {};
-        }
+        // Read directly from the server-injected DB state, defaulting to empty object if not set
+        return window.dbSlotCapacities || {};
     };
 
     const writeCapacities = (capacities) => {
-        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(capacities));
+        // We no longer write capacities to the client. The database handles this via the trg_slot_capacity_check trigger.
     };
 
     const capacities = readCapacities();

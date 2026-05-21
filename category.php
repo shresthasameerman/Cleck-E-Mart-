@@ -23,21 +23,21 @@ $buildTraderType = static function (string $value): string {
 
 $resolveImage = static function (?string $path): string {
     if ($path === null || trim($path) === '') {
-        return 'assets/images/product-placeholder.svg';
+        return 'assets/images/icons/product-placeholder.svg';
     }
 
     $clean = trim($path);
     if (str_starts_with($clean, 'http://') || str_starts_with($clean, 'https://') || str_starts_with($clean, 'assets/')) {
         if (str_starts_with($clean, 'assets/')) {
             $absolute = __DIR__ . '/' . $clean;
-            return file_exists($absolute) ? $clean : 'assets/images/product-placeholder.svg';
+            return file_exists($absolute) ? $clean : 'assets/images/icons/product-placeholder.svg';
         }
         return $clean;
     }
 
     $relative = 'assets/images/products/' . ltrim($clean, '/');
     $absolute = __DIR__ . '/' . $relative;
-    return file_exists($absolute) ? $relative : 'assets/images/product-placeholder.svg';
+    return file_exists($absolute) ? $relative : 'assets/images/icons/product-placeholder.svg';
 };
 
 try {
@@ -126,27 +126,34 @@ require __DIR__ . '/components/header.php';
     <!-- Search field for client-side filtering across product names and trader names. -->
     <section class="category-search" aria-label="Product search in category">
         <div class="container">
-            <label class="sr-only" for="category-search-input">Search products</label>
-            <input
-                id="category-search-input"
-                class="category-search__input"
-                type="search"
-                placeholder="Search products..."
-                data-category-search
-            />
-            
-            <form method="get" action="category.php" style="display: flex; gap: 0.5rem; align-items: center;">
-                <?php if ($selectedCategoryId): ?>
-                    <input type="hidden" name="category_id" value="<?php echo $selectedCategoryId; ?>" />
-                <?php endif; ?>
-                <label for="sort-dropdown" style="font-weight: 600;">Sort By:</label>
-                <select id="sort-dropdown" name="sort" onchange="this.form.submit()" style="padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 4px; font-size: 1rem;">
-                    <option value="name_asc" <?php echo $sortOrder === 'name_asc' ? 'selected' : ''; ?>>Name (A-Z)</option>
-                    <option value="name_desc" <?php echo $sortOrder === 'name_desc' ? 'selected' : ''; ?>>Name (Z-A)</option>
-                    <option value="price_asc" <?php echo $sortOrder === 'price_asc' ? 'selected' : ''; ?>>Price (Low to High)</option>
-                    <option value="price_desc" <?php echo $sortOrder === 'price_desc' ? 'selected' : ''; ?>>Price (High to Low)</option>
-                </select>
-            </form>
+            <div style="display: flex; flex-wrap: wrap; gap: 1.5rem; align-items: center;">
+                <div style="flex: 1; min-width: 250px;">
+                    <label class="sr-only" for="category-search-input">Search products</label>
+                    <input
+                        id="category-search-input"
+                        class="category-search__input"
+                        type="search"
+                        placeholder="Search products..."
+                        data-category-search
+                    />
+                </div>
+                
+                <form method="get" action="category.php" style="display: flex; gap: 1rem; align-items: center; margin: 0;">
+                    <?php if ($selectedCategoryId): ?>
+                        <input type="hidden" name="category_id" value="<?php echo $selectedCategoryId; ?>" />
+                    <?php endif; ?>
+                    <label for="sort-dropdown" style="font-weight: 600; color: var(--color-text); font-family: 'Inter', sans-serif; white-space: nowrap;">Sort By:</label>
+                    <div style="position: relative;">
+                        <select id="sort-dropdown" name="sort" onchange="this.form.submit()" style="appearance: none; padding: 0.75rem 2.5rem 0.75rem 1rem; border: 1px solid rgba(0, 0, 0, 0.1); border-radius: var(--radius-sm); font-size: 0.95rem; font-family: 'Inter', sans-serif; background: #ffffff; color: var(--color-text); cursor: pointer; outline: none; box-shadow: 0 2px 4px rgba(0,0,0,0.02); min-width: 200px;">
+                            <option value="name_asc" <?php echo $sortOrder === 'name_asc' ? 'selected' : ''; ?>>Name (A-Z)</option>
+                            <option value="name_desc" <?php echo $sortOrder === 'name_desc' ? 'selected' : ''; ?>>Name (Z-A)</option>
+                            <option value="price_asc" <?php echo $sortOrder === 'price_asc' ? 'selected' : ''; ?>>Price (Low to High)</option>
+                            <option value="price_desc" <?php echo $sortOrder === 'price_desc' ? 'selected' : ''; ?>>Price (High to Low)</option>
+                        </select>
+                        <svg viewBox="0 0 24 24" style="position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%); width: 1.2rem; height: 1.2rem; fill: none; stroke: var(--color-text); stroke-width: 2; pointer-events: none;"><path d="M6 9l6 6 6-6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                    </div>
+                </form>
+            </div>
         </div>
     </section>
 
@@ -179,6 +186,8 @@ require __DIR__ . '/components/header.php';
                     <button class="filter-btn is-active" type="button" data-filter-type="price" data-filter-value="all">All Prices</button>
                     <button class="filter-btn" type="button" data-filter-type="price" data-filter-value="0-10">$0 - $10</button>
                     <button class="filter-btn" type="button" data-filter-type="price" data-filter-value="10-20">$10 - $20</button>
+                    <button class="filter-btn" type="button" data-filter-type="price" data-filter-value="20-50">$20 - $50</button>
+                    <button class="filter-btn" type="button" data-filter-type="price" data-filter-value="50+">$50+</button>
                 </div>
             </aside>
 
@@ -190,7 +199,11 @@ require __DIR__ . '/components/header.php';
                     <?php foreach ($products as $product): ?>
                         <?php
                         $price = (float) $product['PRICE'];
-                        $priceTier = $price <= 10 ? '0-10' : '10-20';
+                        $priceTier = '50+';
+                        if ($price <= 10) $priceTier = '0-10';
+                        elseif ($price <= 20) $priceTier = '10-20';
+                        elseif ($price <= 50) $priceTier = '20-50';
+                        
                         $traderName = (string) $product['TRADER_NAME'];
                         ?>
                         <article class="category-card" style="display: flex; flex-direction: column; height: 100%;" data-product-card data-category-type="<?php echo e($buildTraderType($product['CATEGORY_NAME'])); ?>" data-trader-type="<?php echo e($buildTraderType($traderName)); ?>" data-price-tier="<?php echo e($priceTier); ?>" data-name="<?php echo e($product['PRODUCT_NAME']); ?>" data-trader="<?php echo e($traderName); ?>">

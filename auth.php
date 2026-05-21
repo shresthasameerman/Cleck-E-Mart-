@@ -290,7 +290,7 @@ require __DIR__ . '/components/header.php';
                     <div class="auth-login-layout">
                         <!-- Brand logo to replace abstract art -->
                         <div class="auth-art" aria-hidden="true" style="display: flex; align-items: center; justify-content: center; background: transparent; border: none;">
-                            <img src="assets/images/Primary%20Logo.svg" alt="Cleck E-Mart Logo" style="max-width: 280px; width: 100%; height: auto;" />
+                            <img src="assets/images/logos/Primary%20Logo.svg" alt="Cleck E-Mart Logo" style="max-width: 280px; width: 100%; height: auto;" />
                         </div>
 
                         <!--

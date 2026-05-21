@@ -110,7 +110,7 @@ function fallback_apex_products_from_offline(): array
             'product_name' => (string) ($row['PRODUCT_NAME'] ?? 'Unknown'),
             'product_description' => (string) ($row['PRODUCT_DESCRIPTION'] ?? ''),
             'price' => (float) ($row['PRICE'] ?? 0),
-            'product_image' => (string) ($row['PRODUCT_IMAGE'] ?? 'assets/images/product-placeholder.svg'),
+            'product_image' => (string) ($row['PRODUCT_IMAGE'] ?? 'assets/images/icons/product-placeholder.svg'),
             'discount_percentage' => null,
             'shop_name' => (string) ($row['SHOP_NAME'] ?? 'Unknown Shop'),
             'category_name' => (string) ($row['CATEGORY_NAME'] ?? 'Uncategorized'),

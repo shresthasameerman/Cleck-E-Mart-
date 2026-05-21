@@ -1,11 +1,28 @@
 <?php
 require_once __DIR__ . '/lib/auth_helpers.php';
+require_once __DIR__ . '/lib/oci_db.php';
 require_login(['CUSTOMER']);
+
+// Fetch live capacities from the DB
+$conn = db_connect();
+$sql = "SELECT TO_CHAR(slot_date, 'YYYY-MM-DD') AS DKEY, slot_time, max_orders FROM COLLECTION_SLOT";
+$stmt = oci_parse($conn, $sql);
+oci_execute($stmt);
+
+$dbCapacities = [];
+while ($row = oci_fetch_assoc($stmt)) {
+    $dbCapacities[$row['DKEY'] . '|' . $row['SLOT_TIME']] = (int)$row['MAX_ORDERS'];
+}
+oci_free_statement($stmt);
 
 $pageTitle = 'Collection Slot | Cleck E-Mart';
 $metaDescription = 'Choose a collection day and time slot before confirming your order.';
 require __DIR__ . '/components/header.php';
 ?>
+<script>
+    // Inject backend slot capacities directly into the client
+    window.dbSlotCapacities = <?php echo json_encode($dbCapacities); ?>;
+</script>
 <main id="main-content" class="collection-page" data-collection-page>
     <section class="collection-hero" aria-labelledby="collection-title">
         <div class="container">

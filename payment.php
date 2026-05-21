@@ -191,12 +191,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'paypa
                 // Try to find the exact slot ID based on the time and date selected in the UI
                 $searchSql = "SELECT slot_id FROM COLLECTION_SLOT 
                               WHERE slot_time = :s_time 
-                              AND TO_CHAR(slot_date, 'DD Mon YYYY') LIKE '%' || :s_date || '%' 
+                              AND TO_CHAR(slot_date, 'YYYY-MM-DD') = :s_date
                               FETCH FIRST 1 ROWS ONLY";
                 $searchStmt = oci_parse($conn, $searchSql);
                 
-                // Remove day names (e.g., 'Friday') to make matching database dates easier
-                $cleanDate = trim(preg_replace('/^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\s+/i', '', $selectedSlotDate));
+                // slot_date comes from script.js dateKey (YYYY-MM-DD format)
+                $cleanDate = trim($selectedSlotDate);
                 
                 oci_bind_by_name($searchStmt, ':s_time', $selectedSlotTime);
                 oci_bind_by_name($searchStmt, ':s_date', $cleanDate);

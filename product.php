@@ -69,6 +69,7 @@ if ($productId !== false && $productId !== null) {
                 "SELECT p.product_id,
                         p.product_name,
                         p.product_description,
+                        p.allergy_information,
                         p.price,
                         p.product_image,
                         d.discount_percentage,
@@ -107,6 +108,18 @@ if ($productId !== false && $productId !== null) {
                 $product['avg_rating'] = $avgRating;
                 $product['review_count'] = $reviewCount;
                 $product['reviews'] = $reviews;
+
+                $relatedProducts = db_fetch_all(
+                    "SELECT p.product_id, p.product_name, p.price, p.product_image, d.discount_percentage
+                     FROM PRODUCT p
+                     LEFT JOIN DISCOUNT d ON p.discount_id = d.discount_id AND d.end_date >= SYSDATE
+                     WHERE p.category_id = (SELECT category_id FROM PRODUCT WHERE product_id = :product_id)
+                       AND p.product_id != :product_id
+                       AND p.product_verification_status = 'APPROVED'
+                     FETCH FIRST 4 ROWS ONLY",
+                    ['product_id' => $productId]
+                );
+                $product['related_products'] = $relatedProducts;
             }
         }
     } catch (Throwable $exception) {
@@ -150,31 +163,31 @@ require __DIR__ . '/components/header.php';
     -->
     <section class="product-content" aria-labelledby="product-name-title">
         <div class="container product-layout">
-            <div class="product-media product-card" aria-label="Product image panel">
+            <div class="product-media product-card" aria-label="Product image panel" style="background: #ffffff; padding: 2rem; border-radius: var(--radius-lg); text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
                 <?php
                 $productImage = trim((string) ($product['PRODUCT_IMAGE'] ?? ''));
                 if ($productImage === '') {
-                    $productImage = 'assets/images/product-placeholder.svg';
+                    $productImage = 'assets/images/icons/product-placeholder.svg';
                 } elseif (!str_starts_with($productImage, 'http://') && !str_starts_with($productImage, 'https://') && !str_starts_with($productImage, 'assets/')) {
                     $productImage = 'assets/images/products/' . ltrim($productImage, '/');
                 }
                 if (!str_starts_with($productImage, 'http://') && !str_starts_with($productImage, 'https://')) {
                     $absoluteImage = __DIR__ . '/' . $productImage;
                     if (!file_exists($absoluteImage)) {
-                        $productImage = 'assets/images/product-placeholder.svg';
+                        $productImage = 'assets/images/icons/product-placeholder.svg';
                     }
                 }
                 ?>
-                <img src="<?php echo e($productImage); ?>" alt="<?php echo e($product['PRODUCT_NAME']); ?>" />
+                <img src="<?php echo e($productImage); ?>" alt="<?php echo e($product['PRODUCT_NAME']); ?>" style="max-width: 100%; height: auto; border-radius: var(--radius-sm);" />
             </div>
 
             <article class="product-details-premium" aria-label="Product information">
                 <div class="product-header">
-                    <span class="product-trader-premium">Trader: <?php echo e($product['TRADER_NAME']); ?></span>
-                    <h1 id="product-name-title" class="brand product-title-premium"><?php echo e($product['PRODUCT_NAME']); ?></h1>
+                    <span class="product-trader-premium" style="text-transform: uppercase; color: var(--color-muted); font-size: 0.85rem; font-weight: 600; letter-spacing: 0.05em; margin-bottom: 0.25rem; display: block;">TRADER: <?php echo e($product['TRADER_NAME']); ?></span>
+                    <h1 id="product-name-title" class="brand product-title-premium" style="font-family: 'Playfair Display', serif; font-size: 2.2rem; color: var(--color-brand-green); margin: 0 0 0.25rem 0; line-height: 1.1;"><?php echo e($product['PRODUCT_NAME']); ?></h1>
                 </div>
 
-                <div class="product-rating-premium" aria-label="Rating <?php echo e($product['avg_rating'] ?? 0); ?> out of 5 from <?php echo e($product['review_count'] ?? 0); ?> reviews">
+                <div class="product-rating-premium" style="margin-bottom: 0.25rem;" aria-label="Rating <?php echo e($product['avg_rating'] ?? 0); ?> out of 5 from <?php echo e($product['review_count'] ?? 0); ?> reviews">
                     <span class="product-stars" aria-hidden="true">
                         <?php
                         $stars = (int) round($product['avg_rating'] ?? 0);
@@ -182,26 +195,32 @@ require __DIR__ . '/components/header.php';
                             echo '<span style="color: ' . ($i <= $stars ? '#fbbf24' : '#e5e7eb') . ';">&#9733;</span>';
                         }
                         ?>
-                        <span class="review-count-premium">(<?php echo e($product['review_count'] ?? 0); ?> reviews)</span>
+                        <span class="review-count-premium" style="margin-left: 0.5rem; color: var(--color-muted);">(<?php echo e($product['review_count'] ?? 0); ?> reviews)</span>
                     </span>
                 </div>
 
-                <div class="product-price-premium">
+                <div class="product-price-premium" style="display: flex; align-items: center; margin-bottom: 0.5rem;">
                     <?php 
                     $rawPrice = (float) $product['PRICE'];
                     $discount = isset($product['DISCOUNT_PERCENTAGE']) ? (float) $product['DISCOUNT_PERCENTAGE'] : 0;
                     if ($discount > 0) {
                         $discounted = $rawPrice * (1 - $discount / 100);
-                        echo '<s>$' . number_format($rawPrice, 2) . '</s> $' . number_format($discounted, 2);
+                        echo '<s style="color: var(--color-muted); font-size: 1.1rem; margin-right: 0.5rem;">$' . number_format($rawPrice, 2) . '</s> <span style="font-size: 2rem; font-weight: 700; color: var(--color-brand-green); margin-right: 1rem;">$' . number_format($discounted, 2) . '</span> <span style="background: #e8f5e9; color: var(--color-brand-green); font-size: 0.85rem; font-weight: 700; padding: 0.3rem 0.6rem; border-radius: 4px;">' . $discount . '% OFF</span>';
                     } else {
-                        echo '$' . number_format($rawPrice, 2);
+                        echo '<span style="font-size: 2rem; font-weight: 700; color: var(--color-brand-green); margin-right: 0.5rem;">$' . number_format($rawPrice, 2) . '</span>';
                     }
                     ?>
                 </div>
 
-                <p class="product-description-premium">
-                    <?php echo e(is_object($product['PRODUCT_DESCRIPTION']) ? $product['PRODUCT_DESCRIPTION']->load() : (string)($product['PRODUCT_DESCRIPTION'] ?? '')); ?>
-                </p>
+                <div class="product-description-premium" style="margin-bottom: 0.75rem; color: var(--color-muted); line-height: 1.4; font-size: 0.9rem;">
+                    <?php 
+                    $desc = is_object($product['PRODUCT_DESCRIPTION']) ? $product['PRODUCT_DESCRIPTION']->load() : (string)($product['PRODUCT_DESCRIPTION'] ?? '');
+                    // Short description: first sentence or up to first period.
+                    $shortDesc = explode('.', $desc, 2)[0] . '.';
+                    echo '<p style="margin: 0 0 0.25rem 0;">' . e($shortDesc) . '</p>'; 
+                    ?>
+                    <p style="margin: 0;">Allergens: <span style="color: var(--color-accent); font-weight: 500;"><?php echo e($product['ALLERGY_INFORMATION'] ?? 'None'); ?></span>.</p>
+                </div>
 
                 <form class="product-form-premium" method="post" action="product.php?product_id=<?php echo e($product['PRODUCT_ID']); ?>">
                     <input type="hidden" name="product_id" value="<?php echo e($product['PRODUCT_ID']); ?>" />
@@ -238,39 +257,108 @@ require __DIR__ . '/components/header.php';
         </div>
     </section>
     
-    <section class="product-reviews-premium" aria-labelledby="reviews-title">
-        <div class="container reviews-container-premium">
-            <h2 id="reviews-title" class="brand">Customer Reviews</h2>
-            
-            <?php if (empty($product['reviews'])): ?>
-                <p class="no-reviews-premium">No reviews yet. Be the first to review this product!</p>
-            <?php else: ?>
-                <div class="reviews-list-premium">
-                    <?php foreach ($product['reviews'] as $review): ?>
-                        <article class="review-item-premium">
-                            <div class="review-header-premium">
-                                <div>
-                                    <h3><?php echo e($review['CUSTOMER_NAME']); ?></h3>
-                                    <div class="review-stars-premium">
-                                        <?php
-                                        $rStars = (int) $review['RATING'];
-                                        for ($i = 1; $i <= 5; $i++) {
-                                            echo '<span style="color: ' . ($i <= $rStars ? '#fbbf24' : '#e5e7eb') . ';">&#9733;</span>';
-                                        }
-                                        ?>
-                                    </div>
-                                </div>
-                                <span class="review-date-premium"><?php echo e(date('M d, Y', strtotime($review['REVIEW_DATE']))); ?></span>
-                            </div>
-                            <?php if (!empty($review['REVIEW_COMMENT'])): ?>
-                                <p class="review-body-premium">
-                                    <?php echo e(is_object($review['REVIEW_COMMENT']) ? $review['REVIEW_COMMENT']->load() : (string)$review['REVIEW_COMMENT']); ?>
-                                </p>
-                            <?php endif; ?>
-                        </article>
-                    <?php endforeach; ?>
+    <section class="product-features-premium">
+        <div class="container features-container-premium">
+            <div class="feature-item-premium">
+                <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                    <polyline points="9 12 11 14 15 10"></polyline>
+                </svg>
+                <span>Verified<br/>Trader</span>
+            </div>
+            <div class="feature-item-premium">
+                <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="3" y1="9" x2="21" y2="9"></line>
+                    <path d="M9 21V9"></path>
+                </svg>
+                <span>24 hr<br/>Service</span>
+            </div>
+            <div class="feature-item-premium">
+                <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 2.69l5.66 4.2c.57.43 1.34.61 2.05.51l6.8-1c.21-.03.42.15.46.36l.78 6.75c.08.7.45 1.33 1.02 1.76l5.52 4.1c.17.13.17.38 0 .5l-5.52 4.1c-.57.42-.94 1.06-1.02 1.76l-.78 6.75c-.04.21-.25.39-.46.36l-6.8-1c-.71-.1-1.48.08-2.05.51L12 21.31l-5.66-4.2c-.57-.43-1.34-.61-2.05-.51l-6.8 1c-.21.03-.42-.15-.46-.36l-.78-6.75c-.08-.7-.45-1.33-1.02-1.76l-5.52-4.1c-.17-.13-.17-.38 0-.5l5.52-4.1c.57-.42.94-1.06 1.02-1.76l.78-6.75c.04-.21.25-.39.46-.36l6.8 1c.71.1 1.48-.08 2.05-.51L12 2.69z"></path>
+                </svg>
+                <span>No Artificial<br/>Preservatives</span>
+            </div>
+            <div class="feature-item-premium">
+                <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M5 18H3c-.6 0-1-.4-1-1V7c0-.6.4-1 1-1h10c.6 0 1 .4 1 1v11"></path>
+                    <path d="M14 9h4l4 4v5c0 .6-.4 1-1 1h-2"></path>
+                    <circle cx="7" cy="18" r="2"></circle>
+                    <circle cx="17" cy="18" r="2"></circle>
+                </svg>
+                <span>Instant<br/>Order</span>
+            </div>
+        </div>
+    </section>
+
+    <section class="product-bottom-premium">
+        <div class="container bottom-grid-premium" style="background: #ffffff; border-radius: var(--radius-lg); padding: 3rem; box-shadow: 0 4px 12px rgba(0,0,0,0.03); border: 1px solid rgba(0,0,0,0.02); display: grid; grid-template-columns: 2fr 1fr; gap: 3rem; margin-bottom: 3rem;">
+            <!-- Left Column: Tabs -->
+            <div class="bottom-left-col" style="background: transparent;">
+                <div class="bottom-tabs" style="display: flex; gap: 2rem; margin-bottom: 2rem; border-bottom: 1px solid rgba(0,0,0,0.05);">
+                    <button class="bottom-tab active" style="font-size: 0.95rem; color: var(--color-brand-green); font-weight: 700; border-bottom: 2px solid var(--color-brand-green); padding-bottom: 0.75rem; text-transform: uppercase; background: none; border-top: none; border-left: none; border-right: none; margin-bottom: -1px; cursor: default;">CUSTOMER REVIEWS</button>
                 </div>
-            <?php endif; ?>
+                <div class="bottom-content" style="color: var(--color-text); line-height: 1.6; font-size: 0.95rem;">
+                    <?php if (empty($product['reviews'])): ?>
+                        <p class="no-reviews-premium" style="color: var(--color-muted);">No reviews yet. Be the first to review this product!</p>
+                    <?php else: ?>
+                        <div class="reviews-list-premium" style="display: flex; flex-direction: column; gap: 1.5rem;">
+                            <?php foreach ($product['reviews'] as $review): ?>
+                                <article class="review-item-premium" style="padding-bottom: 1.5rem; border-bottom: 1px solid rgba(0,0,0,0.05);">
+                                    <div class="review-header-premium" style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; align-items: flex-start;">
+                                        <div>
+                                            <h3 style="margin: 0 0 0.25rem 0; font-size: 1rem; font-weight: 700; color: var(--color-text);"><?php echo e($review['CUSTOMER_NAME']); ?></h3>
+                                            <div class="review-stars-premium" style="font-size: 0.9rem;">
+                                                <?php
+                                                $rStars = (int) $review['RATING'];
+                                                for ($i = 1; $i <= 5; $i++) {
+                                                    echo '<span style="color: ' . ($i <= $rStars ? '#fbbf24' : '#e5e7eb') . ';">&#9733;</span>';
+                                                }
+                                                ?>
+                                            </div>
+                                        </div>
+                                        <span class="review-date-premium" style="color: var(--color-muted); font-size: 0.85rem;"><?php echo e(date('M d, Y', strtotime($review['REVIEW_DATE']))); ?></span>
+                                    </div>
+                                    <?php if (!empty($review['REVIEW_COMMENT'])): ?>
+                                        <p class="review-body-premium" style="margin: 0; color: var(--color-text); font-size: 0.95rem; line-height: 1.6;">
+                                            <?php echo e(is_object($review['REVIEW_COMMENT']) ? $review['REVIEW_COMMENT']->load() : (string)$review['REVIEW_COMMENT']); ?>
+                                        </p>
+                                    <?php endif; ?>
+                                </article>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+
+            <!-- Right Column: You May Also Like -->
+            <div class="bottom-right-col">
+                <h3 class="related-title" style="font-size: 1rem; color: var(--color-brand-green); font-weight: 700; text-transform: uppercase; margin-bottom: 1.5rem; border-bottom: 2px solid transparent; padding-bottom: 0.5rem;">YOU MAY ALSO LIKE</h3>
+                <div class="related-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem;">
+                    <?php if (!empty($product['related_products'])): ?>
+                        <?php foreach ($product['related_products'] as $related): ?>
+                            <?php
+                            $relImage = trim((string) ($related['PRODUCT_IMAGE'] ?? ''));
+                            if ($relImage === '') {
+                                $relImage = 'assets/images/icons/product-placeholder.svg';
+                            } elseif (!str_starts_with($relImage, 'http://') && !str_starts_with($relImage, 'https://') && !str_starts_with($relImage, 'assets/')) {
+                                $relImage = 'assets/images/products/' . ltrim($relImage, '/');
+                            }
+                            ?>
+                            <a href="product.php?product_id=<?php echo e($related['PRODUCT_ID']); ?>" class="related-card" style="text-decoration: none; color: inherit; display: block;">
+                                <div style="background: #ffffff; padding: 1rem; border-radius: var(--radius-md); text-align: center; margin-bottom: 1rem; height: 120px; display: flex; align-items: center; justify-content: center;">
+                                    <img src="<?php echo e($relImage); ?>" alt="<?php echo e($related['PRODUCT_NAME']); ?>" style="max-height: 100%; max-width: 100%; object-fit: contain; border-radius: 8px;" />
+                                </div>
+                                <h4 style="font-size: 0.9rem; font-weight: 500; margin: 0 0 0.25rem 0; color: var(--color-text); line-height: 1.3;"><?php echo e($related['PRODUCT_NAME']); ?></h4>
+                                <p style="font-size: 0.95rem; font-weight: 700; margin: 0; color: var(--color-text);">$<?php echo e(number_format((float)$related['PRICE'], 2)); ?></p>
+                            </a>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <p class="no-reviews-premium">No related products found.</p>
+                    <?php endif; ?>
+                </div>
+            </div>
         </div>
     </section>
     <?php endif; ?>
