@@ -30,7 +30,7 @@ try {
 
             // Hardcode mapping 
             $customerId = null;
-            if ($uid === 'F3DA841A' || $uid === 'F3FAA12A') {
+            if ($uid === 'F3DA841A' || $uid === 'B46C4C6') {
                 $customerId = 1001; // Map these specific RFID tags to customer 1001
             } else {
                 // If we had a database column `rfid_uid` on CUSTOMER, we would query it here:

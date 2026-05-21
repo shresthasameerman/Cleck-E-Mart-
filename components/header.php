@@ -99,6 +99,7 @@ if ($headerIsAdmin) {
                         <a href="trader-profile.php">Dashboard</a>
                         <a href="trader-profile.php">Profile Settings</a>
                         <a href="trader-shops.php">My Shop</a>
+                        <a href="http://localhost:8080/ords/r/cleck_e_mart/cleck-e-mart-dashboard/login" target="_blank" rel="noopener noreferrer">Oracle</a>
                     <?php else: ?>
                         <a href="index.php#featured-title">Featured</a>
                         <a href="category.php">Browse Category</a>

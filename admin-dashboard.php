@@ -37,6 +37,80 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($action === 'approve_shop' && $shopId > 0) {
             if (!db_is_offline()) {
                 db_execute("UPDATE SHOP SET shop_status = 'ACTIVE' WHERE shop_id = :id", ['id' => $shopId]);
+                
+                // Fetch trader info to send approval email
+                $shopInfo = db_fetch_one("
+                    SELECT u.first_name, u.email, u.password, s.shop_name 
+                    FROM SHOP s 
+                    JOIN TRADER t ON s.trader_id = t.trader_id 
+                    JOIN \"USER\" u ON t.trader_id = u.user_id 
+                    WHERE s.shop_id = :id
+                ", ['id' => $shopId]);
+                
+                if ($shopInfo) {
+                    require_once __DIR__ . '/lib/email_helpers.php';
+                    $traderName = $shopInfo['FIRST_NAME'] ?? $shopInfo['first_name'] ?? 'Trader';
+                    $traderEmail = $shopInfo['EMAIL'] ?? $shopInfo['email'] ?? '';
+                    $traderPassword = $shopInfo['PASSWORD'] ?? $shopInfo['password'] ?? '';
+                    $shopName = $shopInfo['SHOP_NAME'] ?? $shopInfo['shop_name'] ?? 'Your Shop';
+                    
+                    if ($traderEmail) {
+                        $subject = "Your Shop '{$shopName}' has been Approved!";
+                        
+                        $message = "
+                        <html>
+                        <head>
+                        <style>
+                            body { font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333; background-color: #f9f9f9; padding: 20px; }
+                            .email-container { max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 8px 24px rgba(0,0,0,0.05); }
+                            .header { background-color: #1a3018; color: #ffffff; padding: 30px; text-align: center; }
+                            .header h2 { margin: 0; font-size: 24px; letter-spacing: 1px; }
+                            .content { padding: 40px 30px; }
+                            .greeting { font-size: 18px; margin-top: 0; color: #1a3018; font-weight: 600; }
+                            .credentials-box { background: #f4f6f4; border: 1px solid #e0e4e0; border-radius: 8px; padding: 25px; margin: 25px 0; }
+                            .credentials-box h3 { margin-top: 0; color: #1a3018; font-size: 18px; text-align: center; margin-bottom: 20px; }
+                            .credential-row { margin-bottom: 12px; font-size: 15px; }
+                            .credential-label { font-weight: 600; color: #555; display: inline-block; width: 90px; }
+                            .btn-primary { display: inline-block; background-color: #1a3018; color: #ffffff !important; text-decoration: none; padding: 14px 28px; border-radius: 6px; font-weight: bold; margin-top: 10px; font-size: 15px; }
+                            .footer { text-align: center; padding: 30px; color: #888; font-size: 14px; background: #fafafa; border-top: 1px solid #eee; }
+                        </style>
+                        </head>
+                        <body>
+                            <div class='email-container'>
+                                <div class='header'>
+                                    <h2>CLECK E-MART</h2>
+                                </div>
+                                <div class='content'>
+                                    <p class='greeting'>Hello {$traderName},</p>
+                                    <p>Great news! Your shop <strong>{$shopName}</strong> has been officially approved and is now active on Cleck E-Mart.</p>
+                                    <p>You can now access your dedicated Oracle Dashboard to manage your advanced operations, track analytics, and handle your business data seamlessly.</p>
+                                    
+                                    <div class='credentials-box'>
+                                        <h3>Oracle Dashboard Login Details</h3>
+                                        <div class='credential-row'>
+                                            <span class='credential-label'>Email:</span> <strong>{$traderEmail}</strong>
+                                        </div>
+                                        <div class='credential-row'>
+                                            <span class='credential-label'>Password:</span> <strong style='word-break: break-all; font-size: 13px;'>{$traderPassword}</strong>
+                                        </div>
+                                        <div style='text-align: center; margin-top: 25px;'>
+                                            <a href='http://localhost:8080/ords/r/cleck_e_mart/cleck-e-mart-dashboard/login' class='btn-primary'>Go to Oracle Dashboard</a>
+                                        </div>
+                                    </div>
+                                    
+                                    <p>We are absolutely thrilled to have you as a verified trader. Let the sales begin!</p>
+                                </div>
+                                <div class='footer'>
+                                    <p>Cleck E-Mart &copy; " . date('Y') . "<br>Bringing fresh goods to your doorstep.</p>
+                                </div>
+                            </div>
+                        </body>
+                        </html>
+                        ";
+                        
+                        send_email($traderEmail, $subject, $message);
+                    }
+                }
             } else {
                 offline_update_shop_status($shopId, 'ACTIVE');
             }
