@@ -15,7 +15,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'updat
     } catch (Throwable $e) {
         set_flash('error', $e->getMessage());
     }
-    redirect('trader-dashboard.php');
+    $shopIdPost = isset($_POST['shop_id']) && $_POST['shop_id'] ? (int) $_POST['shop_id'] : null;
+    redirect('trader-dashboard.php' . ($shopIdPost ? '?shop_id=' . $shopIdPost : ''));
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'edit_product') {
@@ -161,23 +162,23 @@ require __DIR__ . '/components/header.php';
                         Back to My Shops
                     </a>
                     <hr style="border-top: 1px solid rgba(0,0,0,0.1); margin: 0.5rem 0; width: 100%;">
-                    <a href="trader-shop-profile.php?shop_id=<?php echo (int)$_GET['shop_id']; ?>" class="tab-button">
+                    <a href="trader-shop-profile.php?shop_id=<?php echo (int)$shopId; ?>" class="tab-button">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
                         Shop Profile
                     </a>
-                    <a href="trader-dashboard.php?shop_id=<?php echo (int)$_GET['shop_id']; ?>" class="tab-button active">
+                    <a href="trader-dashboard.php?shop_id=<?php echo (int)$shopId; ?>" class="tab-button active">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
                         Inventory
                     </a>
-                    <a href="trader-orders.php?shop_id=<?php echo (int)$_GET['shop_id']; ?>" class="tab-button">
+                    <a href="trader-orders.php?shop_id=<?php echo (int)$shopId; ?>" class="tab-button">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
                         Orders
                     </a>
-                    <a href="trader-sales.php?shop_id=<?php echo (int)$_GET['shop_id']; ?>" class="tab-button">
+                    <a href="trader-sales.php?shop_id=<?php echo (int)$shopId; ?>" class="tab-button">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"></line><line x1="18" y1="20" x2="18" y2="4"></line><line x1="6" y1="20" x2="6" y2="16"></line></svg>
                         Sales
                     </a>
-                    <a href="trader-add-product.php?shop_id=<?php echo (int)$_GET['shop_id']; ?>" class="tab-button">
+                    <a href="trader-add-product.php?shop_id=<?php echo (int)$shopId; ?>" class="tab-button">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                         Add Products
                     </a>
@@ -286,6 +287,7 @@ require __DIR__ . '/components/header.php';
                                             <form method="post" action="trader-dashboard.php" style="display:inline-flex; gap:0.25rem;">
                                                 <input type="hidden" name="action" value="update_discount" />
                                                 <input type="hidden" name="product_id" value="<?php echo e($product['product_id']); ?>" />
+                                                <input type="hidden" name="shop_id" value="<?php echo e($shopId); ?>" />
                                                 <input type="number" name="discount_percentage" style="width: 60px; padding: 0.25rem;" min="0" max="100" value="<?php echo e($product['discount_percentage'] ?? ''); ?>" placeholder="%" />
                                                 <select name="discount_duration" style="width: 85px; padding: 0.25rem; font-size: 0.8rem;">
                                                     <option value="1">1 Day</option>
@@ -439,17 +441,20 @@ require __DIR__ . '/components/header.php';
                 
                 // Show modal
                 modal.classList.add('is-active');
+                document.body.style.overflow = 'hidden';
             });
         });
         
         closeBtn.addEventListener('click', function() {
             modal.classList.remove('is-active');
+            document.body.style.overflow = '';
         });
         
         // Close when clicking outside content
         modal.addEventListener('click', function(e) {
             if (e.target === modal) {
                 modal.classList.remove('is-active');
+                document.body.style.overflow = '';
             }
         });
     });

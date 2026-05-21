@@ -105,6 +105,32 @@ if ($conn) {
         oci_free_statement($stmtCat);
     }
 
+    // 3.5 Top Products for Shop (Only for specific shop report)
+    $topProductsShop = [];
+    if ($shopId) {
+        $sqlTop = "SELECT p.product_name, SUM(oi.quantity) AS total_sold
+                   FROM \"ORDER\" o
+                   JOIN ORDER_ITEM oi ON o.order_id = oi.order_id
+                   JOIN PRODUCT p ON oi.product_id = p.product_id
+                   WHERE p.shop_id = :shop_id
+                   GROUP BY p.product_name
+                   ORDER BY total_sold DESC
+                   FETCH FIRST 5 ROWS ONLY";
+        $stmtTop = oci_parse($conn, $sqlTop);
+        if ($stmtTop) {
+            oci_bind_by_name($stmtTop, ':shop_id', $shopId, -1, SQLT_INT);
+            if (oci_execute($stmtTop)) {
+                while ($row = oci_fetch_assoc($stmtTop)) {
+                    $topProductsShop[] = [
+                        'product_name' => $row['PRODUCT_NAME'],
+                        'total_sold' => (int) $row['TOTAL_SOLD']
+                    ];
+                }
+            }
+            oci_free_statement($stmtTop);
+        }
+    }
+
     // 4. Detailed Sales List
     $sqlDetails = "SELECT o.order_id, TO_CHAR(o.order_date, 'YYYY-MM-DD HH24:MI') AS order_date,
                           p.product_name, s.shop_name, oi.quantity, oi.unit_price, (oi.quantity * oi.unit_price) AS total_price
@@ -275,6 +301,19 @@ require __DIR__ . '/components/header.php';
                                 <canvas id="shopRevenueChart"></canvas>
                             </div>
                         </section>
+                        <?php elseif ($shopId && count($topProductsShop) > 0): ?>
+                        <!-- Polar Area Chart (Top Products) - For Specific Shop -->
+                        <section class="admin-section" style="margin-bottom: 0;">
+                            <div class="trader-card__header">
+                                <div>
+                                    <p class="trader-card__eyebrow">Top Performers</p>
+                                    <h2>Best Selling Products</h2>
+                                </div>
+                            </div>
+                            <div style="position: relative; height: 250px; width: 100%; display: flex; justify-content: center;">
+                                <canvas id="topProductsChart"></canvas>
+                            </div>
+                        </section>
                         <?php endif; ?>
 
                     </div>
@@ -308,7 +347,7 @@ require __DIR__ . '/components/header.php';
                                     <tbody>
                                         <?php foreach ($detailedSales as $sale): ?>
                                             <tr>
-                                                <td><?php echo e($sale['date']); ?></td>
+                                                <td style="white-space: nowrap;"><?php echo e($sale['date']); ?></td>
                                                 <td>#<?php echo e($sale['order_id']); ?></td>
                                                 <?php if (!$shopId): ?>
                                                     <td><?php echo e($sale['shop_name']); ?></td>
@@ -439,6 +478,42 @@ require __DIR__ . '/components/header.php';
                     }
                 }
             });
+        }
+
+        // 4. Polar Area Chart (Top Products) - Only present on specific shop view
+        const ctxPolar = document.getElementById('topProductsChart');
+        if (ctxPolar) {
+            const topData = <?php echo json_encode($topProductsShop ?? []); ?>;
+            if (topData.length > 0) {
+                const labelsPolar = topData.map(item => item.product_name);
+                const dataPolar = topData.map(item => item.total_sold);
+
+                new Chart(ctxPolar, {
+                    type: 'polarArea',
+                    data: {
+                        labels: labelsPolar,
+                        datasets: [{
+                            data: dataPolar,
+                            backgroundColor: [
+                                'rgba(36, 73, 34, 0.7)',
+                                'rgba(222, 105, 48, 0.7)',
+                                'rgba(106, 136, 97, 0.7)',
+                                'rgba(217, 160, 64, 0.7)',
+                                'rgba(45, 55, 72, 0.7)'
+                            ],
+                            borderWidth: 1,
+                            borderColor: '#ffffff'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'bottom' }
+                        }
+                    }
+                });
+            }
         }
 
         // Handle PDF Download

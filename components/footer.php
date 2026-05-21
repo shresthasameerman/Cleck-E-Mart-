@@ -3,7 +3,10 @@
 <footer class="site-footer">
     <div class="container site-footer__inner">
         <div class="site-footer__brand-block">
-            <a class="brand brand--footer" href="index.php">Cleck E-Mart</a>
+            <a class="brand brand--footer" href="index.php" style="display: flex; align-items: center; gap: 0.5rem;">
+                <img src="assets/images/logos/Favicon%20Logo.svg" alt="Cleck E-Mart Logo" style="height: 32px; width: auto; filter: brightness(0) invert(1);" />
+                Cleck E-Mart
+            </a>
             <p class="site-footer__intro">A clean market experience with quick browsing, simple checkout, and clear support when you need it.</p>
             <a class="site-footer__contact" href="mailto:support@cleckmart.com">support@cleckmart.com</a>
         </div>

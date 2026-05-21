@@ -148,6 +148,53 @@ try {
     error_log('Featured products load error: ' . $apiError);
 }
 
+$verifiedShops = [];
+try {
+    if (db_is_offline()) {
+        $data = offline_load();
+        foreach ($data['shops'] as $s) {
+            if (isset($s['shop_status']) && $s['shop_status'] === 'ACTIVE') {
+                $traderName = 'Trader';
+                foreach ($data['users'] as $u) {
+                    if ($u['user_id'] == $s['trader_id']) {
+                        $traderName = $u['first_name'] . ' ' . $u['last_name'];
+                        break;
+                    }
+                }
+                $verifiedShops[] = [
+                    'shop_id' => $s['shop_id'],
+                    'shop_name' => $s['shop_name'],
+                    'shop_logo' => isset($s['shop_logo']) ? $s['shop_logo'] : null,
+                    'trader_name' => $traderName
+                ];
+                if (count($verifiedShops) >= 5) break;
+            }
+        }
+    } else {
+        $conn = db_connect();
+        $sql = "SELECT s.shop_id, s.shop_name, s.shop_logo, u.first_name || ' ' || u.last_name AS trader_name
+                FROM SHOP s
+                JOIN TRADER t ON s.trader_id = t.trader_id
+                JOIN \"USER\" u ON t.trader_id = u.user_id
+                WHERE s.shop_status = 'ACTIVE'
+                ORDER BY s.shop_id ASC
+                FETCH FIRST 5 ROWS ONLY";
+        $stmt = oci_parse($conn, $sql);
+        oci_execute($stmt);
+        while (($row = oci_fetch_assoc($stmt)) !== false) {
+            $verifiedShops[] = [
+                'shop_id' => (int)$row['SHOP_ID'],
+                'shop_name' => (string)$row['SHOP_NAME'],
+                'shop_logo' => isset($row['SHOP_LOGO']) ? (string)$row['SHOP_LOGO'] : null,
+                'trader_name' => (string)$row['TRADER_NAME']
+            ];
+        }
+        oci_free_statement($stmt);
+    }
+} catch (Throwable $e) {
+    error_log('Verified shops load error: ' . $e->getMessage());
+}
+
 $displayProducts = $searchTerm !== '' ? $featuredProducts : array_slice($featuredProducts, 0, $isLoggedIn ? 4 : 3);
 
 // Shared header includes <head>, navigation, and opening <body> tag.
@@ -232,6 +279,8 @@ require __DIR__ . '/components/header.php';
             <?php endif; ?>
         </div>
     </section>
+
+    <?php require __DIR__ . '/components/verified_shops.php'; ?>
 
     <section class="promo" aria-label="Promotions" style="margin-top: 2rem;">
         <div class="container">
@@ -330,6 +379,8 @@ require __DIR__ . '/components/header.php';
             <?php endif; ?>
         </div>
     </section>
+
+    <?php require __DIR__ . '/components/verified_shops.php'; ?>
 
     <section class="cta" aria-labelledby="cta-title">
         <div class="container cta__inner">
