@@ -1,6 +1,24 @@
 # Cleck E-Mart
 
-Cleck E-Mart is a clean, responsive storefront homepage built with PHP includes, semantic HTML, modular CSS, and vanilla JavaScript.
+> **Tech Stack:**  
+> ![PHP](https://img.shields.io/badge/PHP-81.3%25-blue) 
+> ![CSS](https://img.shields.io/badge/CSS-12.4%25-%231572B6) 
+> ![JavaScript](https://img.shields.io/badge/JavaScript-3.5%25-F7DF1E) 
+> ![PLSQL](https://img.shields.io/badge/PLSQL-2.6%25-%23E60027) 
+> ![C++](https://img.shields.io/badge/C++-0.2%25-%2300599C)
+
+Cleck E-Mart is a clean, responsive storefront homepage and e-commerce platform built primarily with PHP, CSS, JavaScript, and integrated with Oracle via PL/SQL.
+
+---
+
+## Technologies Used
+
+- **Backend:** PHP (81.3%), PL/SQL (2.6%), C++ (0.2%)
+- **Frontend:** CSS (12.4%), JavaScript (3.5%)
+- **Database:** Oracle (OCI8 integration)
+- **Others:** Semantic HTML, modular CSS, vanilla JS
+
+---
 
 ## What’s Included
 
@@ -8,7 +26,8 @@ Cleck E-Mart is a clean, responsive storefront homepage built with PHP includes,
 - Reusable `header.php` and `footer.php` components
 - Mobile-first responsive styling
 - Hamburger navigation for smaller screens
-- A lightweight JavaScript toggle for the menu
+- Lightweight JavaScript menu toggle
+- Oracle DB integration using PHP and PL/SQL
 
 ## Project Structure
 
@@ -38,17 +57,10 @@ From the project root, start PHP’s built-in server:
 php -S 0.0.0.0:8000
 ```
 
-Open the site in your browser:
-
-```text
+Open the site in your browser:  
 http://localhost:8000
-```
 
-If you want to view it from another device on the same network, use your machine’s local IP address instead of `localhost`:
-
-```text
-http://YOUR_LOCAL_IP:8000
-```
+_(If using another device, replace `localhost` with your machine’s IP address)_
 
 If the page does not load from another device, allow the port through your firewall:
 
@@ -56,69 +68,36 @@ If the page does not load from another device, allow the port through your firew
 sudo ufw allow 8000/tcp
 ```
 
-## Files
+## Major Files Overview
 
-### `index.php`
+- **index.php:** Homepage, includes shared header/footer
+- **components/header.php:** Site header, logo, navigation
+- **components/footer.php:** Footer markup and links
+- **assets/css/styles.css:** Responsive styles and layout
+- **assets/js/script.js:** Mobile menu functionality
 
-Loads the homepage and includes the shared header and footer.
+## Backend Integration
 
-### `components/header.php`
+- **db_connect.php:** PHP-OCI8 integration for Oracle
+- **lib/bootstrap.php:** Session and helper utilities
+- **lib/oci_db.php:** Oracle DB queries
+- **lib/auth_helpers.php:** Login/session logic
+- **lib/cart_helpers.php:** Cart management
+- **lib/trader_helpers.php:** Trader dashboard functions
 
-Contains the site header, logo, navigation, and action icons.
+## Oracle Database Setup
 
-### `components/footer.php`
+- Make sure Oracle DB is running and schema is created
+- Enable OCI8 PHP extension (`php -m | grep oci8`)
+- Set environment variables for DB credentials:
 
-Contains the footer markup and quick links.
+```bash
+export ORACLE_USERNAME=ADMIN
+export ORACLE_PASSWORD=Oracle123#Apex
+export ORACLE_CONNECTION_STRING=localhost:1521/XEPDB1
+```
 
-### `assets/css/styles.css`
-
-Contains the full responsive design system, layout styles, and component styling.
-
-### `assets/js/script.js`
-
-Controls the mobile hamburger navigation.
-
-## Customization
-
-- Replace `assets/images/Primary_Logo.png` with your final logo if needed.
-- Update homepage content in `index.php`.
-- Adjust colors, spacing, and typography in `assets/css/styles.css`.
-- Extend the mobile menu behavior in `assets/js/script.js` if you add more navigation items.
-
-## Notes
-
-- This repo is frontend-first and does not require a database for the current homepage.
-- `db_connect.php` can remain in the project if you plan to add backend features later.
-- Add-to-cart and cart quantity updates (`product.php`, `cart.php`)
-- Profile updates and password change (`profile.php`)
-
-### New Backend Files
-
-- `lib/bootstrap.php` (session + shared helpers)
-- `lib/oci_db.php` (Oracle connection + query helpers)
-- `lib/auth_helpers.php` (login/session guards)
-- `lib/cart_helpers.php` (cart operations)
-- `lib/trader_helpers.php` (trader dashboard/profile/product helpers)
-
-### Prerequisites
-
-1. Oracle DB with your schema tables created.
-2. PHP OCI8 extension enabled (`php -m | grep oci8`).
-3. Oracle client/network connectivity from your PHP runtime.
-
-If `DB_DRIVER=offline`, these Oracle prerequisites are not needed.
-
-### Database Connection Setup
-
-File: [db_connect.php](db_connect.php)
-
-This file establishes a direct connection to your Oracle database using OCI8. It contains:
-
-- **Database Username**: `ADMIN`
-- **Database Password**: `Oracle123#Apex`
-- **Connection String**: `localhost:1521/XEPDB1`
-
-To test the database connection:
+To test database connection:
 
 ```bash
 php db_connect.php
@@ -129,46 +108,24 @@ If successful, you'll see:
 🎉 Boom! PHP is successfully connected to the Cleck E-Mart Database!
 ```
 
-**Note:** This file uses hardcoded credentials for development. For production, use environment variables or secure credential management:
+For production, use environment variables or secure credentials.
 
-```php
-$db_user = getenv('ORACLE_USERNAME');
-$db_pass = getenv('ORACLE_PASSWORD');
-```
+## Important Notes
 
-### Environment Variables
+- This repo is frontend-first but includes Oracle integration for future backend features.
+- Use sequences/triggers to manage Oracle IDs safely (avoid MAX(id) + 1 in production).
+- See in-code comments for customization and extension.
 
-Set these before running PHP:
-
-```bash
-export ORACLE_USERNAME=ADMIN
-export ORACLE_PASSWORD=Oracle123#Apex
-export ORACLE_CONNECTION_STRING=localhost:1521/XEPDB1
-```
-
-Defaults used if variables are not set:
-
-- `ORACLE_USERNAME=ADMIN`
-- `ORACLE_PASSWORD=Oracle123#Apex`
-- `ORACLE_CONNECTION_STRING=localhost:1521/XEPDB1`
-
-### Run
-
-```bash
-php -S localhost:8000
-```
-
-Then open `http://localhost:8000/`.
-
-### Important Schema Note
-
-- Your SQL uses a supertype/subtype model where `CUSTOMER.customer_id` and `TRADER.trader_id` match `USER.user_id`. This is fully respected by the integration.
-- IDs are currently generated with `MAX(id) + 1` in PHP helper code. For production, replace this with Oracle sequences + triggers (or identity strategy) to avoid race conditions under concurrent traffic.
+---
 
 ## Suggested Next Steps
 
-1. Add seed data for `CATEGORY`, `SHOP`, and `PRODUCT` so browsing pages have initial records.
-2. Implement order placement (create rows in `ORDER`, `ORDER_ITEM`, `PAYMENT`, `INVOICE`).
-3. Move ID generation to Oracle sequences for production safety.
-4. Add CSRF tokens to forms and stricter authorization checks for trader/admin pages.
-5. Add integration tests for auth, cart, and profile update flows.
+1. Add initial seed data for `CATEGORY`, `SHOP`, and `PRODUCT`
+2. Implement end-to-end order placement and payment
+3. Use Oracle sequences for all IDs
+4. Add CSRF & improve security
+5. Expand test coverage
+
+---
+
+*Cleck E-Mart — modern PHP & Oracle shopfront with a modular, clean codebase.*
