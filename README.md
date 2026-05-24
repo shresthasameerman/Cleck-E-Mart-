@@ -2,10 +2,6 @@
 
 Cleck E-Mart is a clean, responsive storefront homepage built with PHP includes, semantic HTML, modular CSS, and vanilla JavaScript.
 
-## Documentation
-
-For a comprehensive overview of the PHP application, including file descriptions and function details, please refer to the [System Documentation](System_Documentation.md).
-
 ## What’s Included
 
 - A polished homepage based on the provided wireframe
@@ -13,8 +9,6 @@ For a comprehensive overview of the PHP application, including file descriptions
 - Mobile-first responsive styling
 - Hamburger navigation for smaller screens
 - A lightweight JavaScript toggle for the menu
-- RFID Collection Verification API for hardware integration
-- Comprehensive system documentation
 
 ## Project Structure
 
@@ -44,17 +38,10 @@ From the project root, start PHP’s built-in server:
 php -S 0.0.0.0:8000
 ```
 
-Open the site in your browser:
-
-```text
+Open the site in your browser:  
 http://localhost:8000
-```
 
-If you want to view it from another device on the same network, use your machine’s local IP address instead of `localhost`:
-
-```text
-http://YOUR_LOCAL_IP:8000
-```
+_(If using another device, replace `localhost` with your machine’s IP address)_
 
 If the page does not load from another device, allow the port through your firewall:
 
@@ -105,7 +92,6 @@ Controls the mobile hamburger navigation.
 - `lib/auth_helpers.php` (login/session guards)
 - `lib/cart_helpers.php` (cart operations)
 - `lib/trader_helpers.php` (trader dashboard/profile/product helpers)
-- `lib/rfid_api.php` (RFID collection verification API & hardware integration)
 
 ### Prerequisites
 
@@ -125,7 +111,7 @@ This file establishes a direct connection to your Oracle database using OCI8. It
 - **Database Password**: `Oracle123#Apex`
 - **Connection String**: `localhost:1521/XEPDB1`
 
-To test the database connection:
+To test database connection:
 
 ```bash
 php db_connect.php
@@ -136,46 +122,24 @@ If successful, you'll see:
 🎉 Boom! PHP is successfully connected to the Cleck E-Mart Database!
 ```
 
-**Note:** This file uses hardcoded credentials for development. For production, use environment variables or secure credential management:
+For production, use environment variables or secure credentials.
 
-```php
-$db_user = getenv('ORACLE_USERNAME');
-$db_pass = getenv('ORACLE_PASSWORD');
-```
+## Important Notes
 
-### Environment Variables
+- This repo is frontend-first but includes Oracle integration for future backend features.
+- Use sequences/triggers to manage Oracle IDs safely (avoid MAX(id) + 1 in production).
+- See in-code comments for customization and extension.
 
-Set these before running PHP:
-
-```bash
-export ORACLE_USERNAME=ADMIN
-export ORACLE_PASSWORD=Oracle123#Apex
-export ORACLE_CONNECTION_STRING=localhost:1521/XEPDB1
-```
-
-Defaults used if variables are not set:
-
-- `ORACLE_USERNAME=ADMIN`
-- `ORACLE_PASSWORD=Oracle123#Apex`
-- `ORACLE_CONNECTION_STRING=localhost:1521/XEPDB1`
-
-### Run
-
-```bash
-php -S localhost:8000
-```
-
-Then open `http://localhost:8000/`.
-
-### Important Schema Note
-
-- Your SQL uses a supertype/subtype model where `CUSTOMER.customer_id` and `TRADER.trader_id` match `USER.user_id`. This is fully respected by the integration.
-- IDs are currently generated with `MAX(id) + 1` in PHP helper code. For production, replace this with Oracle sequences + triggers (or identity strategy) to avoid race conditions under concurrent traffic.
+---
 
 ## Suggested Next Steps
 
-1. Add seed data for `CATEGORY`, `SHOP`, and `PRODUCT` so browsing pages have initial records.
-2. Implement order placement (create rows in `ORDER`, `ORDER_ITEM`, `PAYMENT`, `INVOICE`).
-3. Move ID generation to Oracle sequences for production safety.
-4. Add CSRF tokens to forms and stricter authorization checks for trader/admin pages.
-5. Add integration tests for auth, cart, and profile update flows.
+1. Add initial seed data for `CATEGORY`, `SHOP`, and `PRODUCT`
+2. Implement end-to-end order placement and payment
+3. Use Oracle sequences for all IDs
+4. Add CSRF & improve security
+5. Expand test coverage
+
+---
+
+*Cleck E-Mart — modern PHP & Oracle shopfront with a modular, clean codebase.*
