@@ -1,4 +1,6 @@
 <?php
+// This file provides API endpoints for asynchronous cart updates (like changing quantities via AJAX).
+
 /**
  * Cart AJAX API Endpoint
  * Handles dynamic cart updates via AJAX requests
@@ -22,7 +24,7 @@ $action = $_GET['action'] ?? $_POST['action'] ?? '';
 try {
     switch ($action) {
         case 'fetch':
-            // Fetch current cart items
+            // Logic to fetch current cart items from either APEX or local storage
             $useApex = apex_cart_enabled();
             
             $items = [];
@@ -49,7 +51,7 @@ try {
             break;
 
         case 'update':
-            // Update item quantity
+            // Logic to update the quantity of a specific item in the cart
             $productId = filter_input(INPUT_POST, 'product_id', FILTER_VALIDATE_INT);
             $quantity = filter_input(INPUT_POST, 'quantity', FILTER_VALIDATE_INT);
 
@@ -84,7 +86,7 @@ try {
             break;
 
         case 'add':
-            // Add item to cart
+            // Logic to add a new product to the cart with a specific quantity
             $productId = filter_input(INPUT_POST, 'product_id', FILTER_VALIDATE_INT);
             $quantity = filter_input(INPUT_POST, 'quantity', FILTER_VALIDATE_INT);
 

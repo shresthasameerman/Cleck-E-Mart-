@@ -1,4 +1,6 @@
 <?php
+// This page shows a success message and order summary right after a customer successfully checks out.
+
 /**
  * Order Confirmation Page
  * Displays after successful checkout with order details from Oracle

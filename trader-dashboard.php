@@ -1,4 +1,6 @@
 <?php
+// This is the main dashboard for traders, giving them a quick overview of their shop's performance, recent orders, and stock alerts.
+
 require_once __DIR__ . '/lib/trader_helpers.php';
 
 trader_role_guard();
@@ -59,6 +61,8 @@ $errorMessage = get_flash('error');
 $traderStatus = trader_verification_status($userId);
 $isVerified = trader_is_verified($userId);
 
+require_once __DIR__ . '/lib/trader_dashboard_helpers.php';
+
 // ====================================================================
 // DYNAMIC TIMEFRAME FILTERING FOR TOP PRODUCTS
 // ====================================================================
@@ -69,63 +73,8 @@ if (!in_array($timeframe, $validTimeframes)) {
     $timeframe = 'week';
 }
 
-// Build date filter based on timeframe
-$dateFilter = '';
-$timeframeLabel = 'This Week';
-switch ($timeframe) {
-    case 'month':
-        $dateFilter = "AND o.order_date >= ADD_MONTHS(SYSDATE, -1)";
-        $timeframeLabel = 'This Month';
-        break;
-    case 'year':
-        $dateFilter = "AND o.order_date >= ADD_MONTHS(SYSDATE, -12)";
-        $timeframeLabel = 'This Year';
-        break;
-    case 'week':
-    default:
-        $dateFilter = "AND o.order_date >= SYSDATE - 7";
-        $timeframeLabel = 'This Week';
-        break;
-}
-
-// Fetch top products dynamically from Oracle
-$topProducts = [];
-if ($shop && isset($shop['SHOP_ID'])) {
-    try {
-        require_once __DIR__ . '/lib/oci_db.php';
-        $conn = db_connect();
-        
-        if ($conn) {
-            $sql = "SELECT p.product_name, SUM(oi.quantity) as total_sold
-                    FROM \"ORDER\" o
-                    JOIN ORDER_ITEM oi ON o.order_id = oi.order_id
-                    JOIN PRODUCT p ON oi.product_id = p.product_id
-                    WHERE p.shop_id = :shop_id
-                    {$dateFilter}
-                    GROUP BY p.product_name
-                    ORDER BY total_sold DESC
-                    FETCH FIRST 5 ROWS ONLY";
-            
-            $stmt = oci_parse($conn, $sql);
-            if ($stmt) {
-                oci_bind_by_name($stmt, ':shop_id', $shop['SHOP_ID'], -1, SQLT_INT);
-                if (oci_execute($stmt)) {
-                    while ($row = oci_fetch_assoc($stmt)) {
-                        $topProducts[] = [
-                            'product_name' => $row['PRODUCT_NAME'],
-                            'sold_quantity' => (int)$row['TOTAL_SOLD']
-                        ];
-                    }
-                }
-                oci_free_statement($stmt);
-            }
-        }
-    } catch (Exception $e) {
-        $topProducts = array_slice($inventoryProducts, 0, 5);
-    }
-} else {
-    $topProducts = array_slice($inventoryProducts, 0, 5);
-}
+$timeframeLabel = get_timeframe_label($timeframe);
+$topProducts = get_trader_top_products($shop, $inventoryProducts, $timeframe);
 
 require __DIR__ . '/components/header.php';
 ?>
@@ -275,6 +224,7 @@ require __DIR__ . '/components/header.php';
                                                data-desc="<?php echo e($product['product_description'] ?? ''); ?>"
                                                data-price="<?php echo e($product['price'] ?? 0); ?>"
                                                data-stock="<?php echo e($product['stock_quantity']); ?>"
+                                               data-image="<?php echo e($product['product_image'] ?? ''); ?>"
                                                style="font-weight: 600; text-decoration: none;">
                                                 <?php echo e($product['product_name']); ?>
                                             </a>
@@ -309,6 +259,8 @@ require __DIR__ . '/components/header.php';
             </div>
         </div>
     </div>
+</main>
+
     <!-- Edit Product Modal -->
     <div id="editProductModal" class="trader-modal">
         <div class="trader-modal__content">
@@ -339,15 +291,23 @@ require __DIR__ . '/components/header.php';
                             <input type="number" name="stock_quantity" id="edit_product_stock" min="0" step="1" required />
                         </label>
                     </div>
-                    <label class="trader-form__full">
-                        <span>Product image</span>
-                        <div class="file-upload-wrapper">
-                            <button type="button" class="button file-upload-btn" onclick="document.getElementById('edit_product_image').click();">Browse files</button>
-                            <span id="edit_file_name" class="file-upload-name">No file selected</span>
-                            <input type="file" id="edit_product_image" name="product_image" accept="image/jpeg,image/png,image/webp,image/gif" onchange="document.getElementById('edit_file_name').textContent = this.files[0] ? this.files[0].name : 'No file selected';" />
+                    
+                    <div style="display: flex; gap: 1.5rem; align-items: flex-start; margin-top: 0.5rem;">
+                        <label class="trader-form__full" style="flex: 1; margin: 0;">
+                            <span>Product image</span>
+                            <div class="file-upload-wrapper">
+                                <button type="button" class="button file-upload-btn" onclick="document.getElementById('edit_product_image').click();">Browse files</button>
+                                <span id="edit_file_name" class="file-upload-name">No file selected</span>
+                                <input type="file" id="edit_product_image" name="product_image" accept="image/jpeg,image/png,image/webp,image/gif" />
+                            </div>
+                            <small style="display: block; margin-top: 0.5rem; color: #666;">Leave blank to keep existing image. Max: 5MB</small>
+                        </label>
+                        
+                        <div id="image_preview_container" style="width: 100px; height: 100px; border-radius: var(--radius-sm); border: 1px solid rgba(0,0,0,0.1); overflow: hidden; display: flex; align-items: center; justify-content: center; background: #f9f9f9; flex-shrink: 0;">
+                            <img id="edit_product_image_preview" src="" alt="Preview" style="max-width: 100%; max-height: 100%; object-fit: cover; display: none;" />
+                            <span id="edit_product_image_placeholder" style="color: #aaa; font-size: 0.8rem;">No Image</span>
                         </div>
-                        <small style="display: block; margin-top: 0.5rem; color: #666;">Leave blank to keep existing image. Supported: JPG, PNG, WebP, GIF. Max: 5MB</small>
-                    </label>
+                    </div>
                 </div>
                 
                 <div class="trader-form__actions" style="margin-top: 2rem;">
@@ -357,7 +317,6 @@ require __DIR__ . '/components/header.php';
         </div>
     </div>
 
-</main>
 <?php require __DIR__ . '/components/footer.php'; ?>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -423,6 +382,28 @@ require __DIR__ . '/components/header.php';
         const editLinks = document.querySelectorAll('.edit-product-link');
         const modal = document.getElementById('editProductModal');
         const closeBtn = document.getElementById('closeEditModal');
+        const fileInput = document.getElementById('edit_product_image');
+        const imgPreview = document.getElementById('edit_product_image_preview');
+        const imgPlaceholder = document.getElementById('edit_product_image_placeholder');
+        
+        fileInput.addEventListener('change', function(e) {
+            const file = this.files[0];
+            document.getElementById('edit_file_name').textContent = file ? file.name : 'No file selected';
+            
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    imgPreview.src = e.target.result;
+                    imgPreview.style.display = 'block';
+                    imgPlaceholder.style.display = 'none';
+                }
+                reader.readAsDataURL(file);
+            } else {
+                imgPreview.src = '';
+                imgPreview.style.display = 'none';
+                imgPlaceholder.style.display = 'block';
+            }
+        });
         
         editLinks.forEach(link => {
             link.addEventListener('click', function(e) {
@@ -439,15 +420,29 @@ require __DIR__ . '/components/header.php';
                 document.getElementById('edit_product_image').value = '';
                 document.getElementById('edit_file_name').textContent = 'No file selected';
                 
+                // Show existing image if available
+                const currentImage = this.getAttribute('data-image');
+                if (currentImage) {
+                    imgPreview.src = 'assets/images/products/' + currentImage;
+                    imgPreview.style.display = 'block';
+                    imgPlaceholder.style.display = 'none';
+                } else {
+                    imgPreview.src = '';
+                    imgPreview.style.display = 'none';
+                    imgPlaceholder.style.display = 'block';
+                }
+                
                 // Show modal
                 modal.classList.add('is-active');
                 document.body.style.overflow = 'hidden';
+                document.documentElement.classList.add('modal-open');
             });
         });
         
         closeBtn.addEventListener('click', function() {
             modal.classList.remove('is-active');
             document.body.style.overflow = '';
+            document.documentElement.classList.remove('modal-open');
         });
         
         // Close when clicking outside content
@@ -455,12 +450,17 @@ require __DIR__ . '/components/header.php';
             if (e.target === modal) {
                 modal.classList.remove('is-active');
                 document.body.style.overflow = '';
+                document.documentElement.classList.remove('modal-open');
             }
         });
     });
 </script>
 
 <style>
+    html.modal-open, html.modal-open body {
+        overflow: hidden !important;
+        height: 100vh;
+    }
     .trader-card__timeframe-select {
         padding: 0.5rem 0.75rem;
         border: 1px solid rgba(26, 26, 26, 0.2);

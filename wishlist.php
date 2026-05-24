@@ -1,4 +1,6 @@
 <?php
+// This file displays the customer's saved products and handles adding or removing items from their wishlist.
+
 $pageTitle = 'Your Wishlist | Cleck E-Mart';
 $metaDescription = 'View and manage your saved products.';
 require_once __DIR__ . '/lib/auth_helpers.php';
@@ -24,6 +26,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 add_product_to_cart($customerId, $productId, 1);
                 remove_from_wishlist($customerId, $productId);
                 set_flash('success', 'Item moved to your basket.');
+            } elseif ($action === 'add') {
+                add_to_wishlist($customerId, $productId);
+                set_flash('success', 'Item added to your wishlist.');
+                
+                $returnUrl = $_POST['return_url'] ?? 'wishlist.php';
+                redirect($returnUrl);
             }
         } catch (Throwable $e) {
             set_flash('error', $e->getMessage());

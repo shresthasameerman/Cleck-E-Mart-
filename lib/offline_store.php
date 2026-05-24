@@ -1,11 +1,15 @@
 <?php
+// This file provides a fallback mock database mechanism to keep the site running if the Oracle database goes offline.
+
 require_once __DIR__ . '/bootstrap.php';
 
+// Handles the core logic and operations for offline_data_file
 function offline_data_file(): string
 {
     return __DIR__ . '/../data/offline_db.json';
 }
 
+// Handles the core logic and operations for offline_default_data
 function offline_default_data(): array
 {
     $passwordHash = password_hash('password123', PASSWORD_DEFAULT);
@@ -189,6 +193,7 @@ function offline_default_data(): array
     ];
 }
 
+// Handles the core logic and operations for offline_load
 function offline_load(): array
 {
     $file = offline_data_file();
@@ -215,11 +220,13 @@ function offline_load(): array
     return $data;
 }
 
+// Handles the core logic and operations for offline_save
 function offline_save(array $data): void
 {
     file_put_contents(offline_data_file(), json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
 }
 
+// Handles the core logic and operations for offline_next_id
 function offline_next_id(array $rows, string $idField): int
 {
     $max = 0;
@@ -233,6 +240,7 @@ function offline_next_id(array $rows, string $idField): int
     return $max + 1;
 }
 
+// Handles the core logic and operations for offline_user_by_email
 function offline_user_by_email(string $email): ?array
 {
     $data = offline_load();
@@ -245,6 +253,7 @@ function offline_user_by_email(string $email): ?array
     return null;
 }
 
+// Handles the core logic and operations for offline_user_by_id
 function offline_user_by_id(int $userId): ?array
 {
     $data = offline_load();
@@ -257,6 +266,7 @@ function offline_user_by_id(int $userId): ?array
     return null;
 }
 
+// Handles the core logic and operations for offline_create_account
 function offline_create_account(string $firstName, string $lastName, string $email, string $passwordHash, string $role): array
 {
     $data = offline_load();
@@ -310,6 +320,7 @@ function offline_create_account(string $firstName, string $lastName, string $ema
     return offline_user_to_upper($user);
 }
 
+// Handles the core logic and operations for offline_is_customer
 function offline_is_customer(int $userId): bool
 {
     $data = offline_load();
@@ -322,6 +333,7 @@ function offline_is_customer(int $userId): bool
     return false;
 }
 
+// Handles the core logic and operations for offline_update_user
 function offline_update_user(int $userId, string $firstName, string $lastName, string $email, ?string $phone): void
 {
     $data = offline_load();
@@ -343,6 +355,7 @@ function offline_update_user(int $userId, string $firstName, string $lastName, s
     throw new RuntimeException('User not found in offline store.');
 }
 
+// Handles the core logic and operations for offline_email_taken_by_other
 function offline_email_taken_by_other(int $userId, string $email): bool
 {
     $data = offline_load();
@@ -359,6 +372,7 @@ function offline_email_taken_by_other(int $userId, string $email): bool
     return false;
 }
 
+// Handles the core logic and operations for offline_update_password
 function offline_update_password(int $userId, string $passwordHash): void
 {
     $data = offline_load();
@@ -377,6 +391,7 @@ function offline_update_password(int $userId, string $passwordHash): void
     throw new RuntimeException('User not found in offline store.');
 }
 
+// Handles the core logic and operations for offline_get_category_name
 function offline_get_category_name(?int $categoryId): string
 {
     if ($categoryId === null) {
@@ -393,6 +408,7 @@ function offline_get_category_name(?int $categoryId): string
     return 'All Categories';
 }
 
+// Handles the core logic and operations for offline_get_products
 function offline_get_products(?int $categoryId = null): array
 {
     $data = offline_load();
@@ -453,6 +469,7 @@ function offline_get_products(?int $categoryId = null): array
     return $rows;
 }
 
+// Handles the core logic and operations for offline_get_product_detail
 function offline_get_product_detail(int $productId): ?array
 {
     $data = offline_load();
@@ -480,6 +497,7 @@ function offline_get_product_detail(int $productId): ?array
     return null;
 }
 
+// Handles the core logic and operations for offline_ensure_active_cart
 function offline_ensure_active_cart(int $customerId): int
 {
     $data = offline_load();
@@ -501,6 +519,7 @@ function offline_ensure_active_cart(int $customerId): int
     return $cartId;
 }
 
+// Handles the core logic and operations for offline_add_to_cart
 function offline_add_to_cart(int $customerId, int $productId, int $quantity): void
 {
     $quantity = max(1, $quantity);
@@ -538,6 +557,7 @@ function offline_add_to_cart(int $customerId, int $productId, int $quantity): vo
     offline_save($data);
 }
 
+// Handles the core logic and operations for offline_update_cart_quantity
 function offline_update_cart_quantity(int $customerId, int $productId, int $quantity): void
 {
     $data = offline_load();
@@ -560,6 +580,7 @@ function offline_update_cart_quantity(int $customerId, int $productId, int $quan
     offline_save($data);
 }
 
+// Handles the core logic and operations for offline_get_cart_items
 function offline_get_cart_items(int $customerId): array
 {
     $data = offline_load();
@@ -606,6 +627,7 @@ function offline_get_cart_items(int $customerId): array
     return $rows;
 }
 
+// Handles the core logic and operations for offline_get_orders_for_customer
 function offline_get_orders_for_customer(int $customerId, int $limit = 5): array
 {
     $data = offline_load();
@@ -636,6 +658,7 @@ function offline_get_orders_for_customer(int $customerId, int $limit = 5): array
     return array_slice($rows, 0, $limit);
 }
 
+// Handles the core logic and operations for offline_get_reviews_for_customer
 function offline_get_reviews_for_customer(int $customerId, int $limit = 5): array
 {
     $data = offline_load();
@@ -667,16 +690,19 @@ function offline_get_reviews_for_customer(int $customerId, int $limit = 5): arra
     return array_slice($rows, 0, $limit);
 }
 
+// Handles the core logic and operations for offline_count_orders
 function offline_count_orders(int $customerId): int
 {
     return count(offline_get_orders_for_customer($customerId, PHP_INT_MAX));
 }
 
+// Handles the core logic and operations for offline_count_reviews
 function offline_count_reviews(int $customerId): int
 {
     return count(offline_get_reviews_for_customer($customerId, PHP_INT_MAX));
 }
 
+// Handles the core logic and operations for offline_count_saved
 function offline_count_saved(int $customerId): int
 {
     $data = offline_load();
@@ -698,6 +724,7 @@ function offline_count_saved(int $customerId): int
     return $count;
 }
 
+// Handles the core logic and operations for offline_get_categories
 function offline_get_categories(): array
 {
     $data = offline_load();
@@ -710,6 +737,7 @@ function offline_get_categories(): array
     }, $data['categories']);
 }
 
+// Handles the core logic and operations for offline_get_trader_shop
 function offline_get_trader_shop(int $traderId): ?array
 {
     $data = offline_load();
@@ -761,6 +789,7 @@ function offline_get_trader_shop(int $traderId): ?array
     ];
 }
 
+// Handles the core logic and operations for offline_update_shop
 function offline_update_shop(int $shopId, string $shopName, string $shopDescription, ?string $shopLogo): void
 {
     $data = offline_load();
@@ -780,6 +809,7 @@ function offline_update_shop(int $shopId, string $shopName, string $shopDescript
     throw new RuntimeException('Shop not found in offline store.');
 }
 
+// Handles the core logic and operations for offline_get_trader_products
 function offline_get_trader_products(int $traderId): array
 {
     $data = offline_load();
@@ -848,6 +878,7 @@ function offline_get_trader_products(int $traderId): array
     return $rows;
 }
 
+// Handles the core logic and operations for offline_get_trader_dashboard
 function offline_get_trader_dashboard(int $traderId): array
 {
     $shop = offline_get_trader_shop($traderId);
@@ -881,6 +912,7 @@ function offline_get_trader_dashboard(int $traderId): array
     ];
 }
 
+// Handles the core logic and operations for offline_create_product
 function offline_create_product(int $shopId, array $payload): array
 {
     $data = offline_load();
@@ -918,6 +950,7 @@ function offline_create_product(int $shopId, array $payload): array
     ];
 }
 
+// Handles the core logic and operations for offline_user_to_upper
 function offline_user_to_upper(array $user): array
 {
     return [
@@ -931,6 +964,7 @@ function offline_user_to_upper(array $user): array
     ];
 }
 
+// Handles the core logic and operations for offline_get_pending_products
 function offline_get_pending_products(): array
 {
     $data = offline_load();
@@ -960,6 +994,7 @@ function offline_get_pending_products(): array
     return $rows;
 }
 
+// Handles the core logic and operations for offline_update_product_status
 function offline_update_product_status(int $productId, string $status): void
 {
     $data = offline_load();
@@ -971,6 +1006,7 @@ function offline_update_product_status(int $productId, string $status): void
     }
 }
 
+// Handles the core logic and operations for offline_get_pending_traders
 function offline_get_pending_traders(): array
 {
     $data = offline_load();
@@ -1012,6 +1048,7 @@ function offline_get_pending_traders(): array
     return $rows;
 }
 
+// Handles the core logic and operations for offline_update_trader_status
 function offline_update_trader_status(int $traderId, string $status): void
 {
     $data = offline_load();
@@ -1025,6 +1062,7 @@ function offline_update_trader_status(int $traderId, string $status): void
 }
 }
 
+// Handles the core logic and operations for offline_get_trader_shops
 function offline_get_trader_shops(int $traderId): array
 {
     $data = offline_load();
@@ -1055,6 +1093,7 @@ function offline_get_trader_shops(int $traderId): array
     return $shops;
 }
 
+// Handles the core logic and operations for offline_create_shop_for_trader
 function offline_create_shop_for_trader(int $traderId, string $shopName, string $shopDesc, ?string $shopLogo): array
 {
     $data = offline_load();
@@ -1082,6 +1121,7 @@ function offline_create_shop_for_trader(int $traderId, string $shopName, string 
     ];
 }
 
+// Handles the core logic and operations for offline_get_pending_shops
 function offline_get_pending_shops(): array
 {
     $data = offline_load();
@@ -1098,6 +1138,7 @@ function offline_get_pending_shops(): array
     return $shops;
 }
 
+// Handles the core logic and operations for offline_update_shop_status
 function offline_update_shop_status(int $shopId, string $status): void
 {
     $data = offline_load();
@@ -1110,6 +1151,7 @@ function offline_update_shop_status(int $shopId, string $status): void
     }
 }
 
+// Handles the core logic and operations for offline_get_pending_reviews_for_customer
 function offline_get_pending_reviews_for_customer(int $customerId): array
 {
     $data = offline_load();
@@ -1159,6 +1201,7 @@ function offline_get_pending_reviews_for_customer(int $customerId): array
     return $rows;
 }
 
+// Handles the core logic and operations for offline_submit_review
 function offline_submit_review(int $customerId, int $productId, float $rating, string $comment): void
 {
     $data = offline_load();
@@ -1200,6 +1243,7 @@ function offline_submit_review(int $customerId, int $productId, float $rating, s
     offline_save($data);
 }
 
+// Handles the core logic and operations for offline_update_product
 function offline_update_product(int $shopId, int $productId, array $payload): void
 {
     $data = offline_load();

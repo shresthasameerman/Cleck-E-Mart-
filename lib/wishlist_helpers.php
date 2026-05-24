@@ -1,7 +1,10 @@
 <?php
+// These helper functions handle saving and retrieving a customer's favorite products in their wishlist.
+
 require_once __DIR__ . '/oci_db.php';
 require_once __DIR__ . '/offline_store.php';
 
+// Handles the core logic and operations for ensure_wishlist
 function ensure_wishlist(int $customerId): int
 {
     if (db_is_offline()) {
@@ -29,6 +32,7 @@ function ensure_wishlist(int $customerId): int
     return $wishlistId;
 }
 
+// Handles the core logic and operations for add_to_wishlist
 function add_to_wishlist(int $customerId, int $productId): void
 {
     if (db_is_offline()) {
@@ -56,6 +60,7 @@ function add_to_wishlist(int $customerId, int $productId): void
     }
 }
 
+// Handles the core logic and operations for remove_from_wishlist
 function remove_from_wishlist(int $customerId, int $productId): void
 {
     if (db_is_offline()) {
@@ -73,6 +78,7 @@ function remove_from_wishlist(int $customerId, int $productId): void
     );
 }
 
+// Handles the core logic and operations for get_wishlist_items
 function get_wishlist_items(int $customerId): array
 {
     if (db_is_offline()) {
@@ -100,6 +106,7 @@ function get_wishlist_items(int $customerId): array
     );
 }
 
+// Handles the core logic and operations for is_in_wishlist
 function is_in_wishlist(int $customerId, int $productId): bool
 {
     if (db_is_offline()) {

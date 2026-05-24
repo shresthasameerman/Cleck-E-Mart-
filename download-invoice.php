@@ -1,4 +1,6 @@
 <?php
+// This script generates and forces a download of a PDF or HTML invoice for a completed order.
+
 /**
  * Download Invoice Script
  * Generates a text-based invoice for a given order and forces a download.

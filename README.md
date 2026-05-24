@@ -2,6 +2,10 @@
 
 Cleck E-Mart is a clean, responsive storefront homepage built with PHP includes, semantic HTML, modular CSS, and vanilla JavaScript.
 
+## Documentation
+
+For a comprehensive overview of the PHP application, including file descriptions and function details, please refer to the [System Documentation](System_Documentation.md).
+
 ## What’s Included
 
 - A polished homepage based on the provided wireframe
@@ -9,6 +13,8 @@ Cleck E-Mart is a clean, responsive storefront homepage built with PHP includes,
 - Mobile-first responsive styling
 - Hamburger navigation for smaller screens
 - A lightweight JavaScript toggle for the menu
+- RFID Collection Verification API for hardware integration
+- Comprehensive system documentation
 
 ## Project Structure
 
@@ -99,6 +105,7 @@ Controls the mobile hamburger navigation.
 - `lib/auth_helpers.php` (login/session guards)
 - `lib/cart_helpers.php` (cart operations)
 - `lib/trader_helpers.php` (trader dashboard/profile/product helpers)
+- `lib/rfid_api.php` (RFID collection verification API & hardware integration)
 
 ### Prerequisites
 

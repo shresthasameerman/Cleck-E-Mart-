@@ -1,4 +1,6 @@
 <?php
+// This file shows products filtered by a specific category, allowing users to browse and sort fresh produce.
+
 $pageTitle = 'Browse Category | Cleck E-Mart';
 $metaDescription = 'Browse product categories and discover items from local traders.';
 require_once __DIR__ . '/lib/oci_db.php';
@@ -40,72 +42,12 @@ $resolveImage = static function (?string $path): string {
     return file_exists($absolute) ? $relative : 'assets/images/icons/product-placeholder.svg';
 };
 
+require_once __DIR__ . '/lib/storefront_helpers.php';
+
 try {
-    if (db_is_offline()) {
-        $effectiveCategoryId = $selectedCategoryId !== false ? $selectedCategoryId : null;
-        $categoryTitle = offline_get_category_name($effectiveCategoryId);
-        $products = offline_get_products($effectiveCategoryId);
-    } else {
-        if ($selectedCategoryId !== false && $selectedCategoryId !== null) {
-            $category = db_fetch_one(
-                'SELECT category_name FROM CATEGORY WHERE category_id = :category_id',
-                ['category_id' => $selectedCategoryId]
-            );
-            if ($category !== null) {
-                $categoryTitle = (string) $category['CATEGORY_NAME'];
-            }
-        }
-
-        $sql = "SELECT p.product_id,
-                       p.product_name,
-                       p.price,
-                       p.product_image,
-                       NVL(u.first_name || ' ' || u.last_name, s.shop_name) AS trader_name,
-                       s.shop_name,
-                       c.category_name
-                FROM PRODUCT p
-                JOIN SHOP s ON s.shop_id = p.shop_id
-                JOIN TRADER t ON t.trader_id = s.trader_id
-                JOIN \"USER\" u ON u.user_id = t.trader_id
-                JOIN CATEGORY c ON c.category_id = p.category_id";
-
-        $binds = [];
-        if ($selectedCategoryId !== false && $selectedCategoryId !== null) {
-            $sql .= ' WHERE p.category_id = :category_id AND p.product_verification_status = :verification_status AND s.shop_status = \'ACTIVE\'';
-            $binds['category_id'] = $selectedCategoryId;
-        } else {
-            $sql .= ' WHERE p.product_verification_status = :verification_status AND s.shop_status = \'ACTIVE\'';
-        }
-        $binds['verification_status'] = 'APPROVED';
-
-        if ($minPrice !== false && $minPrice !== null) {
-            $sql .= ' AND p.price >= :min_price';
-            $binds['min_price'] = $minPrice;
-        }
-        
-        if ($maxPrice !== false && $maxPrice !== null) {
-            $sql .= ' AND p.price <= :max_price';
-            $binds['max_price'] = $maxPrice;
-        }
-
-        switch ($sortOrder) {
-            case 'price_asc':
-                $sql .= ' ORDER BY p.price ASC';
-                break;
-            case 'price_desc':
-                $sql .= ' ORDER BY p.price DESC';
-                break;
-            case 'name_desc':
-                $sql .= ' ORDER BY p.product_name DESC';
-                break;
-            case 'name_asc':
-            default:
-                $sql .= ' ORDER BY p.product_name ASC';
-                break;
-        }
-        
-        $products = db_fetch_all($sql, $binds);
-    }
+    $categoryData = get_storefront_category_data($selectedCategoryId, $sortOrder, $minPrice, $maxPrice);
+    $categoryTitle = $categoryData['categoryTitle'];
+    $products = $categoryData['products'];
 } catch (Throwable $exception) {
     $dbError = $exception->getMessage();
 }
@@ -226,7 +168,7 @@ require __DIR__ . '/components/header.php';
                                         </form>
                                     </div>
                                     <?php if (is_logged_in() && current_role() === 'CUSTOMER'): ?>
-                                        <form method="post" action="wishlist_action.php" style="display:inline; flex-shrink: 0;">
+                                        <form method="post" action="wishlist.php" style="display:inline; flex-shrink: 0;">
                                             <input type="hidden" name="action" value="add" />
                                             <input type="hidden" name="product_id" value="<?php echo e($product['PRODUCT_ID']); ?>" />
                                             <input type="hidden" name="return_url" value="category.php<?php echo isset($_GET['category_id']) ? '?category_id=' . (int)$_GET['category_id'] : ''; ?>" />

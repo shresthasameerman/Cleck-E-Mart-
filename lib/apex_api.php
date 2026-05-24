@@ -1,4 +1,6 @@
 <?php
+// This file provides functions to interact with external APEX REST APIs for cross-platform integration.
+
 /**
  * Oracle APEX API Integration
  * Handles fetching product data from Oracle APEX REST endpoints

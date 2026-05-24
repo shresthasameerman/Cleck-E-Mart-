@@ -1,4 +1,6 @@
 <?php
+// This file displays a list of past orders for a logged-in customer, letting them review their purchase history.
+
 /**
  * Order History Page
  * Shows all orders for the logged-in customer from Oracle

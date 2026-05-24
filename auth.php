@@ -1,4 +1,6 @@
 <?php
+// This is the central authentication controller. It handles everything related to logging in, signing up, and logging out users.
+
 require_once __DIR__ . '/lib/auth_helpers.php';
 require_once __DIR__ . '/lib/apex_auth.php';
 
@@ -17,6 +19,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $accountType = strtolower(trim((string) ($_POST['account_type'] ?? 'customer')));
         $termsAccepted = !empty($_POST['terms']);
 
+        // Validate incoming registration data.
+        // Ensures that no blank submissions bypass the HTML5 required attributes.
         if ($firstName === '' || $lastName === '' || $email === '' || $password === '') {
             $errors[] = 'Please complete all required sign-up fields.';
         }
@@ -29,12 +33,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!$termsAccepted) {
             $errors[] = 'You must accept the terms and conditions.';
         }
+        // Role enforcement to prevent malicious users from assigning themselves admin privileges.
         if (!in_array($accountType, ['customer', 'trader'], true)) {
             $errors[] = 'Invalid account type selected.';
         }
 
         if ($errors === []) {
             try {
+                // Check if the requested email is already registered in the system.
+                // We do a case-insensitive check against the database to prevent duplicates like 'test@email.com' and 'Test@email.com'.
                 $existing = db_is_offline()
                     ? offline_user_by_email($email)
                     : db_fetch_one(
@@ -45,6 +52,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($existing !== null) {
                     $errors[] = 'An account with this email already exists.';
                 } else {
+                    // Assign requested role
                     $role = strtoupper($accountType);
 
                     // Generate a 6-digit OTP
@@ -56,7 +64,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     error_log("👉 OTP CODE: " . $otp);
                     error_log("=======================================================\n");
 
-                    // Store pending signup data in session (do NOT insert to DB yet)
+                    // Store pending signup data in session (do NOT insert to DB yet).
+                    // The actual user record will only be created after the OTP is verified.
                     $_SESSION['pending_signup'] = [
                         'first_name' => $firstName,
                         'last_name' => $lastName,
@@ -121,7 +130,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                 }
 
-                // Fall back to local database authentication if APEX didn't work
+                // Fall back to local database authentication if APEX didn't work.
+                // It fetches the user hash and verifies it using password_verify.
                 if ($user === null && db_is_offline()) {
                     $user = offline_user_by_email($email);
                     if ($user !== null && !password_verify($password, (string) $user['PASSWORD'])) {
@@ -138,6 +148,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     if ($user !== null) {
                         $dbPassword = (string) $user['PASSWORD'];
                         // Allow login if it's a valid bcrypt hash OR if it exactly matches the dummy seed data (e.g., 'hashed_Pass@123')
+                        // The exact match condition handles unhashed dummy data generated during testing.
                         if (!password_verify($password, $dbPassword) && $password !== $dbPassword) {
                             $user = null;
                         }
@@ -167,6 +178,76 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 }
+
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action'])) {
+    $action = $_GET['action'];
+    if ($action === 'logout') {
+        $_SESSION = [];
+        if (ini_get('session.use_cookies')) {
+            $params = session_get_cookie_params();
+            setcookie(session_name(), '', time() - 42000, $params['path'], $params['domain'], $params['secure'], $params['httponly']);
+        }
+        session_destroy();
+        redirect('auth.php?mode=login');
+    } elseif ($action === 'impersonate' && isset($_GET['trader_id'])) {
+        require_login(['ADMIN']);
+        $traderId = (int) $_GET['trader_id'];
+        if (db_is_offline()) {
+            $trader = null;
+            $data = offline_load();
+            foreach ($data['users'] as $u) {
+                if ((int)$u['user_id'] === $traderId && strtoupper((string)$u['role']) === 'TRADER') {
+                    $trader = $u;
+                    break;
+                }
+            }
+        } else {
+            $trader = db_fetch_one("SELECT * FROM \"USER\" WHERE user_id = :id AND role = 'TRADER'", ['id' => $traderId]);
+        }
+        if (!$trader) {
+            set_flash('error', 'Trader not found.');
+            redirect('admin-dashboard.php');
+        }
+        $_SESSION['admin_id'] = $_SESSION['user_id'];
+        $_SESSION['admin_role'] = $_SESSION['role'];
+        $_SESSION['user_id'] = (int) ($trader['USER_ID'] ?? $trader['user_id']);
+        $_SESSION['first_name'] = (string) ($trader['FIRST_NAME'] ?? $trader['first_name']);
+        $_SESSION['last_name'] = (string) ($trader['LAST_NAME'] ?? $trader['last_name']);
+        $_SESSION['email'] = (string) ($trader['EMAIL'] ?? $trader['email']);
+        $_SESSION['role'] = 'TRADER';
+        set_flash('success', "You are now accessing the account of {$_SESSION['first_name']}.");
+        redirect('trader-profile.php');
+    } elseif ($action === 'revert_impersonate') {
+        if (!isset($_SESSION['admin_id'])) {
+            redirect('index.php');
+        }
+        $_SESSION['user_id'] = $_SESSION['admin_id'];
+        $_SESSION['role'] = $_SESSION['admin_role'];
+        if (!db_is_offline()) {
+            $admin = db_fetch_one("SELECT * FROM \"USER\" WHERE user_id = :id", ['id' => $_SESSION['admin_id']]);
+            if ($admin) {
+                $_SESSION['first_name'] = $admin['FIRST_NAME'];
+                $_SESSION['last_name'] = $admin['LAST_NAME'];
+                $_SESSION['email'] = $admin['EMAIL'];
+            }
+        } else {
+            $data = offline_load();
+            foreach ($data['users'] as $u) {
+                if ((int)$u['user_id'] === $_SESSION['admin_id']) {
+                    $_SESSION['first_name'] = $u['first_name'];
+                    $_SESSION['last_name'] = $u['last_name'];
+                    $_SESSION['email'] = $u['email'];
+                    break;
+                }
+            }
+        }
+        unset($_SESSION['admin_id']);
+        unset($_SESSION['admin_role']);
+        set_flash('success', 'Returned to Admin session.');
+        redirect('admin-dashboard.php');
+    }
+}
+
 
 if (isset($_GET['mode']) && in_array($_GET['mode'], ['signup', 'login'], true)) {
     $activeMode = (string) $_GET['mode'];
@@ -273,7 +354,7 @@ require __DIR__ . '/components/header.php';
 
                         <label class="auth-check">
                             <input type="checkbox" name="terms" required <?php echo isset($_POST['terms']) ? 'checked' : ''; ?> />
-                            <span>I agree to the terms and conditions</span>
+                            <span>I agree to the <a href="Cleck_E-Mart_Terms_Conditions_Manual.pdf" target="_blank" rel="noopener noreferrer">terms and conditions</a></span>
                         </label>
 
                         <button class="auth-submit" type="submit">Sign up</button>

@@ -1,4 +1,6 @@
 <?php
+// This is the customer dashboard where users can manage their account details, view their wishlist, and see past orders.
+
 require_once __DIR__ . '/lib/auth_helpers.php';
 
 require_login();
@@ -7,6 +9,8 @@ $errors = [];
 $flashSuccess = get_flash('success');
 $userId = (int) current_user_id();
 $customerId = $userId;
+
+require_once __DIR__ . '/lib/profile_helpers.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $profileAction = (string) ($_POST['profile_action'] ?? '');
@@ -17,82 +21,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $email = strtolower(trim((string) ($_POST['email'] ?? '')));
         $phone = trim((string) ($_POST['phone'] ?? ''));
 
-        if ($firstName === '' || $lastName === '' || $email === '') {
-            $errors[] = 'First name, last name, and email are required.';
-        }
-        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            $errors[] = 'Please provide a valid email address.';
-        }
-
-        if ($errors === []) {
-            try {
-                $existing = db_is_offline()
-                    ? (offline_email_taken_by_other($userId, $email) ? ['USER_ID' => -1] : null)
-                    : db_fetch_one(
-                        'SELECT user_id FROM "USER" WHERE LOWER(email) = LOWER(:email) AND user_id <> :user_id',
-                        [
-                            'email' => $email,
-                            'user_id' => $userId,
-                        ]
-                    );
-
-                if ($existing !== null) {
-                    $errors[] = 'This email is already used by another account.';
-                } else {
-                    if (db_is_offline()) {
-                        offline_update_user($userId, $firstName, $lastName, $email, $phone === '' ? null : $phone);
-                    } else {
-                        db_execute(
-                            'UPDATE "USER"
-                             SET first_name = :first_name,
-                                 last_name = :last_name,
-                                 email = :email,
-                                 phone_number = :phone_number,
-                                 updated_at = CURRENT_TIMESTAMP
-                             WHERE user_id = :user_id',
-                            [
-                                'first_name' => $firstName,
-                                'last_name' => $lastName,
-                                'email' => $email,
-                                'phone_number' => $phone === '' ? null : $phone,
-                                'user_id' => $userId,
-                            ]
-                        );
-                    }
-
-                    $_SESSION['first_name'] = $firstName;
-                    $_SESSION['last_name'] = $lastName;
-                    $_SESSION['email'] = $email;
-
-                    set_flash('success', 'Account details updated successfully.');
-                    redirect('profile.php?tab=account');
-                }
-            } catch (Throwable $exception) {
-                $errors[] = 'Unable to update account: ' . $exception->getMessage();
-            }
+        $res = update_customer_account($userId, $firstName, $lastName, $email, $phone);
+        if ($res['success']) {
+            set_flash('success', $res['message']);
+            redirect('profile.php?tab=account');
+        } else {
+            $errors = array_merge($errors, $res['errors']);
         }
     }
 
     if ($profileAction === 'remove_wishlist') {
         $productId = filter_input(INPUT_POST, 'product_id', FILTER_VALIDATE_INT);
         if ($productId !== false && $productId !== null) {
-            try {
-                if (!db_is_offline()) {
-                    db_execute(
-                        'DELETE FROM WISHLIST_ITEM 
-                         WHERE product_id = :product_id 
-                           AND wishlist_id IN (SELECT wishlist_id FROM WISHLIST WHERE customer_id = :customer_id)',
-                        [
-                            'product_id' => $productId,
-                            'customer_id' => $userId
-                        ]
-                    );
-                    set_flash('success', 'Item removed from wishlist.');
-                }
-                redirect('profile.php?tab=wishlist');
-            } catch (Throwable $exception) {
-                $errors[] = 'Unable to remove item from wishlist: ' . $exception->getMessage();
+            $res = remove_customer_wishlist_item($userId, $productId);
+            if ($res['success']) {
+                set_flash('success', $res['message']);
+            } else {
+                $errors = array_merge($errors, $res['errors']);
             }
+            redirect('profile.php?tab=wishlist');
         }
     }
 
@@ -101,43 +48,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $newPassword = (string) ($_POST['new_password'] ?? '');
         $confirmPassword = (string) ($_POST['confirm_password'] ?? '');
 
-        if ($currentPassword === '' || $newPassword === '' || $confirmPassword === '') {
-            $errors[] = 'All password fields are required.';
-        }
-        if ($newPassword !== $confirmPassword) {
-            $errors[] = 'New password and confirmation do not match.';
-        }
-        if (strlen($newPassword) < 8) {
-            $errors[] = 'New password must be at least 8 characters long.';
-        }
-
-        if ($errors === []) {
-            try {
-                $dbUser = db_is_offline()
-                    ? offline_user_by_id($userId)
-                    : db_fetch_one('SELECT password FROM "USER" WHERE user_id = :user_id', ['user_id' => $userId]);
-                if ($dbUser === null || !password_verify($currentPassword, (string) $dbUser['PASSWORD'])) {
-                    $errors[] = 'Current password is incorrect.';
-                } else {
-                    $hashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);
-                    if (db_is_offline()) {
-                        offline_update_password($userId, $hashedPassword);
-                    } else {
-                        db_execute(
-                            'UPDATE "USER" SET password = :password, updated_at = CURRENT_TIMESTAMP WHERE user_id = :user_id',
-                            [
-                                'password' => $hashedPassword,
-                                'user_id' => $userId,
-                            ]
-                        );
-                    }
-
-                    set_flash('success', 'Password updated successfully.');
-                    redirect('profile.php?tab=password');
-                }
-            } catch (Throwable $exception) {
-                $errors[] = 'Unable to update password: ' . $exception->getMessage();
-            }
+        $res = update_customer_password($userId, $currentPassword, $newPassword, $confirmPassword);
+        if ($res['success']) {
+            set_flash('success', $res['message']);
+            redirect('profile.php?tab=password');
+        } else {
+            $errors = array_merge($errors, $res['errors']);
         }
     }
 
@@ -146,38 +62,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $rating = filter_input(INPUT_POST, 'rating', FILTER_VALIDATE_FLOAT);
         $comment = trim($_POST['comment'] ?? '');
 
-        if ($productId === false || $productId === null || $rating === false || $rating === null || $rating < 1 || $rating > 5) {
-            $errors[] = 'Please provide a valid rating between 1 and 5 stars.';
-        } else {
-            try {
-                if (db_is_offline()) {
-                    offline_submit_review($customerId, $productId, $rating, $comment);
-                } else {
-                    $reviewId = db_next_id('REVIEW', 'review_id');
-                    db_execute(
-                        'INSERT INTO REVIEW (review_id, customer_id, product_id, rating, "COMMENT", review_date) 
-                         VALUES (:review_id, :customer_id, :product_id, :rating, :review_comment, SYSDATE)',
-                        [
-                            'review_id' => $reviewId,
-                            'customer_id' => $customerId,
-                            'product_id' => $productId,
-                            'rating' => $rating,
-                            'review_comment' => $comment === '' ? null : $comment
-                        ]
-                    );
-                }
-                set_flash('success', 'Your review has been submitted successfully.');
+        if ($productId !== false && $productId !== null && $rating !== false && $rating !== null) {
+            $res = submit_customer_review($customerId, $productId, $rating, $comment);
+            if ($res['success']) {
+                set_flash('success', $res['message']);
                 redirect('profile.php?tab=reviews');
-            } catch (Throwable $exception) {
-                $msg = $exception->getMessage();
-                if (str_contains($msg, 'unique constraint')) {
-                    $errors[] = 'You have already reviewed this product.';
-                } elseif (str_contains($msg, 'ORA-20009') || str_contains($msg, 'collected/paid for')) {
-                    $errors[] = 'You can only review products you have purchased and collected/paid for.';
-                } else {
-                    $errors[] = 'Failed to submit review: ' . $msg;
-                }
+            } else {
+                $errors = array_merge($errors, $res['errors']);
             }
+        } else {
+            $errors[] = 'Invalid input for review submission.';
         }
     }
 }
@@ -196,113 +90,17 @@ if ($user === null) {
     redirect('index.php');
 }
 
-$orders = [];
-$historyOrders = [];
-$reviews = [];
-$pendingReviews = [];
-$orderCount = 0;
-$reviewCount = 0;
-$savedCount = 0;
-
 $activeTab = (string) ($_GET['tab'] ?? 'orders');
 
-if (current_role() === 'CUSTOMER' && $customerId > 0) {
-    if (db_is_offline()) {
-        $orders = offline_get_orders_for_customer($customerId, 5);
-        $historyOrders = offline_get_orders_for_customer($customerId, 5);
-        $reviews = offline_get_reviews_for_customer($customerId, 5);
-        $pendingReviews = offline_get_pending_reviews_for_customer($customerId);
-        $orderCount = offline_count_orders($customerId);
-        $reviewCount = offline_count_reviews($customerId);
-        $savedCount = offline_count_saved($customerId);
-    } else {
-        // Orders with LISTAGG of product names
-        $orders = db_fetch_all(
-            "SELECT o.order_id,
-                    o.order_date,
-                    o.order_status,
-                    NVL(SUM(oi.quantity * oi.unit_price), 0) AS ORDER_TOTAL,
-                    LISTAGG(p.product_name, ', ') WITHIN GROUP (ORDER BY p.product_name) AS ITEMS
-             FROM \"ORDER\" o
-             JOIN ORDER_ITEM oi ON oi.order_id = o.order_id
-             JOIN PRODUCT p ON p.product_id = oi.product_id
-             WHERE o.customer_id = :customer_id
-             GROUP BY o.order_id, o.order_date, o.order_status
-             ORDER BY o.order_date DESC
-             FETCH FIRST 5 ROWS ONLY",
-            ['customer_id' => $customerId]
-        );
-
-        // Collection history (only COLLECTED)
-        $historyOrders = db_fetch_all(
-            "SELECT o.order_id,
-                    o.order_date,
-                    o.order_status,
-                    NVL(SUM(oi.quantity * oi.unit_price), 0) AS ORDER_TOTAL,
-                    LISTAGG(p.product_name, ', ') WITHIN GROUP (ORDER BY p.product_name) AS ITEMS
-             FROM \"ORDER\" o
-             JOIN ORDER_ITEM oi ON oi.order_id = o.order_id
-             JOIN PRODUCT p ON p.product_id = oi.product_id
-             WHERE o.customer_id = :customer_id AND o.order_status = 'COLLECTED'
-             GROUP BY o.order_id, o.order_date, o.order_status
-             ORDER BY o.order_date DESC
-             FETCH FIRST 5 ROWS ONLY",
-            ['customer_id' => $customerId]
-        );
-
-        $reviews = db_fetch_all(
-            'SELECT r.review_date, r.rating, r."COMMENT" AS review_comment, p.product_name
-             FROM REVIEW r
-             JOIN PRODUCT p ON p.product_id = r.product_id
-             WHERE r.customer_id = :customer_id
-             ORDER BY r.review_date DESC
-             FETCH FIRST 5 ROWS ONLY',
-            ['customer_id' => $customerId]
-        );
-
-        $pendingReviews = db_fetch_all(
-            "SELECT DISTINCT p.product_id, p.product_name, p.product_image, s.shop_name
-             FROM PRODUCT p
-             JOIN ORDER_ITEM oi ON oi.product_id = p.product_id
-             JOIN \"ORDER\" o ON o.order_id = oi.order_id
-             JOIN SHOP s ON s.shop_id = p.shop_id
-             WHERE o.customer_id = :customer_id
-               AND o.order_status IN ('PAID', 'COLLECTED')
-               AND p.product_id NOT IN (
-                   SELECT r.product_id 
-                   FROM REVIEW r 
-                   WHERE r.customer_id = :customer_id
-               )
-             ORDER BY p.product_name ASC",
-            ['customer_id' => $customerId]
-        );
-
-        $orderCountRow = db_fetch_one('SELECT COUNT(*) AS total_count FROM "ORDER" WHERE customer_id = :customer_id', ['customer_id' => $customerId]);
-        $reviewCountRow = db_fetch_one('SELECT COUNT(*) AS total_count FROM REVIEW WHERE customer_id = :customer_id', ['customer_id' => $customerId]);
-        $savedCountRow = db_fetch_one(
-            'SELECT COUNT(*) AS total_count
-             FROM WISHLIST_ITEM wi
-             JOIN WISHLIST w ON w.wishlist_id = wi.wishlist_id
-             WHERE w.customer_id = :customer_id',
-            ['customer_id' => $customerId]
-        );
-
-        $orderCount = (int) ($orderCountRow['TOTAL_COUNT'] ?? 0);
-        $reviewCount = (int) ($reviewCountRow['TOTAL_COUNT'] ?? 0);
-        $savedCount = (int) ($savedCountRow['TOTAL_COUNT'] ?? 0);
-
-        $wishlistItems = db_fetch_all(
-            'SELECT p.product_id, p.product_name, p.price, p.product_image, d.discount_percentage, wi.added_date
-             FROM WISHLIST_ITEM wi
-             JOIN WISHLIST w ON w.wishlist_id = wi.wishlist_id
-             JOIN PRODUCT p ON p.product_id = wi.product_id
-             LEFT JOIN DISCOUNT d ON d.discount_id = p.discount_id AND d.end_date >= SYSDATE
-             WHERE w.customer_id = :customer_id
-             ORDER BY wi.added_date DESC',
-            ['customer_id' => $customerId]
-        );
-    }
-}
+$profileData = get_customer_profile_data($customerId);
+$orders = $profileData['orders'];
+$historyOrders = $profileData['historyOrders'];
+$reviews = $profileData['reviews'];
+$pendingReviews = $profileData['pendingReviews'];
+$wishlistItems = $profileData['wishlistItems'];
+$orderCount = $profileData['orderCount'];
+$reviewCount = $profileData['reviewCount'];
+$savedCount = $profileData['savedCount'];
 
 // Reuses site-wide header/navigation to keep profile page in the same theme.
 require __DIR__ . '/components/header.php';
@@ -376,7 +174,7 @@ require __DIR__ . '/components/header.php';
                         </svg>
                         Password
                     </a>
-                    <a class="tab-button" href="logout.php" style="margin-top: auto; color: var(--color-accent); border-top: 1px solid rgba(0,0,0,0.1); border-radius: 0; padding-top: 1rem;">
+                    <a class="tab-button" href="auth.php?action=logout" style="margin-top: auto; color: var(--color-accent); border-top: 1px solid rgba(0,0,0,0.1); border-radius: 0; padding-top: 1rem;">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
                             <polyline points="16 17 21 12 16 7"/>
@@ -399,8 +197,8 @@ require __DIR__ . '/components/header.php';
                         </div>
 
                         <!--
-                            Backend note: loop over orders from DB.
-                            Fields: order_id, date, status, total, items_summary.
+                            Renders a list of the customer's recent orders.
+                            Dynamically sets the status class based on whether the order is processing or delivered.
                         -->
                         <div class="order-list">
                             <?php if ($orders === []): ?>
@@ -443,8 +241,8 @@ require __DIR__ . '/components/header.php';
                             </div>
                         </div>
                         <!--
-                            Backend note: set action to your update endpoint (example: update-profile.php).
-                            Pre-fill values from session or DB query.
+                            Provides a form to update the user's first name, last name, email, and phone.
+                            Inputs are pre-filled with the current session or database values.
                         -->
                         <form class="trader-form" action="profile.php?tab=account" method="post" novalidate>
                             <input type="hidden" name="profile_action" value="update_account" />
@@ -621,7 +419,8 @@ require __DIR__ . '/components/header.php';
                             </div>
                         </div>
                         <!--
-                            Backend note: verify current_password before hashing and saving new_password.
+                            Provides a form to change the user's password securely.
+                            The backend verifies the current password against the hashed value before applying the new hash.
                         -->
                         <form class="trader-form" action="profile.php?tab=password" method="post" novalidate>
                             <input type="hidden" name="profile_action" value="change_password" />
@@ -688,6 +487,7 @@ require __DIR__ . '/components/header.php';
                             var navItems = document.querySelectorAll('[data-profile-tab]');
                             var panels = document.querySelectorAll('[data-profile-panel]');
 
+                            // Handles the core logic and operations for activateTab
                             function activateTab(name, push) {
                                 navItems.forEach(function (a) { a.classList.toggle('active', a.getAttribute('data-profile-tab') === name); });
                                 panels.forEach(function (p) {

@@ -1,4 +1,7 @@
 <?php
+// This is the main homepage of the website, showing featured products, categories, and top shops to welcome visitors.
+
+// Initialize session to manage user login state across requests
 if (session_status() !== PHP_SESSION_ACTIVE) {
     session_start();
 }
@@ -8,7 +11,8 @@ require_once __DIR__ . '/lib/apex_api.php';
 require_once __DIR__ . '/lib/oci_db.php';
 require_once __DIR__ . '/lib/auth_helpers.php';
 
-// Supports multiple common login flags so this works with your current or future auth flow.
+// Determine if the user is authenticated by checking various session flags.
+// This supports backward compatibility with different iterations of the login system.
 $isLoggedIn = !empty($_SESSION['user_id'])
     || !empty($_SESSION['customer_id'])
     || !empty($_SESSION['is_logged_in'])
@@ -29,168 +33,17 @@ $homeCategories = [
 $featuredProducts = [];
 $apiError = null;
 
+require_once __DIR__ . '/lib/storefront_helpers.php';
+
 try {
-    if (db_is_offline()) {
-        $offlineCategoryId = $selectedCategoryId;
-        $offlineProducts = offline_get_products($offlineCategoryId);
-
-        if ($searchTerm !== '') {
-            $offlineProducts = array_values(array_filter(
-                $offlineProducts,
-                static function (array $product) use ($searchTerm): bool {
-                    return stripos((string) ($product['PRODUCT_NAME'] ?? ''), $searchTerm) !== false;
-                }
-            ));
-        }
-
-        foreach ($offlineProducts as $row) {
-            $productId = (int) ($row['PRODUCT_ID'] ?? 0);
-            $uploadedImage = isset($row['PRODUCT_IMAGE']) ? (string) $row['PRODUCT_IMAGE'] : null;
-
-            $featuredProducts[] = [
-                'product_id' => $productId,
-                'product_name' => (string) ($row['PRODUCT_NAME'] ?? ''),
-                'product_description' => (string) ($row['PRODUCT_DESCRIPTION'] ?? ''),
-                'allergy_information' => (string) ($row['ALLERGY_INFORMATION'] ?? 'None'),
-                'price' => (float) ($row['PRICE'] ?? 0),
-                'product_image' => default_product_image($productId, $uploadedImage, 400),
-                'discount_percentage' => null,
-                'shop_name' => (string) ($row['SHOP_NAME'] ?? ''),
-                'category_name' => (string) ($row['CATEGORY_NAME'] ?? ''),
-                'product_status' => (string) ($row['PRODUCT_STATUS'] ?? 'ACTIVE'),
-            ];
-        }
-    } else {
-        $conn = db_connect();
-
-        $sql = "SELECT p.product_id,
-                       p.product_name,
-                       p.product_description,
-                       p.allergy_information,
-                       p.price,
-                       p.product_image,
-                       p.product_status,
-                       s.shop_name,
-                       c.category_name,
-                       d.discount_percentage
-                FROM PRODUCT p
-                LEFT JOIN SHOP s ON s.shop_id = p.shop_id
-                LEFT JOIN CATEGORY c ON c.category_id = p.category_id
-                LEFT JOIN DISCOUNT d ON d.discount_id = p.discount_id AND d.end_date >= SYSDATE";
-
-        $conditions = [];
-        $searchBind = null;
-        $categoryBind = null;
-
-        if ($searchTerm !== '') {
-            $conditions[] = "LOWER(p.product_name) LIKE LOWER('%' || :search_bind || '%')";
-            $searchBind = $searchTerm;
-        }
-
-        if ($selectedCategoryId !== null) {
-            $conditions[] = 'p.category_id = :cat_bind';
-            $categoryBind = (int) $selectedCategoryId;
-        }
-
-        // Only show approved products to customers and from active shops
-        $conditions[] = "p.product_verification_status = 'APPROVED'";
-        $conditions[] = "s.shop_status = 'ACTIVE'";
-
-        if ($conditions !== []) {
-            $sql .= ' WHERE ' . implode(' AND ', $conditions);
-        }
-
-        $sql .= ' ORDER BY p.product_name';
-
-        $statement = oci_parse($conn, $sql);
-        if ($statement === false) {
-            $error = oci_error($conn);
-            throw new RuntimeException('Failed to prepare homepage product query: ' . ($error['message'] ?? 'unknown error'));
-        }
-
-        if ($searchBind !== null && !oci_bind_by_name($statement, ':search_bind', $searchBind)) {
-            $error = oci_error($statement);
-            throw new RuntimeException('Failed to bind search term: ' . ($error['message'] ?? 'unknown error'));
-        }
-
-        if ($categoryBind !== null && !oci_bind_by_name($statement, ':cat_bind', $categoryBind)) {
-            $error = oci_error($statement);
-            throw new RuntimeException('Failed to bind category filter: ' . ($error['message'] ?? 'unknown error'));
-        }
-
-        if (!@oci_execute($statement)) {
-            $error = oci_error($statement);
-            throw new RuntimeException('Failed to fetch homepage products: ' . ($error['message'] ?? 'unknown error'));
-        }
-
-        while (($row = oci_fetch_assoc($statement)) !== false) {
-            $productId = (int) ($row['PRODUCT_ID'] ?? 0);
-            $uploadedImage = isset($row['PRODUCT_IMAGE']) ? (string) $row['PRODUCT_IMAGE'] : null;
-
-            $featuredProducts[] = [
-                'product_id' => $productId,
-                'product_name' => (string) ($row['PRODUCT_NAME'] ?? ''),
-                'product_description' => is_object($row['PRODUCT_DESCRIPTION']) ? $row['PRODUCT_DESCRIPTION']->load() : (string) ($row['PRODUCT_DESCRIPTION'] ?? ''),
-                'allergy_information' => (string) ($row['ALLERGY_INFORMATION'] ?? 'None'),
-                'price' => (float) ($row['PRICE'] ?? 0),
-                'product_image' => default_product_image($productId, $uploadedImage, 400),
-                'discount_percentage' => isset($row['DISCOUNT_PERCENTAGE']) ? (float) $row['DISCOUNT_PERCENTAGE'] : null,
-                'shop_name' => (string) ($row['SHOP_NAME'] ?? ''),
-                'category_name' => (string) ($row['CATEGORY_NAME'] ?? ''),
-                'product_status' => (string) ($row['PRODUCT_STATUS'] ?? 'ACTIVE'),
-            ];
-        }
-
-        oci_free_statement($statement);
-    }
+    $featuredProducts = get_storefront_products($searchTerm, $selectedCategoryId);
 } catch (Throwable $e) {
     $apiError = $e->getMessage();
     error_log('Featured products load error: ' . $apiError);
 }
 
-$verifiedShops = [];
 try {
-    if (db_is_offline()) {
-        $data = offline_load();
-        foreach ($data['shops'] as $s) {
-            if (isset($s['shop_status']) && $s['shop_status'] === 'ACTIVE') {
-                $traderName = 'Trader';
-                foreach ($data['users'] as $u) {
-                    if ($u['user_id'] == $s['trader_id']) {
-                        $traderName = $u['first_name'] . ' ' . $u['last_name'];
-                        break;
-                    }
-                }
-                $verifiedShops[] = [
-                    'shop_id' => $s['shop_id'],
-                    'shop_name' => $s['shop_name'],
-                    'shop_logo' => isset($s['shop_logo']) ? $s['shop_logo'] : null,
-                    'trader_name' => $traderName
-                ];
-                if (count($verifiedShops) >= 5) break;
-            }
-        }
-    } else {
-        $conn = db_connect();
-        $sql = "SELECT s.shop_id, s.shop_name, s.shop_logo, u.first_name || ' ' || u.last_name AS trader_name
-                FROM SHOP s
-                JOIN TRADER t ON s.trader_id = t.trader_id
-                JOIN \"USER\" u ON t.trader_id = u.user_id
-                WHERE s.shop_status = 'ACTIVE'
-                ORDER BY s.shop_id ASC
-                FETCH FIRST 5 ROWS ONLY";
-        $stmt = oci_parse($conn, $sql);
-        oci_execute($stmt);
-        while (($row = oci_fetch_assoc($stmt)) !== false) {
-            $verifiedShops[] = [
-                'shop_id' => (int)$row['SHOP_ID'],
-                'shop_name' => (string)$row['SHOP_NAME'],
-                'shop_logo' => isset($row['SHOP_LOGO']) ? (string)$row['SHOP_LOGO'] : null,
-                'trader_name' => (string)$row['TRADER_NAME']
-            ];
-        }
-        oci_free_statement($stmt);
-    }
+    $verifiedShops = get_storefront_verified_shops();
 } catch (Throwable $e) {
     error_log('Verified shops load error: ' . $e->getMessage());
 }

@@ -1,4 +1,6 @@
 <?php
+// This file allows users to enter a new password after successfully verifying their OTP during account recovery.
+
 $pageTitle = 'Reset Password | Cleck E-Mart';
 $metaDescription = 'Verify OTP and reset your password.';
 require_once __DIR__ . '/lib/oci_db.php';

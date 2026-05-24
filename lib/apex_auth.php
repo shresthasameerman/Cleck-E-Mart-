@@ -1,4 +1,6 @@
 <?php
+// This file handles authentication via the remote APEX system as a fallback or alternative login method.
+
 /**
  * Oracle APEX User Authentication Integration
  * Handles login via Oracle APEX REST endpoints

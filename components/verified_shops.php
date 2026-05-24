@@ -1,4 +1,6 @@
 <?php
+// This component displays a visually appealing list of verified local shops on the storefront.
+
 $shopLogos = [
     "Firth's Butchers" => "assets/images/icons/trader-butchers.svg",
     "Greenwood's Greengrocers" => "assets/images/icons/fresh-carrots.svg",

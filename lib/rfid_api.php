@@ -1,4 +1,6 @@
 <?php
+// This file provides an API endpoint for processing physical RFID scans during order collection.
+
 /**
  * RFID Collection Verification API Endpoint
  * Handles RFID scan requests and order status updates from the admin dashboard.
@@ -21,6 +23,7 @@ $action = $_GET['action'] ?? $_POST['action'] ?? '';
 try {
     switch ($action) {
         case 'scan':
+            // Logic to process an RFID scan and identify the corresponding customer
             $uid = strtoupper(trim($_GET['uid'] ?? ''));
             if ($uid === '') {
                 http_response_code(400);
@@ -41,7 +44,7 @@ try {
                 exit;
             }
 
-            // Fetch customer details
+            // Logic to fetch detailed customer information from the database
             $customer = db_fetch_one(
                 "SELECT u.first_name, u.last_name, u.email, u.phone_number 
                  FROM \"USER\" u 
@@ -56,7 +59,7 @@ try {
                 exit;
             }
 
-            // Fetch active orders (assuming they are PAID or READY for collection)
+            // Logic to retrieve all active orders (PAID, READY, or PENDING) for the customer
             $orders = db_fetch_all(
                 "SELECT o.order_id, o.order_date, o.order_status, 
                         (SELECT NVL(SUM(oi.quantity * oi.unit_price), 0) FROM ORDER_ITEM oi WHERE oi.order_id = o.order_id) as total_amount
@@ -66,7 +69,7 @@ try {
                 ['id' => $customerId]
             );
 
-            // Fetch items for these orders to display
+            // Logic to fetch and group individual order items for each active order
             $itemsByOrder = [];
             if (!empty($orders)) {
                 $orderIds = array_map(function($o) { return $o['ORDER_ID'] ?? $o['order_id']; }, $orders);
@@ -93,7 +96,7 @@ try {
                 }
             }
 
-            // Attach items to orders
+            // Logic to attach the retrieved items to their respective orders
             foreach ($orders as &$order) {
                 $oid = $order['ORDER_ID'] ?? $order['order_id'];
                 $order['items'] = $itemsByOrder[$oid] ?? [];
@@ -113,6 +116,7 @@ try {
             break;
 
         case 'mark_collected':
+            // Logic to update an order's status to COLLECTED after a successful pickup
             $orderId = filter_input(INPUT_POST, 'order_id', FILTER_VALIDATE_INT);
             if (!$orderId) {
                 http_response_code(400);

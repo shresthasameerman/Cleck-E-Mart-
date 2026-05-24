@@ -1,4 +1,6 @@
 <?php
+// This script verifies the One-Time Password sent to a user's email during the password reset flow.
+
 require_once __DIR__ . '/lib/auth_helpers.php';
 require_once __DIR__ . '/lib/apex_auth.php';
 

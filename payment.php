@@ -1,4 +1,6 @@
 <?php
+// This file handles the checkout process, integrating with PayPal or APEX to process payment and finalize the order.
+
 require_once __DIR__ . '/lib/cart_helpers.php';
 require_once __DIR__ . '/lib/auth_helpers.php';
 require_once __DIR__ . '/lib/apex_cart.php';
@@ -10,7 +12,8 @@ $metaDescription = 'Complete your order securely using PayPal.';
 
 $customerId = current_customer_id();
 if ($customerId === null) {
-    // In this schema CUSTOMER.customer_id mirrors USER.user_id.
+    // In this schema CUSTOMER.customer_id strictly mirrors USER.user_id.
+    // If a generic user reaches this point, gracefully fallback to their user ID.
     $customerId = current_user_id();
 }
 $flashError = get_flash('error');
@@ -27,13 +30,17 @@ $items = [];
 require_once __DIR__ . '/db_connect.php'; 
 
 try {
+    // First, try loading the customer's cart via the APEX API.
+    // This allows syncing carts across multiple platforms (e.g., mobile app and web).
     if (apex_cart_enabled()) {
         try {
             $items = apex_get_cart_items($customerId);
         } catch (Throwable $exception) {
+            // If APEX is unreachable, fallback to the local DB implementation.
             $items = get_cart_items_for_customer($customerId);
         }
     } else {
+        // Pure local fetch path.
         $items = get_cart_items_for_customer($customerId);
     }
 } catch (Throwable $exception) {
@@ -73,53 +80,7 @@ foreach ($items as $item) {
 $subtotal = $total;
 $couponDiscount = 0.0;
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $action = $_POST['action'] ?? '';
-    
-    if ($action === 'apply_coupon') {
-        $couponCode = trim($_POST['coupon_code'] ?? '');
-        if ($couponCode === '') {
-            set_flash('error', 'Please enter a coupon code.');
-        } else {
-            global $conn;
-            $sql = "SELECT coupon_id, discount_amount, minimum_order_amount 
-                    FROM COUPON 
-                    WHERE UPPER(coupon_code) = UPPER(:code) 
-                    AND coupon_status = 'ACTIVE' 
-                    AND TRUNC(SYSDATE) >= TRUNC(valid_from) 
-                    AND TRUNC(SYSDATE) <= TRUNC(valid_to)";
-            $stmt = oci_parse($conn, $sql);
-            oci_bind_by_name($stmt, ':code', $couponCode);
-            oci_execute($stmt);
-            $coupon = oci_fetch_assoc($stmt);
-            oci_free_statement($stmt);
-            
-            if ($coupon) {
-                $minAmount = (float) $coupon['MINIMUM_ORDER_AMOUNT'];
-                if ($subtotal >= $minAmount) {
-                    $_SESSION['applied_coupon'] = [
-                        'id' => (int) $coupon['COUPON_ID'],
-                        'code' => strtoupper($couponCode),
-                        'discount' => (float) $coupon['DISCOUNT_AMOUNT'],
-                        'min_amount' => $minAmount
-                    ];
-                    set_flash('success', 'Coupon applied successfully!');
-                } else {
-                    set_flash('error', 'Minimum order amount for this coupon is £' . number_format($minAmount, 2));
-                }
-            } else {
-                set_flash('error', 'Invalid or expired coupon code.');
-            }
-        }
-        $url = 'payment.php' . ($selectedSlotDate !== '' && $selectedSlotTime !== '' ? '?slot_date=' . urlencode($selectedSlotDate) . '&slot_time=' . urlencode($selectedSlotTime) : '');
-        redirect($url);
-    } elseif ($action === 'remove_coupon') {
-        unset($_SESSION['applied_coupon']);
-        set_flash('success', 'Coupon removed.');
-        $url = 'payment.php' . ($selectedSlotDate !== '' && $selectedSlotTime !== '' ? '?slot_date=' . urlencode($selectedSlotDate) . '&slot_time=' . urlencode($selectedSlotTime) : '');
-        redirect($url);
-    }
-}
+require_once __DIR__ . '/lib/payment_helpers.php';
 
 $appliedCoupon = $_SESSION['applied_coupon'] ?? null;
 if ($appliedCoupon) {
@@ -133,331 +94,64 @@ if ($appliedCoupon) {
     }
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'paypal_checkout') {
-    $termsAccepted = !empty($_POST['terms_accepted']);
-
-    if (!$termsAccepted) {
-        $errors[] = 'Please accept the terms before completing PayPal payment.';
-    }
-
-    if ($normalizedItems === []) {
-        $errors[] = 'Your basket is empty. Please add products before paying.';
-    }
-
-    if ($customerId === null || (int) $customerId <= 0) {
-        $errors[] = 'Your customer account is not linked correctly. Please sign out and sign in again.';
-    }
-
-    if ($errors === []) {
-        // ====================================================================
-        // ORACLE OCI8 TRANSACTION BLOCK
-        // ====================================================================
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $action = $_POST['action'] ?? '';
+    $redirectUrl = 'payment.php' . ($selectedSlotDate !== '' && $selectedSlotTime !== '' ? '?slot_date=' . urlencode($selectedSlotDate) . '&slot_time=' . urlencode($selectedSlotTime) : '');
+    
+    if ($action === 'apply_coupon') {
+        $couponCode = trim($_POST['coupon_code'] ?? '');
+        $result = validate_coupon($couponCode, $subtotal);
         
-        try {
-            global $conn; 
-            
-            if (!$conn) {
-                throw new Exception('Database connection failed. Please try again later.');
-            }
+        if ($result['success']) {
+            $_SESSION['applied_coupon'] = $result['coupon'];
+            set_flash('success', $result['message']);
+        } else {
+            set_flash('error', $result['message']);
+        }
+        redirect($redirectUrl);
+        
+    } elseif ($action === 'remove_coupon') {
+        unset($_SESSION['applied_coupon']);
+        set_flash('success', 'Coupon removed.');
+        redirect($redirectUrl);
+        
+    } elseif ($action === 'paypal_checkout') {
+        if (empty($_POST['terms_accepted'])) {
+            $errors[] = 'Please accept the terms before completing PayPal payment.';
+        }
+        if ($normalizedItems === []) {
+            $errors[] = 'Your basket is empty. Please add products before paying.';
+        }
+        if ($customerId === null || (int) $customerId <= 0) {
+            $errors[] = 'Your customer account is not linked correctly. Please sign out and sign in again.';
+        }
 
-            // ====================================================================
-            // 🛠️ Verify user is in CUSTOMER table
-            // ====================================================================
-            $checkCustSql = 'SELECT customer_id FROM CUSTOMER WHERE customer_id = :customer_id';
-            $checkCustStmt = oci_parse($conn, $checkCustSql);
-            oci_bind_by_name($checkCustStmt, ':customer_id', $customerId, -1, SQLT_INT);
-            oci_execute($checkCustStmt, OCI_NO_AUTO_COMMIT);
-            
-            $customerExists = oci_fetch_assoc($checkCustStmt);
-            oci_free_statement($checkCustStmt);
-
-            if (!$customerExists) {
-                $insertCustSql = 'INSERT INTO CUSTOMER (customer_id) VALUES (:customer_id)';
-                $insertCustStmt = oci_parse($conn, $insertCustSql);
-                oci_bind_by_name($insertCustStmt, ':customer_id', $customerId, -1, SQLT_INT);
-                
-                if (!oci_execute($insertCustStmt, OCI_NO_AUTO_COMMIT)) {
-                    throw new Exception('Failed to auto-register customer profile: ' . oci_error($insertCustStmt)['message']);
-                }
-                oci_free_statement($insertCustStmt);
-            }
-
-            // ====================================================================
-            // 🛠️ DYNAMIC SLOT_ID LOOKUP (Fixes ORA-02291 Error)
-            // ====================================================================
-            $actualSlotId = null;
-            
-            if ($selectedSlotDate !== '' && $selectedSlotTime !== '') {
-                // Try to find the exact slot ID based on the time and date selected in the UI
-                $searchSql = "SELECT slot_id FROM COLLECTION_SLOT 
-                              WHERE slot_time = :s_time 
-                              AND TO_CHAR(slot_date, 'YYYY-MM-DD') = :s_date
-                              FETCH FIRST 1 ROWS ONLY";
-                $searchStmt = oci_parse($conn, $searchSql);
-                
-                // slot_date comes from script.js dateKey (YYYY-MM-DD format)
-                $cleanDate = trim($selectedSlotDate);
-                
-                oci_bind_by_name($searchStmt, ':s_time', $selectedSlotTime);
-                oci_bind_by_name($searchStmt, ':s_date', $cleanDate);
-                oci_execute($searchStmt, OCI_NO_AUTO_COMMIT);
-                
-                $row = oci_fetch_assoc($searchStmt);
-                if ($row) {
-                    $actualSlotId = (int)$row['SLOT_ID'];
-                }
-                oci_free_statement($searchStmt);
-            }
-            
-            // Safety Fallback: If no exact match is found, grab ANY available slot to prevent crashes
-            if ($actualSlotId === null) {
-                $fallbackSql = "SELECT slot_id FROM COLLECTION_SLOT WHERE slot_status = 'AVAILABLE' FETCH FIRST 1 ROWS ONLY";
-                $fallbackStmt = oci_parse($conn, $fallbackSql);
-                oci_execute($fallbackStmt, OCI_NO_AUTO_COMMIT);
-                $fallbackRow = oci_fetch_assoc($fallbackStmt);
-                if ($fallbackRow) {
-                    $actualSlotId = (int)$fallbackRow['SLOT_ID'];
-                } else {
-                    throw new Exception('No available collection slots found in the database.');
-                }
-                oci_free_statement($fallbackStmt);
-            }
-            
-            // ====================================================================
-            // STEP 1: GET ORDER ID FROM SEQUENCE & INSERT ORDER
-            // ====================================================================
-            
-            $couponId = $appliedCoupon ? (string)$appliedCoupon['id'] : null;
-            
-            $newOrderId = db_next_id('"ORDER"', 'order_id');
-
-            $orderSql = "INSERT INTO \"ORDER\" (order_id, customer_id, slot_id, coupon_id, order_status, order_date) 
-                         VALUES (:order_id, :customer_id, :slot_id, :coupon_id, 'PENDING', SYSDATE)";
-            
-            $orderStmt = oci_parse($conn, $orderSql);
-            if (!$orderStmt) {
-                throw new Exception('Failed to parse ORDER insert: ' . oci_error($conn)['message']);
-            }
-            
-            oci_bind_by_name($orderStmt, ':order_id', $newOrderId, -1, SQLT_INT);
-            oci_bind_by_name($orderStmt, ':customer_id', $customerId, -1, SQLT_INT);
-            oci_bind_by_name($orderStmt, ':slot_id', $actualSlotId, -1, SQLT_INT);
-            
-            // Do not use SQLT_INT for nullable fields, as PHP casts null to 0
-            oci_bind_by_name($orderStmt, ':coupon_id', $couponId);
-            
-            if (!oci_execute($orderStmt, OCI_NO_AUTO_COMMIT)) {
-                throw new Exception('Failed to insert ORDER: ' . oci_error($orderStmt)['message']);
-            }
-            
-            oci_free_statement($orderStmt);
-            
-            $transactionId = 'PAYPAL-' . str_pad((string)$newOrderId, 12, '0', STR_PAD_LEFT);
-            
-           // ====================================================================
-            // STEP 2: INSERT ORDER ITEMS
-            // ====================================================================
-            
-            $itemSql = "INSERT INTO ORDER_ITEM (order_id, product_id, quantity, unit_price) 
-                        VALUES (:order_id, :product_id, :quantity, :unit_price)";
-            
-            $itemStmt = oci_parse($conn, $itemSql);
-            if (!$itemStmt) {
-                throw new Exception('Failed to parse ORDER_ITEM insert: ' . oci_error($conn)['message']);
-            }
-            
-            foreach ($normalizedItems as $line) {
-                // 1. Assign to fresh, strict variables inside the loop
-                $loopOrderId = (string) $newOrderId;
-                $loopProductId = (int) $line['product_id'];
-                $loopQuantity = (int) $line['quantity'];
-                $loopUnitPrice = (string) $line['unit_price']; // String bypasses float errors!
-                
-                // 2. Bind directly to these fresh variables
-                oci_bind_by_name($itemStmt, ':order_id', $loopOrderId);
-                oci_bind_by_name($itemStmt, ':product_id', $loopProductId);
-                oci_bind_by_name($itemStmt, ':quantity', $loopQuantity);
-                oci_bind_by_name($itemStmt, ':unit_price', $loopUnitPrice);
-                
-                if (!oci_execute($itemStmt, OCI_NO_AUTO_COMMIT)) {
-                    throw new Exception('Failed to insert ORDER_ITEM for product ' . $loopProductId . ': ' . oci_error($itemStmt)['message']);
-                }
-            }
-            
-            oci_free_statement($itemStmt);
-            
-            // ====================================================================
-            // STEP 2.5: UPDATE ORDER TO PAID (Triggers stock deduction)
-            // ====================================================================
-            
-            $updateOrderSql = "UPDATE \"ORDER\" SET order_status = 'PAID' WHERE order_id = :order_id";
-            $updateOrderStmt = oci_parse($conn, $updateOrderSql);
-            if (!$updateOrderStmt) {
-                throw new Exception('Failed to parse ORDER update: ' . oci_error($conn)['message']);
-            }
-            oci_bind_by_name($updateOrderStmt, ':order_id', $newOrderId, -1, SQLT_INT);
-            if (!oci_execute($updateOrderStmt, OCI_NO_AUTO_COMMIT)) {
-                throw new Exception('Failed to update ORDER to PAID: ' . oci_error($updateOrderStmt)['message']);
-            }
-            oci_free_statement($updateOrderStmt);
-
-            // ====================================================================
-            // STEP 3: INSERT PAYMENT RECORD
-            // ====================================================================
-            
+        if ($errors === []) {
             $paypalTransactionId = trim($_POST['paypal_transaction_id'] ?? '');
-            if ($paypalTransactionId === '') {
-                $paypalTransactionId = 'PP-TXN-' . date('Ymd') . '-' . rand(1000, 9999); // Fallback if missing
-            }
-            
-            $paymentSql = "INSERT INTO PAYMENT (order_id, amount_paid, payment_method, payment_status, payment_date, transaction_reference) 
-                           VALUES (:order_id, :amount, 'PAYPAL', 'PAID', SYSDATE, :transaction_reference)";
-            
-            $paymentStmt = oci_parse($conn, $paymentSql);
-            if (!$paymentStmt) {
-                throw new Exception('Failed to parse PAYMENT insert: ' . oci_error($conn)['message']);
-            }
-            
-            $bindAmount = (string) $total; // Convert float to string
-            oci_bind_by_name($paymentStmt, ':order_id', $newOrderId);
-            oci_bind_by_name($paymentStmt, ':amount', $bindAmount);
-            oci_bind_by_name($paymentStmt, ':transaction_reference', $paypalTransactionId);
-            
-            if (!oci_execute($paymentStmt, OCI_NO_AUTO_COMMIT)) {
-                throw new Exception('Failed to insert PAYMENT: ' . oci_error($paymentStmt)['message']);
-            }
-            
-            oci_free_statement($paymentStmt);
-            // ====================================================================
-            // STEP 4: COMMIT TRANSACTION
-            // ====================================================================
-            
-            if (!oci_commit($conn)) {
-                throw new Exception('Failed to commit transaction: ' . oci_error($conn)['message']);
-            }
-            
-            $paymentSuccess = true;
-            
-            // ====================================================================
-            // STEP 4.5: SEND INVOICE EMAIL
-            // ====================================================================
-            
             $customerName = $_SESSION['first_name'] ?? 'Customer';
             $customerEmail = $_SESSION['email'] ?? '';
             
-            if ($customerEmail) {
-                $subject = "Invoice for Order #" . $newOrderId . " - Cleck E-Mart";
-                
-                $message = "
-                <html>
-                <head>
-                <title>Invoice for Order #{$newOrderId}</title>
-                <style>
-                    body { font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333; background-color: #f9f9f9; padding: 20px; }
-                    .invoice-box { max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 8px 24px rgba(0,0,0,0.05); }
-                    .header { background-color: #1a3018; color: #ffffff; padding: 40px 30px; text-align: center; }
-                    .header h2 { margin: 0 0 10px; font-size: 28px; letter-spacing: 1px; }
-                    .header p { margin: 0; opacity: 0.9; font-size: 16px; }
-                    .content { padding: 40px 30px; }
-                    .greeting { font-size: 18px; margin-top: 0; color: #1a3018; font-weight: 600; }
-                    .table { width: 100%; border-collapse: separate; border-spacing: 0; margin: 30px 0; }
-                    .table th { background: #f4f6f4; color: #1a3018; padding: 15px; text-align: left; font-weight: 600; border-bottom: 2px solid #e0e4e0; }
-                    .table td { padding: 15px; border-bottom: 1px solid #eee; color: #555; }
-                    .table tr:last-child td { border-bottom: none; }
-                    .total-row { background: #1a3018; color: #fff; border-radius: 8px; }
-                    .total-row td { color: #fff; font-weight: bold; font-size: 18px; border: none; padding: 20px 15px; }
-                    .footer { text-align: center; padding: 30px; color: #888; font-size: 14px; background: #fafafa; border-top: 1px solid #eee; }
-                </style>
-                </head>
-                <body>
-                    <div class='invoice-box'>
-                        <div class='header'>
-                            <h2>CLECK E-MART</h2>
-                            <p>Official Invoice &bull; Order #{$newOrderId}</p>
-                        </div>
-                        <div class='content'>
-                            <p class='greeting'>Dear {$customerName},</p>
-                            <p>Thank you for your purchase! Your payment has been successfully processed. Here is the invoice for your order:</p>
-                            <table class='table'>
-                                <thead>
-                                    <tr>
-                                        <th>Item Description</th>
-                                        <th style='text-align: center;'>Qty</th>
-                                        <th style='text-align: right;'>Amount</th>
-                                    </tr>
-                                </thead>
-                                <tbody>";
-                            
-                foreach ($normalizedItems as $line) {
-                    $itemTotal = number_format($line['line_total'], 2);
-                    $message .= "
-                                    <tr>
-                                        <td>{$line['name']}</td>
-                                        <td style='text-align: center;'>{$line['quantity']}</td>
-                                        <td style='text-align: right;'>£{$itemTotal}</td>
-                                    </tr>";
-                }
-                
-                $formattedTotal = number_format($total, 2);
-                $message .= "
-                                    <tr class='total-row'>
-                                        <td colspan='2' style='text-align: right; border-radius: 8px 0 0 8px;'><strong>Total Paid:</strong></td>
-                                        <td style='text-align: right; border-radius: 0 8px 8px 0;'><strong>£{$formattedTotal}</strong></td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                            <p>If you have any questions regarding this invoice, simply reply to this email.</p>
-                        </div>
-                        <div class='footer'>
-                            <p>Cleck E-Mart &copy; " . date('Y') . "<br>Bringing fresh goods to your doorstep.</p>
-                        </div>
-                    </div>
-                </body>
-                </html>
-                ";
-
-                require_once __DIR__ . '/lib/email_helpers.php';
-                send_email($customerEmail, $subject, $message);
+            // Call the encapsulated transaction function
+            $result = process_paypal_order(
+                $customerId,
+                $selectedSlotDate,
+                $selectedSlotTime,
+                $normalizedItems,
+                $total,
+                $paypalTransactionId,
+                $appliedCoupon,
+                $customerName,
+                $customerEmail
+            );
+            
+            if ($result['success']) {
+                $paymentSuccess = true;
+                $transactionId = $result['transaction_id'];
+                unset($_SESSION['applied_coupon']);
+            } else {
+                $paymentSuccess = false;
+                $errors[] = 'Payment processing failed: ' . $result['error'];
             }
-            
-            // ====================================================================
-            // STEP 5: CLEAR CART (only after successful commit)
-            // ====================================================================
-            
-            foreach ($normalizedItems as $line) {
-                $pid = (int) $line['product_id'];
-                if ($pid <= 0) {
-                    continue;
-                }
-                
-                try {
-                    if (apex_cart_enabled()) {
-                        try {
-                            apex_update_cart_quantity($customerId, $pid, 0);
-                        } catch (Throwable $exception) {
-                            update_cart_item_quantity($customerId, $pid, 0);
-                        }
-                    } else {
-                        update_cart_item_quantity($customerId, $pid, 0);
-                    }
-                } catch (Throwable $exception) {
-                    // Cart cleanup is best-effort; don't fail the payment
-                }
-            }
-            
-            unset($_SESSION['applied_coupon']);
-            
-        } catch (Exception $e) {
-            // ====================================================================
-            // ROLLBACK ON ERROR
-            // ====================================================================
-            
-            if (isset($conn)) {
-                oci_rollback($conn);
-            }
-            
-            $paymentSuccess = false;
-            $errors[] = 'Payment processing failed: ' . $e->getMessage();
         }
     }
 }

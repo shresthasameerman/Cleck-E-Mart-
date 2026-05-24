@@ -1,4 +1,6 @@
 <?php
+// This file handles syncing the shopping cart state with the remote APEX database.
+
 /**
  * Oracle APEX Shopping Cart Integration
  * Handles cart operations via Oracle APEX REST endpoints

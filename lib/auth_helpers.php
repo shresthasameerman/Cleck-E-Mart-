@@ -1,6 +1,13 @@
 <?php
+// These helper functions manage user sessions, login state, and role-based access control.
+
 require_once __DIR__ . '/oci_db.php';
 
+/**
+ * Enforces access control by requiring the user to be logged in.
+ * Optionally restricts access to specific roles.
+ * Redirects to login or index page if conditions are not met.
+ */
 function require_login(array $allowedRoles = []): void
 {
     if (!is_logged_in()) {
@@ -21,6 +28,10 @@ function require_login(array $allowedRoles = []): void
     }
 }
 
+/**
+ * Sets up session variables for a newly logged-in user.
+ * It also initializes customer-specific session data if applicable.
+ */
 function login_session(array $user): void
 {
     $_SESSION['user_id'] = (int) $user['USER_ID'];

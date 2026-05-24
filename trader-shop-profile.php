@@ -1,4 +1,6 @@
 <?php
+// This file allows traders to update their shop's public details, like the shop name, logo, and description.
+
 require_once __DIR__ . '/lib/bootstrap.php';
 require_once __DIR__ . '/lib/trader_helpers.php';
 

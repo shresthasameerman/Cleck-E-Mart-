@@ -1,4 +1,7 @@
-<?php $footerAccountHref = current_role() === 'TRADER' ? 'trader-dashboard.php' : 'profile.php'; ?>
+<?php
+// This is a reusable component that renders the bottom footer of the website across all pages.
+
+$footerAccountHref = current_role() === 'TRADER' ? 'trader-dashboard.php' : 'profile.php'; ?>
 <!-- Site footer -->
 <footer class="site-footer">
     <div class="container site-footer__inner">

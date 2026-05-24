@@ -1,4 +1,6 @@
 <?php
+// This file handles the collection slot selection, ensuring customers pick a valid day and time to pick up their orders.
+
 require_once __DIR__ . '/lib/auth_helpers.php';
 require_once __DIR__ . '/lib/oci_db.php';
 require_login(['CUSTOMER']);

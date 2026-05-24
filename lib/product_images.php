@@ -1,4 +1,6 @@
 <?php
+// This script handles uploading, resizing, and saving product images safely to the server.
+
 /**
  * Product image helper
  * Returns uploaded product image if available, otherwise returns a copyright-free placeholder (picsum.photos) seeded by id

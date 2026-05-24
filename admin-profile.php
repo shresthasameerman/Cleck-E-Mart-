@@ -1,4 +1,6 @@
 <?php
+// This file handles the admin's personal profile settings, allowing them to update their own account details.
+
 require_once __DIR__ . '/lib/auth_helpers.php';
 
 require_login(['ADMIN']);
@@ -224,7 +226,7 @@ require __DIR__ . '/components/header.php';
                 <hr style="margin: 2.5rem 0; border: 0; border-top: 1px solid rgba(0,0,0,0.1);" />
                 
                 <div style="display: flex; justify-content: flex-end;">
-                    <a href="logout.php" class="button button--secondary" style="color: var(--color-accent); border-color: var(--color-accent); font-weight: 600;">
+                    <a href="auth.php?action=logout" class="button button--secondary" style="color: var(--color-accent); border-color: var(--color-accent); font-weight: 600;">
                         Sign Out
                     </a>
                 </div>

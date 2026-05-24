@@ -1,18 +1,23 @@
 <?php
+// This file wraps the Oracle database connection and provides simple helper functions for executing queries safely.
+
 require_once __DIR__ . '/bootstrap.php';
 require_once __DIR__ . '/offline_store.php';
 
+// Handles the core logic and operations for db_driver
 function db_driver(): string
 {
     $driver = strtolower((string) (getenv('DB_DRIVER') ?: 'oracle'));
     return in_array($driver, ['offline', 'oracle'], true) ? $driver : 'oracle';
 }
 
+// Handles the core logic and operations for db_is_offline
 function db_is_offline(): bool
 {
     return db_driver() !== 'oracle';
 }
 
+// Handles the core logic and operations for db_connect
 function db_connect()
 {
     static $conn = null;
@@ -43,6 +48,7 @@ function db_connect()
     return $conn;
 }
 
+// Handles the core logic and operations for db_parse
 function db_parse(string $sql)
 {
     if (db_is_offline()) {
@@ -62,6 +68,7 @@ function db_parse(string $sql)
     return $statement;
 }
 
+// Handles the core logic and operations for db_execute_statement
 function db_execute_statement($statement, array $binds = []): bool
 {
     if (db_is_offline()) {
@@ -85,6 +92,7 @@ function db_execute_statement($statement, array $binds = []): bool
     return true;
 }
 
+// Handles the core logic and operations for db_fetch_all
 function db_fetch_all(string $sql, array $binds = []): array
 {
     if (db_is_offline()) {
@@ -104,6 +112,7 @@ function db_fetch_all(string $sql, array $binds = []): array
     return $rows;
 }
 
+// Handles the core logic and operations for db_fetch_one
 function db_fetch_one(string $sql, array $binds = []): ?array
 {
     if (db_is_offline()) {
@@ -119,6 +128,7 @@ function db_fetch_one(string $sql, array $binds = []): ?array
     return $row;
 }
 
+// Handles the core logic and operations for db_execute
 function db_execute(string $sql, array $binds = []): bool
 {
     if (db_is_offline()) {
@@ -132,6 +142,7 @@ function db_execute(string $sql, array $binds = []): bool
     return $ok;
 }
 
+// Handles the core logic and operations for db_next_id
 function db_next_id(string $table, string $column): int
 {
     if (db_is_offline()) {
@@ -155,6 +166,7 @@ function db_next_id(string $table, string $column): int
     return (int) $row['NEXT_ID'];
 }
 
+// Handles the core logic and operations for db_begin
 function db_begin(): void
 {
     if (db_is_offline()) {
@@ -166,6 +178,7 @@ function db_begin(): void
     }
 }
 
+// Handles the core logic and operations for db_commit
 function db_commit(): void
 {
     if (db_is_offline()) {
@@ -175,6 +188,7 @@ function db_commit(): void
     @oci_commit(db_connect());
 }
 
+// Handles the core logic and operations for db_rollback
 function db_rollback(): void
 {
     if (db_is_offline()) {

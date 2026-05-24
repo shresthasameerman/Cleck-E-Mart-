@@ -1,13 +1,17 @@
 <?php
+// These helper functions handle trader-specific tasks like managing their shop, products, and incoming orders.
+
 require_once __DIR__ . '/oci_db.php';
 require_once __DIR__ . '/offline_store.php';
 require_once __DIR__ . '/auth_helpers.php';
 
+// Handles the core logic and operations for trader_role_guard
 function trader_role_guard(): void
 {
     require_login(['TRADER']);
 }
 
+// Handles the core logic and operations for trader_handle_product_image_upload
 function trader_handle_product_image_upload(?array $fileInput): ?string
 {
     if ($fileInput === null || !isset($fileInput['name']) || $fileInput['name'] === '') {
@@ -67,6 +71,7 @@ function trader_handle_product_image_upload(?array $fileInput): ?string
     return $filename;
 }
 
+// Handles the core logic and operations for trader_verification_status
 function trader_verification_status(int $userId): ?string
 {
     if (db_is_offline()) {
@@ -88,18 +93,19 @@ function trader_verification_status(int $userId): ?string
         return $result ? (string) $result['TRADER_STATUS'] : null;
     } catch (Throwable $e) {
         // If the column doesn't exist yet in the database, assume existing traders are VERIFIED
-        // This is a fallback for development mode before schema migration
-        error_log('Trader verification status query failed: ' . $e->getMessage());
+                error_log('Trader verification status query failed: ' . $e->getMessage());
         return 'VERIFIED';
     }
 }
 
+// Handles the core logic and operations for trader_is_verified
 function trader_is_verified(int $userId): bool
 {
     $status = trader_verification_status($userId);
     return $status === 'VERIFIED';
 }
 
+// Handles the core logic and operations for trader_shop_for_user
 function trader_shop_for_user(int $userId, ?int $shopId = null): ?array
 {
     if (db_is_offline()) {
@@ -151,6 +157,7 @@ function trader_shop_for_user(int $userId, ?int $shopId = null): ?array
     );
 }
 
+// Handles the core logic and operations for trader_categories
 function trader_categories(): array
 {
     if (db_is_offline()) {
@@ -160,6 +167,7 @@ function trader_categories(): array
     return db_fetch_all('SELECT category_id, category_name FROM CATEGORY ORDER BY category_name');
 }
 
+// Handles the core logic and operations for trader_products_for_user
 function trader_products_for_user(int $userId): array
 {
     if (db_is_offline()) {
@@ -174,6 +182,7 @@ function trader_products_for_user(int $userId): array
     return trader_products_for_shop((int) $shop['SHOP_ID']);
 }
 
+// Handles the core logic and operations for trader_products_for_shop
 function trader_products_for_shop(int $shopId): array
 {
     if (db_is_offline()) {
@@ -208,6 +217,7 @@ function trader_products_for_shop(int $shopId): array
     );
 }
 
+// Handles the core logic and operations for trader_dashboard_metrics
 function trader_dashboard_metrics(int $userId, ?int $shopId = null): array
 {
     if (db_is_offline()) {
@@ -293,6 +303,7 @@ function trader_dashboard_metrics(int $userId, ?int $shopId = null): array
     ];
 }
 
+// Handles the core logic and operations for trader_create_product
 function trader_create_product(int $userId, array $payload): array
 {
     $shopId = isset($payload['shop_id']) ? (int) $payload['shop_id'] : null;
@@ -447,6 +458,7 @@ function trader_create_product(int $userId, array $payload): array
     return $createdProduct ?? [];
 }
 
+// Handles the core logic and operations for trader_update_profile
 function trader_update_profile(int $userId, array $payload): array
 {
     $firstName = trim((string) ($payload['first_name'] ?? ''));
@@ -538,6 +550,7 @@ function trader_update_profile(int $userId, array $payload): array
     return [];
 }
 
+// Handles the core logic and operations for trader_update_discount
 function trader_update_discount(int $userId, int $productId, float $percentage, int $durationDays = 30): void
 {
     $shop = trader_shop_for_user($userId);
@@ -581,6 +594,7 @@ function trader_update_discount(int $userId, int $productId, float $percentage, 
     }
 }
 
+// Handles the core logic and operations for trader_get_orders
 function trader_get_orders(int $userId, array $filters = []): array
 {
     $shopId = $filters['shop_id'] ?? null;
@@ -633,6 +647,7 @@ function trader_get_orders(int $userId, array $filters = []): array
     return db_fetch_all($sql, $params);
 }
 
+// Handles the core logic and operations for trader_get_order_details
 function trader_get_order_details(int $userId, int $orderId, ?int $shopId = null): ?array
 {
     $orderSql = "SELECT o.order_id,
@@ -680,6 +695,7 @@ function trader_get_order_details(int $userId, int $orderId, ?int $shopId = null
 
 
 
+// Handles the core logic and operations for trader_update_order_status
 function trader_update_order_status(int $userId, int $orderId, string $newStatus): void
 {
     if (!in_array($newStatus, ['PAID', 'READY', 'COLLECTED'], true)) {
@@ -710,6 +726,7 @@ function trader_update_order_status(int $userId, int $orderId, string $newStatus
     ]);
 }
 
+// Handles the core logic and operations for trader_get_shops
 function trader_get_shops(int $userId): array
 {
     if (db_is_offline()) {
@@ -723,6 +740,7 @@ function trader_get_shops(int $userId): array
     );
 }
 
+// Handles the core logic and operations for trader_create_shop
 function trader_create_shop(int $userId, array $payload): array
 {
     $shopName = trim($payload['shop_name'] ?? '');
@@ -771,6 +789,7 @@ function trader_create_shop(int $userId, array $payload): array
     }
 }
 
+// Handles the core logic and operations for trader_update_shop
 function trader_update_shop(int $userId, int $shopId, array $payload): void
 {
     $shopName = trim($payload['shop_name'] ?? '');
@@ -807,6 +826,7 @@ function trader_update_shop(int $userId, int $shopId, array $payload): void
     );
 }
 
+// Handles the core logic and operations for trader_update_product
 function trader_update_product(int $userId, int $productId, array $payload): void
 {
     $shopId = isset($payload['shop_id']) ? (int) $payload['shop_id'] : null;

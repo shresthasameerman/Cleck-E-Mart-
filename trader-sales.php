@@ -1,4 +1,6 @@
 <?php
+// This file provides detailed sales reports and analytics for a trader to track their revenue over time.
+
 require_once __DIR__ . '/lib/bootstrap.php';
 require_once __DIR__ . '/lib/trader_helpers.php';
 require_once __DIR__ . '/lib/oci_db.php';
@@ -21,147 +23,17 @@ $pageTitle = $shopId ? 'Shop Sales Report | Cleck E-Mart' : 'Overall Sales Repor
 $reportTitle = $shopId ? 'Shop Sales Report' : 'Overall Sales Report';
 $reportDesc = $shopId ? 'Comprehensive sales analytics for your shop.' : 'Comprehensive sales analytics across all your shops.';
 
+require_once __DIR__ . '/lib/trader_dashboard_helpers.php';
+
 // Fetch Sales Data
-$dailySales = [];
-$detailedSales = [];
-$shopRevenue = [];
-$categorySales = [];
-$totalRevenue = 0;
-$totalItemsSold = 0;
-
-$conn = db_connect();
-if ($conn) {
-    $whereClause = $shopId ? "p.shop_id = :filter_id" : "s.trader_id = :filter_id";
-    $filterId = $shopId ? $shopId : $userId;
-
-    // 1. Daily Sales Trend (Last 30 days)
-    $sqlDaily = "SELECT TO_CHAR(o.order_date, 'YYYY-MM-DD') AS sale_date, SUM(oi.quantity * oi.unit_price) AS daily_revenue
-                 FROM \"ORDER\" o
-                 JOIN ORDER_ITEM oi ON o.order_id = oi.order_id
-                 JOIN PRODUCT p ON oi.product_id = p.product_id
-                 JOIN SHOP s ON p.shop_id = s.shop_id
-                 WHERE $whereClause AND o.order_date >= SYSDATE - 30
-                 GROUP BY TO_CHAR(o.order_date, 'YYYY-MM-DD')
-                 ORDER BY sale_date ASC";
-    
-    $stmtDaily = oci_parse($conn, $sqlDaily);
-    if ($stmtDaily) {
-        oci_bind_by_name($stmtDaily, ':filter_id', $filterId, -1, SQLT_INT);
-        if (oci_execute($stmtDaily)) {
-            while ($row = oci_fetch_assoc($stmtDaily)) {
-                $dailySales[] = [
-                    'date' => $row['SALE_DATE'],
-                    'revenue' => (float) $row['DAILY_REVENUE']
-                ];
-            }
-        }
-        oci_free_statement($stmtDaily);
-    }
-
-    // 2. Revenue by Shop (Only useful for overall report)
-    if (!$shopId) {
-        $sqlShop = "SELECT s.shop_name, SUM(oi.quantity * oi.unit_price) AS shop_revenue
-                    FROM \"ORDER\" o
-                    JOIN ORDER_ITEM oi ON o.order_id = oi.order_id
-                    JOIN PRODUCT p ON oi.product_id = p.product_id
-                    JOIN SHOP s ON p.shop_id = s.shop_id
-                    WHERE s.trader_id = :trader_id
-                    GROUP BY s.shop_name";
-        $stmtShop = oci_parse($conn, $sqlShop);
-        if ($stmtShop) {
-            oci_bind_by_name($stmtShop, ':trader_id', $userId, -1, SQLT_INT);
-            if (oci_execute($stmtShop)) {
-                while ($row = oci_fetch_assoc($stmtShop)) {
-                    $shopRevenue[] = [
-                        'shop_name' => $row['SHOP_NAME'],
-                        'revenue' => (float) $row['SHOP_REVENUE']
-                    ];
-                }
-            }
-            oci_free_statement($stmtShop);
-        }
-    }
-
-    // 3. Sales by Category
-    $sqlCat = "SELECT c.category_name, SUM(oi.quantity) AS items_sold
-                FROM \"ORDER\" o
-                JOIN ORDER_ITEM oi ON o.order_id = oi.order_id
-                JOIN PRODUCT p ON oi.product_id = p.product_id
-                JOIN SHOP s ON p.shop_id = s.shop_id
-                JOIN CATEGORY c ON p.category_id = c.category_id
-                WHERE $whereClause
-                GROUP BY c.category_name";
-    $stmtCat = oci_parse($conn, $sqlCat);
-    if ($stmtCat) {
-        oci_bind_by_name($stmtCat, ':filter_id', $filterId, -1, SQLT_INT);
-        if (oci_execute($stmtCat)) {
-            while ($row = oci_fetch_assoc($stmtCat)) {
-                $categorySales[] = [
-                    'category_name' => $row['CATEGORY_NAME'],
-                    'items_sold' => (int) $row['ITEMS_SOLD']
-                ];
-            }
-        }
-        oci_free_statement($stmtCat);
-    }
-
-    // 3.5 Top Products for Shop (Only for specific shop report)
-    $topProductsShop = [];
-    if ($shopId) {
-        $sqlTop = "SELECT p.product_name, SUM(oi.quantity) AS total_sold
-                   FROM \"ORDER\" o
-                   JOIN ORDER_ITEM oi ON o.order_id = oi.order_id
-                   JOIN PRODUCT p ON oi.product_id = p.product_id
-                   WHERE p.shop_id = :shop_id
-                   GROUP BY p.product_name
-                   ORDER BY total_sold DESC
-                   FETCH FIRST 5 ROWS ONLY";
-        $stmtTop = oci_parse($conn, $sqlTop);
-        if ($stmtTop) {
-            oci_bind_by_name($stmtTop, ':shop_id', $shopId, -1, SQLT_INT);
-            if (oci_execute($stmtTop)) {
-                while ($row = oci_fetch_assoc($stmtTop)) {
-                    $topProductsShop[] = [
-                        'product_name' => $row['PRODUCT_NAME'],
-                        'total_sold' => (int) $row['TOTAL_SOLD']
-                    ];
-                }
-            }
-            oci_free_statement($stmtTop);
-        }
-    }
-
-    // 4. Detailed Sales List
-    $sqlDetails = "SELECT o.order_id, TO_CHAR(o.order_date, 'YYYY-MM-DD HH24:MI') AS order_date,
-                          p.product_name, s.shop_name, oi.quantity, oi.unit_price, (oi.quantity * oi.unit_price) AS total_price
-                   FROM \"ORDER\" o
-                   JOIN ORDER_ITEM oi ON o.order_id = oi.order_id
-                   JOIN PRODUCT p ON oi.product_id = p.product_id
-                   JOIN SHOP s ON p.shop_id = s.shop_id
-                   WHERE $whereClause
-                   ORDER BY o.order_date DESC";
-    
-    $stmtDetails = oci_parse($conn, $sqlDetails);
-    if ($stmtDetails) {
-        oci_bind_by_name($stmtDetails, ':filter_id', $filterId, -1, SQLT_INT);
-        if (oci_execute($stmtDetails)) {
-            while ($row = oci_fetch_assoc($stmtDetails)) {
-                $detailedSales[] = [
-                    'order_id' => $row['ORDER_ID'],
-                    'date' => $row['ORDER_DATE'],
-                    'product_name' => $row['PRODUCT_NAME'],
-                    'shop_name' => $row['SHOP_NAME'],
-                    'quantity' => (int) $row['QUANTITY'],
-                    'unit_price' => (float) $row['UNIT_PRICE'],
-                    'total_price' => (float) $row['TOTAL_PRICE']
-                ];
-                $totalRevenue += (float) $row['TOTAL_PRICE'];
-                $totalItemsSold += (int) $row['QUANTITY'];
-            }
-        }
-        oci_free_statement($stmtDetails);
-    }
-}
+$reportData = get_trader_sales_report_data($userId, $shopId);
+$dailySales = $reportData['dailySales'];
+$detailedSales = $reportData['detailedSales'];
+$shopRevenue = $reportData['shopRevenue'];
+$categorySales = $reportData['categorySales'];
+$topProductsShop = $reportData['topProductsShop'];
+$totalRevenue = $reportData['totalRevenue'];
+$totalItemsSold = $reportData['totalItemsSold'];
 
 require __DIR__ . '/components/header.php';
 ?>
@@ -218,7 +90,7 @@ require __DIR__ . '/components/header.php';
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"></line><line x1="18" y1="20" x2="18" y2="4"></line><line x1="6" y1="20" x2="6" y2="16"></line></svg>
                             All Sales
                         </a>
-                        <a href="logout.php" class="tab-button" style="margin-top: auto; color: var(--color-accent); border-top: 1px solid rgba(0,0,0,0.1); border-radius: 0; padding-top: 1rem;">
+                        <a href="auth.php?action=logout" class="tab-button" style="margin-top: auto; color: var(--color-accent); border-top: 1px solid rgba(0,0,0,0.1); border-radius: 0; padding-top: 1rem;">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
                             Sign Out
                         </a>

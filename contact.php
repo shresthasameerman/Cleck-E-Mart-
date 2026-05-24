@@ -1,4 +1,6 @@
 <?php
+// This file provides a contact form for users to get in touch with the Cleck E-Mart support team.
+
 // Reuses site-wide header/navigation to keep contact page in the same theme.
 require __DIR__ . '/components/header.php';
 ?>

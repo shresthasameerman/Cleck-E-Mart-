@@ -1,4 +1,6 @@
 <?php
+// This script processes form submissions when a customer leaves a rating and review for a purchased product.
+
 $pageTitle = 'Write a Review | Cleck E-Mart';
 $metaDescription = 'Review a product you purchased on Cleck E-Mart.';
 require_once __DIR__ . '/lib/auth_helpers.php';

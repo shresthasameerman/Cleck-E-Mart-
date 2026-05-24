@@ -1,6 +1,9 @@
 <?php
+// These helper functions manage the local database cart, including adding, removing, and calculating totals.
+
 require_once __DIR__ . '/oci_db.php';
 
+// Handles the core logic and operations for ensure_active_cart
 function ensure_active_cart(int $customerId): int
 {
     if (db_is_offline()) {
@@ -32,6 +35,7 @@ function ensure_active_cart(int $customerId): int
     return $cartId;
 }
 
+// Handles the core logic and operations for add_product_to_cart
 function add_product_to_cart(int $customerId, int $productId, int $quantity): void
 {
     if (db_is_offline()) {
@@ -113,6 +117,7 @@ function add_product_to_cart(int $customerId, int $productId, int $quantity): vo
     );
 }
 
+// Handles the core logic and operations for get_cart_items_for_customer
 function get_cart_items_for_customer(int $customerId): array
 {
     if (db_is_offline()) {
@@ -137,6 +142,7 @@ function get_cart_items_for_customer(int $customerId): array
     );
 }
 
+// Handles the core logic and operations for update_cart_item_quantity
 function update_cart_item_quantity(int $customerId, int $productId, int $quantity): void
 {
     if (db_is_offline()) {
@@ -208,6 +214,7 @@ function update_cart_item_quantity(int $customerId, int $productId, int $quantit
     );
 }
 
+// Handles the core logic and operations for cart_total
 function cart_total(array $items): float
 {
     $total = 0.0;

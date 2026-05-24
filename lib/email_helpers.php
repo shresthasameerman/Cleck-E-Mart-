@@ -1,4 +1,6 @@
 <?php
+// These helper functions handle sending automated emails (like order receipts or password resets) using PHPMailer.
+
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 use PHPMailer\PHPMailer\SMTP;

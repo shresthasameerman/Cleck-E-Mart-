@@ -1,10 +1,14 @@
 <?php
+// This file displays the full details of a single product, including its description, price, reviews, and the 'Add to Basket' button.
+
 require_once __DIR__ . '/lib/cart_helpers.php';
 require_once __DIR__ . '/lib/auth_helpers.php';
 require_once __DIR__ . '/lib/apex_cart.php';
 require_once __DIR__ . '/lib/wishlist_helpers.php';
+require_once __DIR__ . '/lib/storefront_helpers.php';
 
-// Allow guest access to view product details, but require login for add-to-cart
+// Allow guest access to view product details, but strictly require login for interactive features (e.g., adding to cart).
+// This improves SEO and engagement while protecting the transaction flow.
 $isLoggedIn = is_logged_in();
 if ($isLoggedIn) {
     require_login(['CUSTOMER']);
@@ -20,6 +24,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'add_t
         redirect('auth.php?mode=login');
     }
 
+    // Verify that the logged-in user is actually a customer before allowing cart modifications.
+    // Traders and Admins are restricted from purchasing on the storefront.
     if (current_role() !== 'CUSTOMER' || current_customer_id() === null) {
         $errors[] = 'Only customer accounts can place items in the basket.';
     } else {
@@ -34,17 +40,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'add_t
                 $customerId = (int) current_customer_id();
                 $addSuccess = false;
                 
-                // Try APEX API first if enabled
+                // Attempt to synchronize cart changes with the remote APEX REST API first, 
+                // to maintain state consistency across different front-ends.
                 if (apex_cart_enabled()) {
                     try {
                         $addSuccess = apex_add_to_cart($customerId, (int) $postedProductId, $quantity);
                     } catch (Throwable $e) {
                         error_log('APEX add to cart failed: ' . $e->getMessage());
-                        // Fall back to local
+                        // Proceed to local fallback if APEX is unreachable
                     }
                 }
                 
-                // Fall back to local if APEX didn't work
+                // If APEX is disabled or the request failed, seamlessly fall back to local database management.
+                // This guarantees high availability for the shopping cart.
                 if (!$addSuccess) {
                     add_product_to_cart($customerId, (int) $postedProductId, $quantity);
                 }
@@ -62,68 +70,7 @@ $product = null;
 
 if ($productId !== false && $productId !== null) {
     try {
-        if (db_is_offline()) {
-            $product = offline_get_product_detail((int) $productId);
-        } else {
-            $product = db_fetch_one(
-                "SELECT p.product_id,
-                        p.product_name,
-                        p.product_description,
-                        p.allergy_information,
-                        p.price,
-                        p.product_image,
-                        d.discount_percentage,
-                        NVL(u.first_name || ' ' || u.last_name, s.shop_name) AS trader_name
-                 FROM PRODUCT p
-                 LEFT JOIN DISCOUNT d ON p.discount_id = d.discount_id AND d.end_date >= SYSDATE
-                 JOIN SHOP s ON s.shop_id = p.shop_id
-                 JOIN TRADER t ON t.trader_id = s.trader_id
-                 JOIN \"USER\" u ON u.user_id = t.trader_id
-                 WHERE p.product_id = :product_id AND p.product_verification_status = 'APPROVED' AND s.shop_status = 'ACTIVE'",
-                ['product_id' => $productId]
-            );
-            
-            if ($product !== null) {
-                $reviews = db_fetch_all(
-                    "SELECT r.rating, r.\"COMMENT\" as review_comment, r.review_date, 
-                            u.first_name || ' ' || u.last_name AS customer_name
-                     FROM REVIEW r
-                     JOIN CUSTOMER c ON r.customer_id = c.customer_id
-                     JOIN \"USER\" u ON c.customer_id = u.user_id
-                     WHERE r.product_id = :product_id
-                     ORDER BY r.review_date DESC",
-                    ['product_id' => $productId]
-                );
-                
-                // Calculate average rating
-                $avgRating = 0;
-                $reviewCount = count($reviews);
-                if ($reviewCount > 0) {
-                    $sum = 0;
-                    foreach ($reviews as $rev) {
-                        $sum += (float) $rev['RATING'];
-                    }
-                    $avgRating = round($sum / $reviewCount, 1);
-                }
-                $product['avg_rating'] = $avgRating;
-                $product['review_count'] = $reviewCount;
-                $product['reviews'] = $reviews;
-
-                $relatedProducts = db_fetch_all(
-                    "SELECT p.product_id, p.product_name, p.price, p.product_image, d.discount_percentage
-                     FROM PRODUCT p
-                     JOIN SHOP s ON s.shop_id = p.shop_id
-                     LEFT JOIN DISCOUNT d ON p.discount_id = d.discount_id AND d.end_date >= SYSDATE
-                     WHERE p.category_id = (SELECT category_id FROM PRODUCT WHERE product_id = :product_id)
-                       AND p.product_id != :product_id
-                       AND p.product_verification_status = 'APPROVED'
-                       AND s.shop_status = 'ACTIVE'
-                     FETCH FIRST 4 ROWS ONLY",
-                    ['product_id' => $productId]
-                );
-                $product['related_products'] = $relatedProducts;
-            }
-        }
+        $product = get_storefront_product_detail((int) $productId);
     } catch (Throwable $exception) {
         $errors[] = 'Unable to load product: ' . $exception->getMessage();
     }
@@ -243,7 +190,7 @@ require __DIR__ . '/components/header.php';
                 </form>
                 
                 <?php if (is_logged_in() && current_role() === 'CUSTOMER'): ?>
-                <form method="post" action="wishlist_action.php" class="product-wishlist-premium">
+                <form method="post" action="wishlist.php" class="product-wishlist-premium">
                     <input type="hidden" name="action" value="add" />
                     <input type="hidden" name="product_id" value="<?php echo e($product['PRODUCT_ID']); ?>" />
                     <input type="hidden" name="return_url" value="product.php?product_id=<?php echo e($product['PRODUCT_ID']); ?>" />

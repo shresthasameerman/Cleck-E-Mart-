@@ -1,4 +1,6 @@
 <?php
+// This file handles the About Us page, showing information about Cleck E-Mart and its mission.
+
 require_once __DIR__ . '/lib/bootstrap.php';
 $pageTitle = 'About Us | Cleck E-Mart';
 $metaDescription = 'Learn more about Cleck E-Mart, our locations, and how to get in touch with us.';

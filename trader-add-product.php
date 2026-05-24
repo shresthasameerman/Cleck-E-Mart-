@@ -1,4 +1,6 @@
 <?php
+// This file provides a form for traders to list a new product or edit an existing product in their shop.
+
 require_once __DIR__ . '/lib/trader_helpers.php';
 
 trader_role_guard();
@@ -15,6 +17,7 @@ $metrics = trader_dashboard_metrics($userId);
 $traderStatus = trader_verification_status($userId);
 $isVerified = trader_is_verified($userId);
 $isShopActive = isset($shop['SHOP_STATUS']) && strtoupper($shop['SHOP_STATUS']) === 'ACTIVE';
+$currentShopId = $shop['SHOP_ID'] ?? ($shopId ?? 0);
 
 if (!$isVerified) {
     $errors[] = 'Your trader account is pending admin verification. You will be able to add products once your account has been verified.';
@@ -49,7 +52,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['product_action'] ?? '') ==
             ]);
 
             set_flash('success', 'Product saved successfully.');
-            redirect('trader-add-product.php');
+            $redirectUrl = 'trader-add-product.php';
+            if ($currentShopId) {
+                $redirectUrl .= '?shop_id=' . $currentShopId;
+            }
+            redirect($redirectUrl);
         } catch (Throwable $exception) {
             $errors[] = $exception->getMessage();
         }
@@ -90,23 +97,23 @@ require __DIR__ . '/components/header.php';
                         Back to My Shops
                     </a>
                     <hr style="border-top: 1px solid rgba(0,0,0,0.1); margin: 0.5rem 0; width: 100%;">
-                    <a href="trader-shop-profile.php?shop_id=<?php echo (int)$_GET['shop_id']; ?>" class="tab-button">
+                    <a href="trader-shop-profile.php?shop_id=<?php echo $currentShopId; ?>" class="tab-button">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
                         Shop Profile
                     </a>
-                    <a href="trader-dashboard.php?shop_id=<?php echo (int)$_GET['shop_id']; ?>" class="tab-button">
+                    <a href="trader-dashboard.php?shop_id=<?php echo $currentShopId; ?>" class="tab-button">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
                         Inventory
                     </a>
-                    <a href="trader-orders.php?shop_id=<?php echo (int)$_GET['shop_id']; ?>" class="tab-button">
+                    <a href="trader-orders.php?shop_id=<?php echo $currentShopId; ?>" class="tab-button">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
                         Orders
                     </a>
-                    <a href="trader-sales.php?shop_id=<?php echo (int)$_GET['shop_id']; ?>" class="tab-button">
+                    <a href="trader-sales.php?shop_id=<?php echo $currentShopId; ?>" class="tab-button">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"></line><line x1="18" y1="20" x2="18" y2="4"></line><line x1="6" y1="20" x2="6" y2="16"></line></svg>
                         Sales
                     </a>
-                    <a href="trader-add-product.php?shop_id=<?php echo (int)$_GET['shop_id']; ?>" class="tab-button active">
+                    <a href="trader-add-product.php?shop_id=<?php echo $currentShopId; ?>" class="tab-button active">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                         Add Products
                     </a>
@@ -130,9 +137,9 @@ require __DIR__ . '/components/header.php';
                             <p style="margin-top: 1.5rem; color: #999; font-size: 0.9rem;">Check back soon, or contact support for more information.</p>
                         </div>
                     <?php else: ?>
-                    <form class="trader-form" method="post" action="trader-add-product.php<?php echo isset($_GET['shop_id']) ? '?shop_id=' . (int)$_GET['shop_id'] : ''; ?>" enctype="multipart/form-data">
+                    <form class="trader-form" method="post" action="trader-add-product.php<?php echo $currentShopId ? '?shop_id=' . $currentShopId : ''; ?>" enctype="multipart/form-data">
                         <input type="hidden" name="product_action" value="save_product" />
-                        <input type="hidden" name="shop_id" value="<?php echo isset($_GET['shop_id']) ? (int)$_GET['shop_id'] : ''; ?>" />
+                        <input type="hidden" name="shop_id" value="<?php echo $currentShopId; ?>" />
                         <div class="trader-form__grid">
                             <label class="trader-form__full">
                                 <span>Product name</span>

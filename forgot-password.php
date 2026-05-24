@@ -1,4 +1,6 @@
 <?php
+// This file handles the first step of password recovery, asking the user for their email address to send an OTP.
+
 $pageTitle = 'Forgot Password | Cleck E-Mart';
 $metaDescription = 'Reset your Cleck E-Mart account password.';
 require_once __DIR__ . '/lib/oci_db.php';

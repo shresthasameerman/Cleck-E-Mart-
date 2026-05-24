@@ -1,4 +1,6 @@
 <?php
+// This file displays the shopping basket, letting customers review their selected items before proceeding to checkout.
+
 require_once __DIR__ . '/lib/cart_helpers.php';
 require_once __DIR__ . '/lib/auth_helpers.php';
 require_once __DIR__ . '/lib/apex_cart.php';
@@ -23,18 +25,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $quantity = $quantity !== false && $quantity !== null ? (int) $quantity : 1;
         
-        // Try APEX API first if enabled
+        // Communicate cart changes to the central APEX API first to ensure the backend is always up-to-date.
         $updateSuccess = false;
         if (apex_cart_enabled()) {
             try {
                 $updateSuccess = apex_update_cart_quantity($customerId, $productId, $quantity);
             } catch (Throwable $e) {
                 error_log('APEX cart update failed: ' . $e->getMessage());
-                // Fall back to local
+                // Silently continue to local fallback
             }
         }
         
-        // Fall back to local if APEX didn't work
+        // Execute the update on the local Oracle database if APEX is disabled or failed.
+        // This ensures the user experience is never interrupted by external API downtime.
         if (!$updateSuccess) {
             update_cart_item_quantity($customerId, $productId, $quantity);
         }
@@ -51,17 +54,18 @@ $items = [];
 $apiError = null;
 
 try {
-    // Try APEX API first if enabled
+    // Attempt to fetch cart contents from the APEX backend to sync external changes.
     if (apex_cart_enabled()) {
         try {
             $items = apex_get_cart_items($customerId);
         } catch (Throwable $e) {
             error_log('APEX cart fetch failed: ' . $e->getMessage());
             $apiError = 'Cart data may be outdated';
-            // Fall back to local
+            // Trigger local fetch fallback
             $items = get_cart_items_for_customer($customerId);
         }
     } else {
+        // Native local fetch path when APEX is disabled
         $items = get_cart_items_for_customer($customerId);
     }
 } catch (Throwable $exception) {

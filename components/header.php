@@ -1,4 +1,6 @@
 <?php
+// This is a reusable component that renders the top navigation bar and logo across all pages.
+
 require_once __DIR__ . '/../lib/bootstrap.php';
 
 $pageTitle = $pageTitle ?? 'Cleck E-Mart';
@@ -35,7 +37,7 @@ if ($headerIsAdmin) {
     <?php if (isset($_SESSION['admin_id'])): ?>
         <div style="background-color: #1e293b; color: white; padding: 0.75rem 1rem; text-align: center; font-size: 0.95rem; font-weight: 500; z-index: 1000; position: relative; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
             <span style="opacity: 0.9;">Admin Mode: You are viewing the site as <?php echo htmlspecialchars($_SESSION['first_name'] ?? ''); ?>.</span>
-            <a href="admin-revert.php" style="color: #60a5fa; margin-left: 1rem; text-decoration: underline; font-weight: 600;">Return to Admin Dashboard</a>
+            <a href="auth.php?action=revert_impersonate" style="color: #60a5fa; margin-left: 1rem; text-decoration: underline; font-weight: 600;">Return to Admin Dashboard</a>
         </div>
     <?php endif; ?>
     <!-- Accessibility: allows keyboard users to skip repeated navigation quickly. -->
